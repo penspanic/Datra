@@ -1,7 +1,7 @@
 // using Datra.Data.Attributes;
 // using Datra.Data.Interfaces;
 //
-// namespace Datra.Test.Models
+// namespace Datra.Tests.Models
 // {
 //     [TableData("Characters.csv", Format = DataFormat.Csv)]
 //     public partial class RefTestData : ITableData<string>

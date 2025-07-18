@@ -1,6 +1,6 @@
 using Datra.Data.Attributes;
 
-namespace Datra.Test.Models
+namespace Datra.Tests.Models
 {
     [SingleData("GameConfig.yaml", Format = DataFormat.Yaml)]
     public partial class GameConfig

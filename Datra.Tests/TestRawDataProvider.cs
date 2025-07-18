@@ -3,7 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Datra.Data.Interfaces;
 
-namespace Datra.Test
+namespace Datra.Tests
 {
     public class TestRawDataProvider : IRawDataProvider
     {

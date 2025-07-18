@@ -1,7 +1,7 @@
 using Datra.Data.Attributes;
 using Datra.Data.Interfaces;
 
-namespace Datra.Test.Models
+namespace Datra.Tests.Models
 {
     [TableData("Items.json")]
     public partial class ItemData : ITableData<int>

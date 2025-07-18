@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data", "Datra.Data\Datra.Data.csproj", "{2A86C3A3-84B3-4A86-80D0-B0C935F29F68}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Test", "Datra.Test\Datra.Test.csproj", "{203E63AB-B9C0-4843-BE53-E1F699CDA28E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Tests", "Datra.Tests\Datra.Tests.csproj", "{203E63AB-B9C0-4843-BE53-E1F699CDA28E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data.Generators", "Datra.Data.Generators\Datra.Data.Generators.csproj", "{4B3ED558-8A21-4CA6-8075-55909821DCEA}"
 EndProject
