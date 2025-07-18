@@ -31,8 +31,8 @@ echo -e "${GREEN}✓ Build successful!${NC}"
 # Build output path
 SOURCE_DLL="$PROJECT_ROOT/Output/Datra.Data.Generators/bin/Release/netstandard2.0/Datra.Data.Generators.dll"
 
-# Unity project Plugins directory
-UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra.Unity.Sample/Assets/Plugins"
+# Datra.Data package Plugins directory
+UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra.Data/Plugins"
 
 # Create Plugins directory if it doesn't exist
 if [ ! -d "$UNITY_PLUGINS_DIR" ]; then
@@ -47,7 +47,7 @@ if [ ! -f "$SOURCE_DLL" ]; then
 fi
 
 # Copy DLL
-echo -e "${GREEN}→ Copying DLL to Unity project...${NC}"
+echo -e "${GREEN}→ Copying DLL to Datra.Data package...${NC}"
 cp "$SOURCE_DLL" "$UNITY_PLUGINS_DIR/"
 
 if [ $? -eq 0 ]; then

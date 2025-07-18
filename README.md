@@ -47,17 +47,23 @@ git clone https://github.com/yourusername/Datra.git
 
 ### For Unity Projects
 
-1. Add the following packages to your Unity project's `Packages/manifest.json`:
+1. In Unity Package Manager, click the "+" button and select "Add package from git URL..."
+
+2. Enter the following URL:
+```
+https://github.com/penspanic/Datra.git?path=Datra.Data
+```
+
+3. Unity will automatically import the package along with its dependencies.
+
+Alternatively, you can add it directly to your Unity project's `Packages/manifest.json`:
 ```json
 {
   "dependencies": {
-    "com.Datra.core": "file:path/to/Datra.Core",
-    "com.Datra.data": "file:path/to/Datra.Data"
+    "com.datra.data": "https://github.com/penspanic/Datra.git?path=Datra.Data"
   }
 }
 ```
-
-2. Copy the built `Datra.Data.Generators.dll` to your Unity project's `Assets/Plugins/` folder.
 
 ## 📝 Usage
 
