@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <!-- Force all projects to use centralized output paths -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\Output\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\Output\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)\</IntermediateOutputPath>
+    
+    <!-- Ensure NuGet packages are restored to a central location -->
+    <RestorePackagesPath>$(MSBuildThisFileDirectory)..\Output\packages</RestorePackagesPath>
+  </PropertyGroup>
+</Project>

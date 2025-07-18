@@ -1,0 +1,8 @@
+MaxLevel: 50
+ExpMultiplier: 1.5
+StartingGold: 100
+InventorySize: 20
+Server:
+  ApiUrl: https://game.example.com/api
+  Timeout: 30000
+  MaxRetries: 3
