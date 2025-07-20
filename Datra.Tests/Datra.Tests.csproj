@@ -10,13 +10,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Datra.Data.Generators\Datra.Data.Generators.csproj" 
+        <ProjectReference Include="..\Datra.Generators\Datra.Generators.csproj" 
                           OutputItemType="Analyzer" 
                           ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\Datra.Data.Analyzers\Datra.Data.Analyzers.csproj" 
+        <ProjectReference Include="..\Datra.Analyzers\Datra.Analyzers.csproj" 
                           OutputItemType="Analyzer" 
                           ReferenceOutputAssembly="false" />
-        <ProjectReference Include="..\Datra.Data\Datra.Data.csproj" />
+        <ProjectReference Include="..\Datra\Datra.csproj" />
     </ItemGroup>
 
     <ItemGroup>

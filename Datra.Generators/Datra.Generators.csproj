@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <IsRoslynComponent>true</IsRoslynComponent>
+        <!-- Include dll build for Unity usage -->
+        <IncludeBuildOutput>true</IncludeBuildOutput>
+        <DevelopmentDependency>true</DevelopmentDependency>
+        <RootNamespace>Datra.Generators</RootNamespace>
+        <!-- Build output path settings -->
+        <OutputPath>..\Output\Datra.Generators\bin\$(Configuration)\</OutputPath>
+        <BaseIntermediateOutputPath>..\Output\Datra.Generators\obj\</BaseIntermediateOutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <!-- Unity recommends version 4.3.0 -->
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+</Project>

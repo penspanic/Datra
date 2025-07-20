@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Datra.Data.Loaders;
+using Datra.Loaders;
 using Datra.Tests.Models;
 
 namespace Datra.Tests

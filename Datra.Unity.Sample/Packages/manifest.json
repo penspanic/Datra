@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "com.penspanic.datra.data": "file:../../Datra.Data",
+    "com.penspanic.datra": "file:../../Datra",
     "com.unity.2d.animation": "11.0.0",
     "com.unity.2d.aseprite": "1.2.5",
     "com.unity.2d.psdimporter": "10.1.1",

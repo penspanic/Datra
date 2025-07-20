@@ -1,4 +1,4 @@
-using Datra.Data.Attributes;
+using Datra.Attributes;
 
 namespace Datra.Tests.Models
 {

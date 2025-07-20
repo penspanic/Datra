@@ -1,14 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data", "Datra.Data\Datra.Data.csproj", "{2A86C3A3-84B3-4A86-80D0-B0C935F29F68}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra", "Datra\Datra.csproj", "{2A86C3A3-84B3-4A86-80D0-B0C935F29F68}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Tests", "Datra.Tests\Datra.Tests.csproj", "{203E63AB-B9C0-4843-BE53-E1F699CDA28E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data.Generators", "Datra.Data.Generators\Datra.Data.Generators.csproj", "{4B3ED558-8A21-4CA6-8075-55909821DCEA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Generators", "Datra.Generators\Datra.Generators.csproj", "{4B3ED558-8A21-4CA6-8075-55909821DCEA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data.Analyzers", "Datra.Data.Analyzers\Datra.Data.Analyzers.csproj", "{91CFCD0C-D2A1-4E1C-8A14-B946158C19B5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Analyzers", "Datra.Analyzers\Datra.Analyzers.csproj", "{91CFCD0C-D2A1-4E1C-8A14-B946158C19B5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Data.Analyzers.Tests", "Datra.Data.Analyzers.Tests\Datra.Data.Analyzers.Tests.csproj", "{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Analyzers.Tests", "Datra.Analyzers.Tests\Datra.Analyzers.Tests.csproj", "{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

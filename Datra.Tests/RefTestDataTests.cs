@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Datra.Data.DataTypes;
+using Datra.DataTypes;
 using Datra.Tests.Models;
 using Xunit;
 

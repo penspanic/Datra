@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using Datra.Data.Interfaces;
+using Datra.Interfaces;
 
 namespace Datra.Tests
 {

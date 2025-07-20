@@ -1,0 +1,25 @@
+{
+  "name": "com.penspanic.datra",
+  "version": "1.0.0",
+  "displayName": "Datra",
+  "description": "Data loading and management system",
+  "unity": "2020.3",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.0.2"
+  },
+  "keywords": [
+    "data",
+    "loader",
+    "csv",
+    "json",
+    "yaml"
+  ],
+  "author": {
+    "name": "penspanic",
+    "email": "penspanic@gmail.com",
+    "url": "https://github.com/penspanic"
+  }
+}

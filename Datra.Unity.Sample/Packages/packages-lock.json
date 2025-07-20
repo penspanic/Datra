@@ -1,7 +1,7 @@
 {
   "dependencies": {
-    "com.penspanic.datra.data": {
-      "version": "file:../../Datra.Data",
+    "com.penspanic.datra": {
+      "version": "file:../../Datra",
       "depth": 0,
       "source": "local",
       "dependencies": {

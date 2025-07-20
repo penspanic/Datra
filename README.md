@@ -21,10 +21,11 @@ Datra is a comprehensive data management system for game development that suppor
 ```
 Datra/
 ├── Datra.sln                     # Main solution file
-├── Datra.Core/                   # Core library with data models
-├── Datra.Data/                   # Data loading and repository system
-├── Datra.Data.Generators/        # Source generators for automatic code generation
-├── Datra.Test/                   # Test console application
+├── Datra/                        # Data loading and repository system
+├── Datra.Generators/        # Source generators for automatic code 
+├── Datra.Analyzers/        # Source analyzers for user code
+generation
+├── Datra.Tests/                   # Unit test project
 └── Datra.Client/                 # Unity client project example
 ```
 
@@ -40,7 +41,7 @@ git clone https://github.com/yourusername/Datra.git
 2. Add project references to your solution:
 ```xml
 <ProjectReference Include="path/to/Datra.Core/Datra.Core.csproj" />
-<ProjectReference Include="path/to/Datra.Data.Generators/Datra.Data.Generators.csproj" 
+<ProjectReference Include="path/to/Datra.Generators/Datra.Generators.csproj" 
                   OutputItemType="Analyzer" 
                   ReferenceOutputAssembly="false" />
 ```
@@ -181,7 +182,7 @@ StartingGold: 1000
 Datra uses a clean architecture approach:
 
 1. **Data Layer** (`Datra.Data`): Handles data loading and repository pattern
-2. **Code Generation** (`Datra.Data.Generators`): Automatic code generation using Roslyn
+2. **Code Generation** (`Datra.Generators`): Automatic code generation using Roslyn
 3. **Models** (Your project): Define your data structures with attributes
 4. **Context** (Generated): Auto-generated context for data access
 

@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using Datra.Data.Interfaces;
+using Datra.Interfaces;
 using UnityEngine;
 
 namespace Datra.Client.Data

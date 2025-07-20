@@ -1,5 +1,5 @@
-using Datra.Data.Attributes;
-using Datra.Data.Interfaces;
+using Datra.Attributes;
+using Datra.Interfaces;
 
 namespace Datra.Tests.Models
 {

@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using Datra.Client.Data;
-using Datra.Data.Loaders;
+using Datra.Loaders;
 using Datra.Unity.Sample.Models;
 using UnityEngine;
 

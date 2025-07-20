@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to build Datra.Data.Generators and copy to Unity project
+# Script to build Datra.Generators and copy to Unity project
 
 # Color definitions
 GREEN='\033[0;32m'
@@ -12,10 +12,10 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-echo -e "${YELLOW}=== Starting Datra.Data.Generators build ===${NC}"
+echo -e "${YELLOW}=== Starting Datra.Generators build ===${NC}"
 
-# Move to Datra.Data.Generators directory
-cd "$PROJECT_ROOT/Datra.Data.Generators" || exit 1
+# Move to Datra.Generators directory
+cd "$PROJECT_ROOT/Datra.Generators" || exit 1
 
 # Execute build (Release mode)
 echo -e "${GREEN}→ Building in Release mode...${NC}"
@@ -29,10 +29,10 @@ fi
 echo -e "${GREEN}✓ Build successful!${NC}"
 
 # Build output path
-SOURCE_DLL="$PROJECT_ROOT/Output/Datra.Data.Generators/bin/Release/netstandard2.0/Datra.Data.Generators.dll"
+SOURCE_DLL="$PROJECT_ROOT/Output/Datra.Generators/bin/Release/netstandard2.0/Datra.Generators.dll"
 
-# Datra.Data package Plugins directory
-UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra.Data/Plugins"
+# Datra package Plugins directory
+UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra/Plugins"
 
 # Create Plugins directory if it doesn't exist
 if [ ! -d "$UNITY_PLUGINS_DIR" ]; then
@@ -47,13 +47,13 @@ if [ ! -f "$SOURCE_DLL" ]; then
 fi
 
 # Copy DLL
-echo -e "${GREEN}→ Copying DLL to Datra.Data package...${NC}"
+echo -e "${GREEN}→ Copying DLL to Datra package...${NC}"
 cp "$SOURCE_DLL" "$UNITY_PLUGINS_DIR/"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Copy completed!${NC}"
     echo -e "${GREEN}  Source: $SOURCE_DLL${NC}"
-    echo -e "${GREEN}  Target: $UNITY_PLUGINS_DIR/Datra.Data.Generators.dll${NC}"
+    echo -e "${GREEN}  Target: $UNITY_PLUGINS_DIR/Datra.Generators.dll${NC}"
 else
     echo -e "${RED}✗ Copy failed!${NC}"
     exit 1
@@ -61,6 +61,6 @@ fi
 
 echo -e "${GREEN}=== Complete! ===${NC}"
 echo -e "${YELLOW}Please check the following in Unity Editor:${NC}"
-echo -e "  1. Select Assets/Plugins/Datra.Data.Generators.dll"
+echo -e "  1. Select Assets/Plugins/Datra.Generators.dll"
 echo -e "  2. Check if 'RoslynAnalyzer' label is set in Inspector"
 echo -e "  3. Check if all platforms are disabled in Platform settings"

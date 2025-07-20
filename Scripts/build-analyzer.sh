@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to build Datra.Data.Analyzers and copy to Unity project
+# Script to build Datra.Analyzers and copy to Unity project
 
 # Color definitions
 GREEN='\033[0;32m'
@@ -12,10 +12,10 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
-echo -e "${YELLOW}=== Starting Datra.Data.Analyzers build ===${NC}"
+echo -e "${YELLOW}=== Starting Datra.Analyzers build ===${NC}"
 
-# Move to Datra.Data.Analyzers directory
-cd "$PROJECT_ROOT/Datra.Data.Analyzers" || exit 1
+# Move to Datra.Analyzers directory
+cd "$PROJECT_ROOT/Datra.Analyzers" || exit 1
 
 # Execute build (Release mode)
 echo -e "${GREEN}→ Building in Release mode...${NC}"
@@ -29,10 +29,10 @@ fi
 echo -e "${GREEN}✓ Build successful!${NC}"
 
 # Build output path
-SOURCE_DLL="$PROJECT_ROOT/../Output/Datra.Data.Analyzers/bin/Release/netstandard2.1/Datra.Data.Analyzers.dll"
+SOURCE_DLL="$PROJECT_ROOT/../Output/Datra.Analyzers/bin/Release/netstandard2.0/Datra.Analyzers.dll"
 
-# Datra.Data package Plugins directory
-UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra.Data/Plugins"
+# Datra package Plugins directory
+UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra/Plugins"
 
 # Create Plugins directory if it doesn't exist
 if [ ! -d "$UNITY_PLUGINS_DIR" ]; then
@@ -47,13 +47,13 @@ if [ ! -f "$SOURCE_DLL" ]; then
 fi
 
 # Copy DLL
-echo -e "${GREEN}→ Copying DLL to Datra.Data package...${NC}"
+echo -e "${GREEN}→ Copying DLL to Datra package...${NC}"
 cp "$SOURCE_DLL" "$UNITY_PLUGINS_DIR/"
 
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓ Copy completed!${NC}"
     echo -e "${GREEN}  Source: $SOURCE_DLL${NC}"
-    echo -e "${GREEN}  Target: $UNITY_PLUGINS_DIR/Datra.Data.Analyzers.dll${NC}"
+    echo -e "${GREEN}  Target: $UNITY_PLUGINS_DIR/Datra.Analyzers.dll${NC}"
 else
     echo -e "${RED}✗ Copy failed!${NC}"
     exit 1
@@ -61,6 +61,6 @@ fi
 
 echo -e "${GREEN}=== Complete! ===${NC}"
 echo -e "${YELLOW}Please check the following in Unity Editor:${NC}"
-echo -e "  1. Select Assets/Plugins/Datra.Data.Analyzers.dll"
+echo -e "  1. Select Assets/Plugins/Datra.Analyzers.dll"
 echo -e "  2. Check if 'RoslynAnalyzer' label is set in Inspector"
 echo -e "  3. Check if all platforms are disabled in Platform settings"

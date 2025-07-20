@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to build both Datra.Data.Generators and Datra.Data.Analyzers
+# Script to build both Datra.Generators and Datra.Analyzers
 
 # Color definitions
 GREEN='\033[0;32m'
@@ -36,7 +36,7 @@ echo ""
 
 echo -e "${GREEN}=== All builds completed successfully! ===${NC}"
 echo -e "${BLUE}Summary:${NC}"
-echo -e "  ${GREEN}✓${NC} Datra.Data.Generators.dll"
-echo -e "  ${GREEN}✓${NC} Datra.Data.Analyzers.dll"
+echo -e "  ${GREEN}✓${NC} Datra.Generators.dll"
+echo -e "  ${GREEN}✓${NC} Datra.Analyzers.dll"
 echo ""
 echo -e "${YELLOW}Both DLLs have been copied to: $PROJECT_ROOT/Datra.Data/Plugins${NC}"
