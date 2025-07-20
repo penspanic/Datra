@@ -157,11 +157,26 @@ namespace Datra.Data.Generators.Analyzers
             {
                 if (member is IPropertySymbol property && property.DeclaredAccessibility == Accessibility.Public)
                 {
+                    var propertyType = property.Type;
+                    var isStringDataRef = false;
+                    string dataRefTargetType = null;
+                    
+                    // Check if it's a StringDataRef<T>
+                    if (propertyType is INamedTypeSymbol namedType && 
+                        namedType.IsGenericType &&
+                        namedType.ConstructedFrom.ToDisplayString() == "Datra.Data.DataTypes.StringDataRef<T>")
+                    {
+                        isStringDataRef = true;
+                        dataRefTargetType = namedType.TypeArguments[0].Name;
+                    }
+                    
                     properties.Add(new PropertyInfo
                     {
                         Name = property.Name,
                         Type = property.Type.ToDisplayString(),
-                        IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated
+                        IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated,
+                        IsStringDataRef = isStringDataRef,
+                        DataRefTargetType = dataRefTargetType
                     });
                 }
             }

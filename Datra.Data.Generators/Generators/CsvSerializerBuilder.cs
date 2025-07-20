@@ -91,6 +91,12 @@ namespace Datra.Data.Generators.Generators
         {
             var getValueCode = $"{headerIndexVar}.TryGetValue(\"{prop.Name}\", out var {varName}Idx) && {varName}Idx < {valuesVar}.Length ? {valuesVar}[{varName}Idx] : \"\"";
             
+            // Handle StringDataRef<T>
+            if (prop.IsStringDataRef)
+            {
+                return $"new {prop.Type} {{ Value = {getValueCode} }}";
+            }
+            
             switch (prop.Type)
             {
                 case "string":
@@ -120,6 +126,12 @@ namespace Datra.Data.Generators.Generators
         
         private string GetCsvSerializeCode(PropertyInfo prop, string itemVar)
         {
+            // Handle StringDataRef<T>
+            if (prop.IsStringDataRef)
+            {
+                return $"{itemVar}.{prop.Name}.Value ?? string.Empty";
+            }
+            
             switch (prop.Type)
             {
                 case "string":

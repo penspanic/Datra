@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Datra.Data.Interfaces;
+using Datra.Data.Converters;
 
 namespace Datra.Data.Loaders
 {
@@ -14,7 +15,8 @@ namespace Datra.Data.Loaders
         private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore
+            NullValueHandling = NullValueHandling.Ignore,
+            Converters = new List<JsonConverter> { new StringDataRefJsonConverter() }
         };
         
         public T LoadSingle<T>(string text) where T : class, new()

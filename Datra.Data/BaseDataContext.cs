@@ -16,9 +16,10 @@ namespace Datra.Data
     /// </summary>
     public abstract class BaseDataContext : IDataContext
     {
+        internal readonly Dictionary<string, object> Repositories = new();
+
         private readonly IRawDataProvider _rawDataProvider;
         private readonly DataLoaderFactory _loaderFactory;
-        private readonly Dictionary<string, object> _repositories = new();
         
         protected IRawDataProvider RawDataProvider => _rawDataProvider;
         protected DataLoaderFactory LoaderFactory => _loaderFactory;
@@ -35,6 +36,26 @@ namespace Datra.Data
         protected virtual void InitializeRepositories()
         {
             // Default implementation is empty - overridden by Source Generator
+        }
+        
+        /// <summary>
+        /// Register a repository for a specific data type
+        /// </summary>
+        protected void RegisterRepository<TKey, TData>(string propertyName, IDataRepository<TKey, TData> repository) 
+            where TData : class, ITableData<TKey>
+        {
+            Repositories[propertyName] = repository;
+            Repositories[typeof(TData).FullName] = repository;
+        }
+        
+        /// <summary>
+        /// Register a single data repository
+        /// </summary>
+        protected void RegisterSingleRepository<TData>(string propertyName, ISingleDataRepository<TData> repository) 
+            where TData : class
+        {
+            Repositories[propertyName] = repository;
+            Repositories[typeof(TData).FullName] = repository;
         }
         
         public virtual async Task LoadAllAsync()
@@ -115,7 +136,8 @@ namespace Datra.Data
             }
             
             property.SetValue(this, repository);
-            _repositories[property.Name] = repository;
+            Repositories[property.Name] = repository;
+            Repositories[dataType.FullName] = repository;
         }
         
         private async Task SaveRepositoryAsync(PropertyInfo property)

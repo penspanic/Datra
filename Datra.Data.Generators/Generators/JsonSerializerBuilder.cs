@@ -74,6 +74,14 @@ namespace Datra.Data.Generators.Generators
         
         private void GenerateJsonPropertyExtraction(CodeBuilder codeBuilder, PropertyInfo prop, string varName, string propNameLower, string elementVar)
         {
+            // Handle StringDataRef<T>
+            if (prop.IsStringDataRef)
+            {
+                codeBuilder.AppendLine($"var {varName}Value = {elementVar}[\"{prop.Name}\"]?.ToString() ?? {elementVar}[\"{propNameLower}\"]?.ToString() ?? string.Empty;");
+                codeBuilder.AppendLine($"var {varName} = new {prop.Type} {{ Value = {varName}Value }};");
+                return;
+            }
+            
             switch (prop.Type)
             {
                 case "string":

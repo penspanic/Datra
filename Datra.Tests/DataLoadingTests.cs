@@ -1,8 +1,6 @@
-using System;
-using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Datra.Data.Loaders;
 using Datra.Tests.Models;
 using Xunit;
 using Xunit.Abstractions;
@@ -12,52 +10,21 @@ namespace Datra.Tests
     public class DataLoadingTests
     {
         private readonly ITestOutputHelper _output;
-        private readonly string _basePath;
-        private readonly TestRawDataProvider _rawDataProvider;
-        private readonly DataLoaderFactory _loaderFactory;
 
         public DataLoadingTests(ITestOutputHelper output)
         {
             _output = output;
-            _basePath = FindDataPath();
-            _rawDataProvider = new TestRawDataProvider(_basePath);
-            _loaderFactory = new DataLoaderFactory();
-        }
-
-        private static string FindDataPath()
-        {
-            var currentDir = Directory.GetCurrentDirectory();
-            
-            while (currentDir != null)
-            {
-                var resourcesPath = Path.Combine(currentDir, "Resources");
-                if (Directory.Exists(resourcesPath))
-                {
-                    return resourcesPath;
-                }
-                
-                // Find Resources folder in Datra.Tests project directory
-                var testProjectPath = Path.Combine(currentDir, "Datra.Tests", "Resources");
-                if (Directory.Exists(testProjectPath))
-                {
-                    return testProjectPath;
-                }
-                
-                currentDir = Directory.GetParent(currentDir)?.FullName;
-            }
-            
-            throw new DirectoryNotFoundException("Could not find Resources directory");
         }
 
         [Fact]
         public void CreateGameDataContext_ShouldSucceed()
         {
             // Arrange & Act
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             
             // Assert
             Assert.NotNull(context);
-            _output.WriteLine($"Data path: {_basePath}");
+            _output.WriteLine($"Data path: {TestDataHelper.FindDataPath()}");
             _output.WriteLine("GameDataContext created successfully");
         }
 
@@ -65,7 +32,7 @@ namespace Datra.Tests
         public async Task LoadAllAsync_ShouldLoadAllDataSuccessfully()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             
             // Act
             await context.LoadAllAsync();
@@ -81,7 +48,7 @@ namespace Datra.Tests
         public async Task CharacterData_ShouldLoadCorrectly()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
             // Act
@@ -105,7 +72,7 @@ namespace Datra.Tests
         public async Task ItemData_ShouldLoadCorrectly()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
             // Act
@@ -132,7 +99,7 @@ namespace Datra.Tests
         public async Task GameConfig_ShouldLoadCorrectly()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
             // Act
@@ -155,7 +122,7 @@ namespace Datra.Tests
         public async Task TryGetById_WithInvalidId_ShouldReturnNull()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
             // Act
@@ -169,7 +136,7 @@ namespace Datra.Tests
         public async Task GetById_WithInvalidId_ShouldThrowException()
         {
             // Arrange
-            var context = new GameDataContext(_rawDataProvider, _loaderFactory);
+            var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
             // Act & Assert

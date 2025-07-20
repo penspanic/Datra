@@ -6,9 +6,6 @@
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
         <IsTestProject>true</IsTestProject>
-        <!-- Build output path settings -->
-        <OutputPath>..\Output\Datra.Test\bin\$(Configuration)\</OutputPath>
-        <BaseIntermediateOutputPath>..\Output\Datra.Test\obj\</BaseIntermediateOutputPath>
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 

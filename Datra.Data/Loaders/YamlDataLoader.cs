@@ -5,6 +5,7 @@ using System.Linq;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
 using Datra.Data.Interfaces;
+using Datra.Data.Converters;
 
 namespace Datra.Data.Loaders
 {
@@ -18,13 +19,17 @@ namespace Datra.Data.Loaders
         
         public YamlDataLoader()
         {
+            var converter = new StringDataRefYamlConverter();
+            
             _deserializer = new DeserializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
+                .WithTypeConverter(converter)
                 .Build();
             
             _serializer = new SerializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)
+                .WithTypeConverter(converter)
                 .Build();
         }
         

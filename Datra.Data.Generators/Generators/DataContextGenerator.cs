@@ -104,6 +104,7 @@ namespace Datra.Data.Generators.Generators
                 builder.AppendLine($"    (data) => {simpleTypeName}Serializer.DeserializeCsv(data),");
                 builder.AppendLine($"    (table) => {simpleTypeName}Serializer.SerializeCsv(table)");
                 builder.AppendLine(");");
+                builder.AppendLine($"RegisterRepository(\"{model.PropertyName}\", {model.PropertyName});");
             }
             else
             {
@@ -115,6 +116,7 @@ namespace Datra.Data.Generators.Generators
                 builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeTable(data, loader),");
                 builder.AppendLine($"    (table, loader) => {simpleTypeName}Serializer.SerializeTable(table, loader)");
                 builder.AppendLine(");");
+                builder.AppendLine($"RegisterRepository(\"{model.PropertyName}\", {model.PropertyName});");
             }
         }
 
@@ -127,6 +129,7 @@ namespace Datra.Data.Generators.Generators
             builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeSingle(data, loader),");
             builder.AppendLine($"    (obj, loader) => {simpleTypeName}Serializer.SerializeSingle(obj, loader)");
             builder.AppendLine(");");
+            builder.AppendLine($"RegisterSingleRepository(\"{model.PropertyName}\", {model.PropertyName});");
         }
 
         private void GenerateLoadAllAsync(CodeBuilder builder, List<DataModelInfo> dataModels)

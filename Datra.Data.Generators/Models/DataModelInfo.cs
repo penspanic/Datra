@@ -18,5 +18,7 @@ namespace Datra.Data.Generators.Models
         public string Name { get; set; }
         public string Type { get; set; }
         public bool IsNullable { get; set; }
+        public bool IsStringDataRef { get; set; }
+        public string DataRefTargetType { get; set; } // e.g., "CharacterData" for StringDataRef<CharacterData>
     }
 }
