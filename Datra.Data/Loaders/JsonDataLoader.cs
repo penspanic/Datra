@@ -16,7 +16,7 @@ namespace Datra.Data.Loaders
         {
             Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore,
-            Converters = new List<JsonConverter> { new StringDataRefJsonConverter() }
+            Converters = new List<JsonConverter> { new DataRefJsonConverter() }
         };
         
         public T LoadSingle<T>(string text) where T : class, new()

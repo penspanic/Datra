@@ -91,10 +91,17 @@ namespace Datra.Data.Generators.Generators
         {
             var getValueCode = $"{headerIndexVar}.TryGetValue(\"{prop.Name}\", out var {varName}Idx) && {varName}Idx < {valuesVar}.Length ? {valuesVar}[{varName}Idx] : \"\"";
             
-            // Handle StringDataRef<T>
-            if (prop.IsStringDataRef)
+            // Handle DataRef types
+            if (prop.IsDataRef)
             {
-                return $"new {prop.Type} {{ Value = {getValueCode} }}";
+                if (prop.DataRefKeyType == "string")
+                {
+                    return $"new {prop.Type} {{ Value = {getValueCode} }}";
+                }
+                else if (prop.DataRefKeyType == "int")
+                {
+                    return $"new {prop.Type} {{ Value = int.TryParse({getValueCode}, out var {varName}RefVal) ? {varName}RefVal : 0 }}";
+                }
             }
             
             switch (prop.Type)
@@ -126,10 +133,17 @@ namespace Datra.Data.Generators.Generators
         
         private string GetCsvSerializeCode(PropertyInfo prop, string itemVar)
         {
-            // Handle StringDataRef<T>
-            if (prop.IsStringDataRef)
+            // Handle DataRef types
+            if (prop.IsDataRef)
             {
-                return $"{itemVar}.{prop.Name}.Value ?? string.Empty";
+                if (prop.DataRefKeyType == "string")
+                {
+                    return $"{itemVar}.{prop.Name}.Value ?? string.Empty";
+                }
+                else
+                {
+                    return $"{itemVar}.{prop.Name}.Value.ToString()";
+                }
             }
             
             switch (prop.Type)

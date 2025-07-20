@@ -19,7 +19,7 @@ namespace Datra.Data.Loaders
         
         public YamlDataLoader()
         {
-            var converter = new StringDataRefYamlConverter();
+            var converter = new DataRefYamlConverter();
             
             _deserializer = new DeserializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)

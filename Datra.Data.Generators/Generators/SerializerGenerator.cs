@@ -80,9 +80,9 @@ namespace Datra.Data.Generators.Generators
                 {
                     codeBuilder.AppendLine($"{prop.Name} = string.Empty;");
                 }
-                else if (prop.IsStringDataRef)
+                else if (prop.IsDataRef)
                 {
-                    // StringDataRef is a struct, initialize with default
+                    // DataRef is a struct, initialize with default
                     codeBuilder.AppendLine($"{prop.Name} = default;");
                 }
                 else if (prop.Type.Contains(".") && !prop.Type.StartsWith("System."))

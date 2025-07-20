@@ -9,5 +9,6 @@ namespace Datra.Tests.Models
     {
         public string Id { get; set; }
         public StringDataRef<CharacterData> CharacterRef { get; set; }
+        public IntDataRef<ItemData> ItemRef { get; set; }
     }
 }

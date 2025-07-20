@@ -158,16 +158,22 @@ namespace Datra.Data.Generators.Analyzers
                 if (member is IPropertySymbol property && property.DeclaredAccessibility == Accessibility.Public)
                 {
                     var propertyType = property.Type;
-                    var isStringDataRef = false;
+                    var isDataRef = false;
+                    string dataRefKeyType = null;
                     string dataRefTargetType = null;
                     
-                    // Check if it's a StringDataRef<T>
+                    // Check if it's any DataRef type
                     if (propertyType is INamedTypeSymbol namedType && 
-                        namedType.IsGenericType &&
-                        namedType.ConstructedFrom.ToDisplayString() == "Datra.Data.DataTypes.StringDataRef<T>")
+                        namedType.IsGenericType)
                     {
-                        isStringDataRef = true;
-                        dataRefTargetType = namedType.TypeArguments[0].Name;
+                        var constructedFrom = namedType.ConstructedFrom.ToDisplayString();
+                        if (constructedFrom == "Datra.Data.DataTypes.StringDataRef<T>" ||
+                            constructedFrom == "Datra.Data.DataTypes.IntDataRef<T>")
+                        {
+                            isDataRef = true;
+                            dataRefKeyType = constructedFrom.Contains("StringDataRef") ? "string" : "int";
+                            dataRefTargetType = namedType.TypeArguments[0].Name;
+                        }
                     }
                     
                     properties.Add(new PropertyInfo
@@ -175,7 +181,8 @@ namespace Datra.Data.Generators.Analyzers
                         Name = property.Name,
                         Type = property.Type.ToDisplayString(),
                         IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated,
-                        IsStringDataRef = isStringDataRef,
+                        IsDataRef = isDataRef,
+                        DataRefKeyType = dataRefKeyType,
                         DataRefTargetType = dataRefTargetType
                     });
                 }
