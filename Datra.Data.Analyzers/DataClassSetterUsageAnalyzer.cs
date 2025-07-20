@@ -81,7 +81,7 @@ namespace Datra.Data.Analyzers
             // Report diagnostic
             var diagnostic = Diagnostic.Create(
                 Rule,
-                context.Operation.Syntax.GetLocation(),
+                target.Syntax.GetLocation(),
                 property.Name,
                 containingType.Name);
 

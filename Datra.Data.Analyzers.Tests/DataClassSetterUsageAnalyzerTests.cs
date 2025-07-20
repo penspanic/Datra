@@ -94,8 +94,8 @@ namespace TestNamespace
         public void TestMethod()
         {
             var item = new ItemData();
-            {|#0:item.Id = 123;|} // Error: setting property
-            {|#1:item.Name = ""Test"";|} // Error: setting property
+            {|#0:item.Id|} = 123; // Error: setting property
+            {|#1:item.Name|} = ""Test""; // Error: setting property
         }
     }
 }";
@@ -140,8 +140,8 @@ namespace TestNamespace
         public void TestMethod()
         {
             var config = new GameConfig();
-            {|#0:config.MaxLevel = 100;|} // Error: setting property
-            {|#1:config.ExpMultiplier = 1.5f;|} // Error: setting property
+            {|#0:config.MaxLevel|} = 100; // Error: setting property
+            {|#1:config.ExpMultiplier|} = 1.5f; // Error: setting property
         }
     }
 }";
@@ -261,8 +261,8 @@ namespace TestNamespace
         public void TestMethod()
         {
             var item = new ItemData();
-            {|#0:item.Count += 5;|} // Error: compound assignment
-            {|#1:item.Value *= 2;|} // Error: compound assignment
+            {|#0:item.Count|} += 5; // Error: compound assignment
+            {|#1:item.Value|} *= 2; // Error: compound assignment
         }
     }
 }";
@@ -305,8 +305,8 @@ namespace TestNamespace
         public void TestMethod()
         {
             var item = new ItemData();
-            {|#0:item.Id = ""123"";|} // Error: implements ITableData
-            {|#1:item.Description = ""Test"";|} // Error: implements ITableData
+            {|#0:item.Id|} = ""123""; // Error: implements ITableData
+            {|#1:item.Description|} = ""Test""; // Error: implements ITableData
         }
     }
 }";
