@@ -8,7 +8,6 @@
     "overrideReferences": true,
     "precompiledReferences": [
         "Newtonsoft.Json.dll",
-        "CsvHelper.dll",
         "YamlDotNet.dll"
     ],
     "autoReferenced": true,

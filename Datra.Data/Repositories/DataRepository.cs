@@ -19,6 +19,8 @@ namespace Datra.Data.Repositories
         private readonly DataLoaderFactory _loaderFactory;
         private readonly Func<string, IDataLoader, Dictionary<TKey, TData>> _deserializeFunc;
         private readonly Func<Dictionary<TKey, TData>, IDataLoader, string> _serializeFunc;
+        private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc;
+        private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc;
         
         public DataRepository(Dictionary<TKey, TData> data)
         {
@@ -37,6 +39,20 @@ namespace Datra.Data.Repositories
             _loaderFactory = loaderFactory;
             _deserializeFunc = deserializeFunc;
             _serializeFunc = serializeFunc;
+            _data = new Dictionary<TKey, TData>();
+        }
+        
+        // CSV-specific constructor (no loader needed)
+        public DataRepository(
+            string filePath,
+            IRawDataProvider rawDataProvider,
+            Func<string, Dictionary<TKey, TData>> csvDeserializeFunc,
+            Func<Dictionary<TKey, TData>, string> csvSerializeFunc)
+        {
+            _filePath = filePath;
+            _rawDataProvider = rawDataProvider;
+            _csvDeserializeFunc = csvDeserializeFunc;
+            _csvSerializeFunc = csvSerializeFunc;
             _data = new Dictionary<TKey, TData>();
         }
         
@@ -71,21 +87,49 @@ namespace Datra.Data.Repositories
         
         public async Task LoadAsync()
         {
-            if (_rawDataProvider == null || _deserializeFunc == null)
+            if (_rawDataProvider == null)
                 throw new InvalidOperationException("Repository was not initialized with load functionality.");
                 
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
-            var loader = _loaderFactory.GetLoader(_filePath);
-            _data = _deserializeFunc(rawData, loader);
+            
+            // Use CSV-specific deserializer if available
+            if (_csvDeserializeFunc != null)
+            {
+                _data = _csvDeserializeFunc(rawData);
+            }
+            else if (_deserializeFunc != null)
+            {
+                var loader = _loaderFactory.GetLoader(_filePath);
+                _data = _deserializeFunc(rawData, loader);
+            }
+            else
+            {
+                throw new InvalidOperationException("No deserialize function available.");
+            }
         }
         
         public async Task SaveAsync()
         {
-            if (_rawDataProvider == null || _serializeFunc == null)
+            if (_rawDataProvider == null)
                 throw new InvalidOperationException("Repository was not initialized with save functionality.");
                 
-            var loader = _loaderFactory.GetLoader(_filePath);
-            var rawData = _serializeFunc(_data, loader);
+            string rawData;
+            
+            // Use CSV-specific serializer if available
+            if (_csvSerializeFunc != null)
+            {
+                rawData = _csvSerializeFunc(_data);
+            }
+            else if (_serializeFunc != null)
+            {
+                var loader = _loaderFactory.GetLoader(_filePath);
+                rawData = _serializeFunc(_data, loader);
+            }
+            else
+            {
+                throw new InvalidOperationException("No serialize function available.");
+            }
+            
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
     }

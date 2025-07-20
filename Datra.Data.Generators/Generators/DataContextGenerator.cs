@@ -95,23 +95,27 @@ namespace Datra.Data.Generators.Generators
 
         private void GenerateTableRepository(CodeBuilder builder, DataModelInfo model, string simpleTypeName, bool isCsvFormat)
         {
-            builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
-            builder.AppendLine($"    \"{model.FilePath}\",");
-            builder.AppendLine($"    RawDataProvider,");
-            builder.AppendLine($"    LoaderFactory,");
-            
             if (isCsvFormat)
             {
-                builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeTable(data, null),");
-                builder.AppendLine($"    (table, loader) => {simpleTypeName}Serializer.SerializeTable(table, null)");
+                // Use CSV-specific constructor
+                builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
+                builder.AppendLine($"    \"{model.FilePath}\",");
+                builder.AppendLine($"    RawDataProvider,");
+                builder.AppendLine($"    (data) => {simpleTypeName}Serializer.DeserializeCsv(data),");
+                builder.AppendLine($"    (table) => {simpleTypeName}Serializer.SerializeCsv(table)");
+                builder.AppendLine(");");
             }
             else
             {
+                // Use standard constructor with loader
+                builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
+                builder.AppendLine($"    \"{model.FilePath}\",");
+                builder.AppendLine($"    RawDataProvider,");
+                builder.AppendLine($"    LoaderFactory,");
                 builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeTable(data, loader),");
                 builder.AppendLine($"    (table, loader) => {simpleTypeName}Serializer.SerializeTable(table, loader)");
+                builder.AppendLine(");");
             }
-            
-            builder.AppendLine(");");
         }
 
         private void GenerateSingleRepository(CodeBuilder builder, DataModelInfo model, string simpleTypeName)

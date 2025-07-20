@@ -109,28 +109,13 @@ namespace Datra.Data.Generators.Generators
         private void GenerateTableSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)
         {
             var format = CodeBuilder.GetDataFormat(model.Format);
+            GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', format='{format}'");
             
             // Deserialize method
             codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeTable(string data, Datra.Data.Loaders.IDataLoader loader)");
             
-            switch (format)
-            {
-                case "Csv":
-                    var csvBuilder = new CsvSerializerBuilder();
-                    csvBuilder.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
-                    break;
-                case "Json":
-                    var jsonBuilder = new JsonSerializerBuilder();
-                    jsonBuilder.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
-                    break;
-                case "Yaml":
-                    codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return loader.LoadTable<{model.KeyType}, {simpleTypeName}>(data);");
-                    break;
-                default:
-                    codeBuilder.AppendLine($"return loader.LoadTable<{model.KeyType}, {simpleTypeName}>(data);");
-                    break;
-            }
+            // Always use loader for DeserializeTable method
+            codeBuilder.AppendLine($"return loader.LoadTable<{model.KeyType}, {simpleTypeName}>(data);");
             
             codeBuilder.EndMethod();
             codeBuilder.AddBlankLine();
@@ -138,26 +123,30 @@ namespace Datra.Data.Generators.Generators
             // Serialize method
             codeBuilder.BeginMethod($"public static string SerializeTable(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Data.Loaders.IDataLoader loader)");
             
-            switch (format)
-            {
-                case "Csv":
-                    var csvBuilder = new CsvSerializerBuilder();
-                    csvBuilder.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
-                    break;
-                case "Json":
-                    var jsonBuilder = new JsonSerializerBuilder();
-                    jsonBuilder.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
-                    break;
-                case "Yaml":
-                    codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return loader.SaveTable<{model.KeyType}, {simpleTypeName}>(table);");
-                    break;
-                default:
-                    codeBuilder.AppendLine($"return loader.SaveTable<{model.KeyType}, {simpleTypeName}>(table);");
-                    break;
-            }
+            // Always use loader for SerializeTable method
+            codeBuilder.AppendLine($"return loader.SaveTable<{model.KeyType}, {simpleTypeName}>(table);");
             
             codeBuilder.EndMethod();
+            
+            // Generate CSV-specific methods without loader parameter
+            if (format == "Csv")
+            {
+                codeBuilder.AddBlankLine();
+                
+                // CSV Deserialize method without loader
+                codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data)");
+                var csvBuilder2 = new CsvSerializerBuilder();
+                csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+                
+                codeBuilder.AddBlankLine();
+                
+                // CSV Serialize method without loader
+                codeBuilder.BeginMethod($"public static string SerializeCsv(Dictionary<{model.KeyType}, {simpleTypeName}> table)");
+                var csvBuilder3 = new CsvSerializerBuilder();
+                csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+            }
         }
         
         private void GenerateSingleSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)

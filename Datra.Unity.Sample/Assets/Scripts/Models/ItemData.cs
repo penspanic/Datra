@@ -6,13 +6,13 @@ namespace Datra.Unity.Sample.Models
     [TableData("Items.json")]
     public partial class ItemData : ITableData<int>
     {
-        public int Id { get; }
-        public string Name { get; }
-        public string Description { get; }
-        public int Price { get; }
-        public ItemType Type { get; }
-        public int Attack { get; }
-        public int Defense { get; }
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public int Price { get; set; }
+        public ItemType Type { get; set; }
+        public int Attack { get; set; }
+        public int Defense { get; set; }
     }
 
     public enum ItemType

@@ -11,7 +11,6 @@ namespace Datra.Data.Loaders
     {
         private readonly IDataLoader _jsonLoader = new JsonDataLoader();
         private readonly IDataLoader _yamlLoader = new YamlDataLoader();
-        private readonly IDataLoader _csvLoader = new CsvDataLoader();
         
         /// <summary>
         /// Returns appropriate loader based on file path and format
@@ -27,7 +26,7 @@ namespace Datra.Data.Loaders
             {
                 DataFormat.Json => _jsonLoader,
                 DataFormat.Yaml => _yamlLoader,
-                DataFormat.Csv => _csvLoader,
+                DataFormat.Csv => throw new NotSupportedException("CSV format should be handled by source-generated serializers, not by DataLoader."),
                 _ => throw new NotSupportedException($"Data format {format} is not supported.")
             };
         }

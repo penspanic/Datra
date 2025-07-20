@@ -45,10 +45,8 @@ namespace Datra.Data.Generators.Generators
             
             // Create object using constructor
             codeBuilder.AppendLine($"var item = new {typeName}(");
-            var constructorParams = model.Properties.Select(p => 
-                $"    {CodeBuilder.ToCamelCase(p.Name)}"
-            );
-            codeBuilder.AppendLine(string.Join(",\n", constructorParams));
+            for (int i = 0; i < model.Properties.Count; i++)
+                codeBuilder.AppendLine($"    {CodeBuilder.ToCamelCase(model.Properties[i].Name)}{(i == model.Properties.Count - 1 ? "" : ",")}");
             codeBuilder.AppendLine(");");
             
             codeBuilder.AppendLine("result[item.Id] = item;");
@@ -99,22 +97,22 @@ namespace Datra.Data.Generators.Generators
                     return getValueCode;
                 case "int":
                 case "System.Int32":
-                    return $"int.TryParse({getValueCode}, out var {varName}) ? {varName} : 0";
+                    return $"int.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : 0";
                 case "float":
                 case "System.Single":
-                    return $"float.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}) ? {varName} : 0f";
+                    return $"float.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
                 case "double":
                 case "System.Double":
-                    return $"double.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}) ? {varName} : 0.0";
+                    return $"double.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
                 case "bool":
                 case "System.Boolean":
-                    return $"bool.TryParse({getValueCode}, out var {varName}) ? {varName} : false";
+                    return $"bool.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : false";
                 default:
                     // Enum handling
                     if (prop.Type.Contains("."))
                     {
                         var simpleType = prop.Type.Split('.').Last();
-                        return $"Enum.TryParse<{simpleType}>({getValueCode}, true, out var {varName}) ? {varName} : default({simpleType})";
+                        return $"Enum.TryParse<{simpleType}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({simpleType})";
                     }
                     return $"default({prop.Type})";
             }

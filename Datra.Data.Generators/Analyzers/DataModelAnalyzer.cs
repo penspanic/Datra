@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
@@ -85,7 +86,32 @@ namespace Datra.Data.Generators.Analyzers
             var formatArg = dataAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Format");
             if (formatArg.Value.Value != null)
             {
-                formatValue = formatArg.Value.Value.ToString();
+                // Get the actual enum field
+                if (formatArg.Value.Kind == TypedConstantKind.Enum)
+                {
+                    // Convert enum value to its name
+                    var enumValue = Convert.ToInt32(formatArg.Value.Value);
+                    var enumType = formatArg.Value.Type;
+                    
+                    // Get enum member names
+                    var members = enumType.GetMembers().OfType<IFieldSymbol>()
+                        .Where(f => f.IsConst && f.ConstantValue != null);
+                    
+                    foreach (var member in members)
+                    {
+                        if (Convert.ToInt32(member.ConstantValue) == enumValue)
+                        {
+                            formatValue = member.Name;
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    formatValue = formatArg.Value.Value.ToString();
+                }
+                
+                GeneratorLogger.Log($"Format value for {classSymbol.Name}: '{formatValue}'");
             }
 
             var modelInfo = new DataModelInfo
