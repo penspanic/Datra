@@ -1,15 +1,14 @@
 {
-    "name": "Datra",
-    "rootNamespace": "Datra",
-    "references": [],
+    "name": "Datra.Unity",
+    "rootNamespace": "Datra.Unity",
+    "references": [
+        "Datra"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
-    "overrideReferences": true,
-    "precompiledReferences": [
-        "Newtonsoft.Json.dll",
-        "YamlDotNet.dll"
-    ],
+    "overrideReferences": false,
+    "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],

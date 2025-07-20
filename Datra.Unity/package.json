@@ -1,0 +1,19 @@
+{
+    "name": "com.penspanic.datra.unity",
+    "version": "1.0.0",
+    "displayName": "Datra Unity Integration",
+    "description": "Unity-specific integration for Datra data system",
+    "unity": "2021.3",
+    "documentationUrl": "",
+    "licensesUrl": "",
+    "keywords": [
+        "datra",
+        "data",
+        "editor"
+    ],
+    "author": {
+        "name": "penspanic",
+        "email": "penspanic@gmail.com",
+        "url": "https://github.com/penspanic"
+    }
+}

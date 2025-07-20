@@ -8,6 +8,12 @@
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       }
     },
+    "com.penspanic.datra.unity": {
+      "version": "file:../../Datra.Unity",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {}
+    },
     "com.unity.2d.animation": {
       "version": "11.0.0",
       "depth": 0,

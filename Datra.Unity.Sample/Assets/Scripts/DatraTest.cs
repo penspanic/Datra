@@ -7,6 +7,20 @@ using UnityEngine;
 
 namespace Datra.Unity.Sample
 {
+    public static class DatraBootstrap
+    {
+        #if UNITY_EDITOR
+        [Datra.Unity.Editor.Attributes.DatraEditorInit]
+        public static GameDataContext Init()
+        {
+            var rawDataProvider = new ResourcesRawDataProvider();
+            var loaderFactory = new DataLoaderFactory();
+
+            // Create GameDataContext
+            return new GameDataContext(rawDataProvider, loaderFactory);
+        }
+        #endif
+    }
     public class DatraTest : MonoBehaviour
     {
         private async void Start()
