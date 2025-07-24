@@ -30,7 +30,6 @@
 
 .breadcrumb-item:hover {
     color: #7abfe4;
-    text-decoration: underline;
 }
 
 .breadcrumb-separator {
@@ -151,9 +150,66 @@
     flex: 1;
 }
 
+.table-item-controls {
+    flex-direction: row;
+    align-items: center;
+}
+
+.id-field-container {
+    flex-direction: row;
+    align-items: center;
+    background-color: #252525;
+    border-radius: 3px;
+    padding: 2px 6px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+}
+
+.id-field-label {
+    font-size: 11px;
+    color: #969696;
+    margin-right: 4px;
+}
+
+.id-field {
+    background-color: transparent;
+    border-width: 0;
+    margin: 0;
+}
+
+.id-field .unity-integer-field__input,
+.id-field .unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0 4px;
+    font-size: 11px;
+    color: #d4d4d4;
+    min-height: 18px;
+}
+
+.id-field .unity-text-element--inner-input-field-component {
+    margin-left: 0;
+}
+
+.id-field:focus .unity-integer-field__input,
+.id-field:focus .unity-text-field__input {
+    background-color: #1e1e1e;
+    border-radius: 2px;
+}
+
+/* Error states for ID fields */
+.id-field-error .unity-integer-field__input,
+.id-field-error .unity-text-field__input {
+    border-color: #f44336;
+    border-width: 1px;
+}
+
+.id-field-error:focus .unity-integer-field__input,
+.id-field-error:focus .unity-text-field__input {
+    border-color: #ff6659;
+}
+
 .delete-button {
-    position: absolute;
-    right: 8px;
     width: 24px;
     height: 24px;
     background-color: transparent;
@@ -276,7 +332,6 @@
 
 .action-area {
     flex-direction: row;
-    gap: 8px;
 }
 
 /* Empty State for Inspector */
@@ -284,4 +339,15 @@
     background-color: #313131;
     border-radius: 4px;
     margin: 20px;
+}
+
+/* Validation Error Messages */
+.validation-error {
+    color: #f44336;
+    font-size: 11px;
+    margin-top: 4px;
+    padding: 4px 8px;
+    background-color: rgba(244, 67, 54, 0.1);
+    border-radius: 3px;
+    border-left: 3px solid #f44336;
 }

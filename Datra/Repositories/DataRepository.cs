@@ -10,7 +10,7 @@ namespace Datra.Repositories
     /// <summary>
     /// Repository implementation for table data
     /// </summary>
-    public class DataRepository<TKey, TData> : IDataRepository<TKey, TData>
+    public class DataRepository<TKey, TData> : IEditableDataRepository<TKey, TData>
         where TData : class, ITableData<TKey>
     {
         private Dictionary<TKey, TData> _data;
@@ -108,6 +108,60 @@ namespace Datra.Repositories
             }
         }
         
+        // IEditableDataRepository implementation
+        public void Add(TData data)
+        {
+            if (data == null)
+                throw new ArgumentNullException(nameof(data));
+                
+            var key = data.Id;
+            
+            // Validate key is not empty
+            if (key == null || (key is string strKey && string.IsNullOrWhiteSpace(strKey)))
+                throw new InvalidOperationException("Item ID cannot be empty.");
+                
+            if (_data.ContainsKey(key))
+                throw new InvalidOperationException($"Item with ID '{key}' already exists.");
+                
+            _data[key] = data;
+        }
+        
+        public bool Remove(TKey key)
+        {
+            return _data.Remove(key);
+        }
+        
+        public bool UpdateKey(TKey oldKey, TKey newKey)
+        {
+            // Validate new key is not empty
+            if (newKey == null || (newKey is string strKey && string.IsNullOrWhiteSpace(strKey)))
+                throw new InvalidOperationException("Item ID cannot be empty.");
+            
+            if (!_data.TryGetValue(oldKey, out var data))
+                return false;
+                
+            if (_data.ContainsKey(newKey) && !oldKey.Equals(newKey))
+                throw new InvalidOperationException($"Item with ID '{newKey}' already exists.");
+                
+            // If the Id property has a setter, update it
+            var idProperty = typeof(TData).GetProperty("Id");
+            if (idProperty != null && idProperty.CanWrite)
+            {
+                _data.Remove(oldKey);
+                idProperty.SetValue(data, newKey);
+                _data[newKey] = data;
+                return true;
+            }
+            
+            // If Id is read-only, we can't update the key
+            return false;
+        }
+        
+        public void Clear()
+        {
+            _data.Clear();
+        }
+        
         public async Task SaveAsync()
         {
             if (_rawDataProvider == null)
@@ -137,7 +191,7 @@ namespace Datra.Repositories
     /// <summary>
     /// Repository implementation for single data
     /// </summary>
-    public class SingleDataRepository<TData> : ISingleDataRepository<TData>
+    public class SingleDataRepository<TData> : IEditableSingleDataRepository<TData>
         where TData : class
     {
         private TData _data;
@@ -181,6 +235,11 @@ namespace Datra.Repositories
         internal void SetData(TData data)
         {
             _data = data;
+        }
+        
+        public void Set(TData data)
+        {
+            _data = data ?? throw new ArgumentNullException(nameof(data));
         }
         
         public async Task LoadAsync()
