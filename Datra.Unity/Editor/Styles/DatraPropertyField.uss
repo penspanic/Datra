@@ -1,0 +1,195 @@
+/* Property Field Styles */
+.datra-property-field {
+    margin-bottom: 8px;
+}
+
+.property-field-container {
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    padding: 8px;
+    border-width: 1px;
+    border-color: transparent;
+    transition: border-color 0.2s ease;
+}
+
+/* Modified state */
+.field-modified .property-field-container {
+    border-color: #ff9800;
+    background-color: #2d2518;
+}
+
+/* Header */
+.property-field-header {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.property-field-label {
+    font-size: 12px;
+    color: #b4b4b4;
+    flex: 1;
+}
+
+.field-modified .property-field-label {
+    color: #ffb74d;
+    -unity-font-style: bold;
+}
+
+/* Modified indicator */
+.property-modified-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: #ff9800;
+    border-radius: 4px;
+    margin: 0 6px;
+    display: none;
+}
+
+/* Revert button */
+.property-revert-button {
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    border-width: 1px;
+    border-color: #494949;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #969696;
+    padding: 0;
+    display: none;
+    -unity-text-align: middle-center;
+}
+
+.property-revert-button:hover {
+    background-color: #ff9800;
+    border-color: #ff9800;
+    color: white;
+}
+
+.property-revert-button:active {
+    background-color: #f57c00;
+}
+
+/* Input container */
+.property-field-input-container {
+    margin-left: 0;
+}
+
+.property-field-input {
+    background-color: #1e1e1e;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+    min-height: 22px;
+}
+
+.field-modified .property-field-input {
+    border-color: #ff9800;
+}
+
+.property-field-input:focus {
+    border-color: #5a9fd4;
+}
+
+/* Text fields */
+.property-field-input TextField,
+.property-field-input IntegerField,
+.property-field-input FloatField {
+    margin: 0;
+}
+
+.property-field-input > .unity-text-field__input,
+.property-field-input > .unity-integer-field__input,
+.property-field-input > .unity-float-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: #d4d4d4;
+}
+
+/* Toggle */
+.property-field-input > .unity-toggle {
+    margin: 2px 6px;
+}
+
+.property-field-input > .unity-toggle > .unity-toggle__input {
+    margin-right: 6px;
+}
+
+/* Enum field */
+.property-field-input > .unity-enum-field {
+    background-color: transparent;
+    border-width: 0;
+    margin: 0;
+    padding: 2px 6px;
+}
+
+/* Vector fields */
+.property-field-input > .unity-vector2-field,
+.property-field-input > .unity-vector3-field {
+    margin: 0;
+    padding: 2px 6px;
+}
+
+.property-field-input > .unity-vector2-field > .unity-composite-field__field,
+.property-field-input > .unity-vector3-field > .unity-composite-field__field {
+    margin-right: 4px;
+}
+
+/* Color field */
+.property-field-input > .unity-color-field {
+    margin: 2px 6px;
+}
+
+/* Unsupported field */
+.unsupported-field-container {
+    opacity: 0.7;
+}
+
+.unsupported-field {
+    background-color: #1e1e1e;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: #969696;
+}
+
+.type-info {
+    font-size: 10px;
+    color: #696969;
+    margin-top: 2px;
+    margin-left: 6px;
+}
+
+/* Field groups */
+.property-field-group {
+    margin-bottom: 16px;
+    background-color: #2d2d2d;
+    border-radius: 4px;
+    padding: 12px;
+}
+
+.property-field-group-label {
+    font-size: 13px;
+    color: #d4d4d4;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+}
+
+.property-field-group-fields {
+    margin-left: 0;
+}
+
+/* Hover effects */
+.property-field-container:hover {
+    border-color: #494949;
+}
+
+.field-modified .property-field-container:hover {
+    border-color: #ffb74d;
+    background-color: #332a1a;
+}

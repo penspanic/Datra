@@ -365,17 +365,22 @@ namespace Datra.Unity.Editor.Panels
             {
                 foreach (var category in treeData)
                 {
-                    var item = category.children?.FirstOrDefault(child => child.data.DataType == type);
-                    if (item != null)
+                    if (category.children != null)
                     {
-                        item.Value.data.IsModified = isModified;
-                        // Force rebind of the specific item
-                        var index = treeView.viewController.GetIndexForId(item.Value.id);
-                        if (index >= 0)
+                        foreach (var child in category.children)
                         {
-                            treeView.RefreshItem(index);
+                            if (child.data != null && child.data.DataType == type)
+                            {
+                                child.data.IsModified = isModified;
+                                // Force rebind of the specific item
+                                var index = treeView.viewController.GetIndexForId(child.id);
+                                if (index >= 0)
+                                {
+                                    treeView.RefreshItem(index);
+                                }
+                                return;
+                            }
                         }
-                        break;
                     }
                 }
             }

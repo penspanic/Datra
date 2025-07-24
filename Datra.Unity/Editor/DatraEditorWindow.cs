@@ -91,7 +91,8 @@ namespace Datra.Unity.Editor
             {
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraEditorWindow.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraNavigationPanel.uss",
-                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss"
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss"
             };
             
             foreach (var path in stylePaths)
@@ -199,17 +200,46 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                await dataContext.SaveAllAsync();
                 
-                // Clear modified states
+                // Save only modified types
+                var savedTypes = new List<Type>();
                 foreach (var type in modifiedTypes)
                 {
+                    if (repositories.TryGetValue(type, out var repository))
+                    {
+                        try
+                        {
+                            // Try to find SaveAsync method on the repository
+                            var saveMethod = repository.GetType().GetMethod("SaveAsync");
+                            if (saveMethod != null)
+                            {
+                                var task = saveMethod.Invoke(repository, null) as System.Threading.Tasks.Task;
+                                if (task != null)
+                                {
+                                    await task;
+                                    savedTypes.Add(type);
+                                }
+                            }
+                        }
+                        catch (Exception repoEx)
+                        {
+                            Debug.LogError($"Failed to save {type.Name}: {repoEx.Message}");
+                        }
+                    }
+                }
+                
+                // Clear modified states for successfully saved types
+                foreach (var type in savedTypes)
+                {
+                    modifiedTypes.Remove(type);
                     navigationPanel.MarkTypeAsModified(type, false);
                 }
-                modifiedTypes.Clear();
-                toolbar.SetModifiedState(false);
+                toolbar.SetModifiedState(modifiedTypes.Count > 0);
                 
-                EditorUtility.DisplayDialog("Success", "All data saved successfully!", "OK");
+                var message = savedTypes.Count > 0 
+                    ? $"Saved {savedTypes.Count} data file(s) successfully!" 
+                    : "No modified data to save.";
+                EditorUtility.DisplayDialog("Save Complete", message, "OK");
             }
             catch (Exception e)
             {
@@ -222,19 +252,52 @@ namespace Datra.Unity.Editor
             }
         }
         
-        private async void SaveCurrentData()
+        private async void SaveCurrentData(Type dataType, object repository)
         {
-            if (dataContext == null) return;
+            if (dataContext == null || repository == null) return;
             
             try
             {
-                await dataContext.SaveAllAsync();
-                EditorUtility.DisplayDialog("Success", "Data saved successfully!", "OK");
+                // Try to find SaveAsync method on the repository
+                var saveMethod = repository.GetType().GetMethod("SaveAsync");
+                if (saveMethod != null)
+                {
+                    var task = saveMethod.Invoke(repository, null) as System.Threading.Tasks.Task;
+                    if (task != null)
+                    {
+                        await task;
+                    }
+                }
+                else
+                {
+                    // Fallback: Save only this specific data type through context
+                    var saveSpecificMethod = dataContext.GetType().GetMethod("SaveAsync");
+                    if (saveSpecificMethod != null)
+                    {
+                        var task = saveSpecificMethod.MakeGenericMethod(dataType).Invoke(dataContext, null) as System.Threading.Tasks.Task;
+                        if (task != null)
+                        {
+                            await task;
+                        }
+                    }
+                    else
+                    {
+                        // Last resort: save all
+                        await dataContext.SaveAllAsync();
+                    }
+                }
+                
+                EditorUtility.DisplayDialog("Success", $"{dataType.Name} saved successfully!", "OK");
+                
+                // Clear modified state for this type
+                modifiedTypes.Remove(dataType);
+                navigationPanel.MarkTypeAsModified(dataType, false);
+                toolbar.SetModifiedState(modifiedTypes.Count > 0);
             }
             catch (Exception e)
             {
-                EditorUtility.DisplayDialog("Error", $"Failed to save data: {e.Message}", "OK");
-                Debug.LogError($"Failed to save data: {e}");
+                EditorUtility.DisplayDialog("Error", $"Failed to save {dataType.Name}: {e.Message}", "OK");
+                Debug.LogError($"Failed to save {dataType.Name}: {e}");
             }
         }
         

@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
+using Datra.Unity.Editor.Components;
 
 namespace Datra.Unity.Editor.Panels
 {
@@ -29,17 +30,24 @@ namespace Datra.Unity.Editor.Panels
         private object currentDataContext;
         private bool hasUnsavedChanges = false;
         
+        // Change tracking
+        private DatraPropertyTracker propertyTracker;
+        private Dictionary<object, DatraPropertyTracker> itemTrackers = new Dictionary<object, DatraPropertyTracker>();
+        private List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
+        
         // Properties
         public Type CurrentType => currentType;
         public object CurrentRepository => currentRepository;
         
         // Events
         public event Action<Type> OnDataModified;
-        public event Action OnSaveRequested;
+        public event Action<Type, object> OnSaveRequested; // Type and Repository
         
         public DatraInspectorPanel()
         {
             AddToClassList("datra-inspector-panel");
+            propertyTracker = new DatraPropertyTracker();
+            propertyTracker.OnAnyPropertyModified += OnTrackerModified;
             Initialize();
         }
         
@@ -184,6 +192,7 @@ namespace Datra.Unity.Editor.Panels
         public void RefreshContent()
         {
             contentContainer.Clear();
+            CleanupFields();
             
             if (currentRepository == null || currentType == null)
             {
@@ -278,7 +287,18 @@ namespace Datra.Unity.Editor.Panels
                 var formContainer = new VisualElement();
                 formContainer.AddToClassList("single-data-form");
                 
-                AddPropertiesFields(data, formContainer, false);
+                // Start tracking the data
+                propertyTracker.StartTracking(data, false);
+                
+                // Create fields using the new system
+                var fields = DatraFieldFactory.CreateFieldsForObject(data, propertyTracker, false);
+                foreach (var field in fields)
+                {
+                    field.OnValueChanged += (propName, value) => MarkAsModified();
+                    formContainer.Add(field);
+                    activeFields.Add(field);
+                }
+                
                 contentContainer.Add(formContainer);
             }
         }
@@ -336,7 +356,20 @@ namespace Datra.Unity.Editor.Panels
             
             if (actualData != null)
             {
-                AddPropertiesFields(actualData, fieldsContainer, true);
+                // Create a tracker for this item
+                var itemTracker = new DatraPropertyTracker();
+                itemTracker.StartTracking(actualData, true);
+                itemTracker.OnAnyPropertyModified += OnTrackerModified;
+                itemTrackers[item] = itemTracker;
+                
+                // Create fields using the new system
+                var fields = DatraFieldFactory.CreateFieldsForObject(actualData, itemTracker, true);
+                foreach (var field in fields)
+                {
+                    field.OnValueChanged += (propName, value) => MarkAsModified();
+                    fieldsContainer.Add(field);
+                    activeFields.Add(field);
+                }
             }
             
             foldout.Add(fieldsContainer);
@@ -345,111 +378,40 @@ namespace Datra.Unity.Editor.Panels
             return itemContainer;
         }
         
-        private void AddPropertiesFields(object data, VisualElement container, bool skipId = true)
+        private void OnTrackerModified()
         {
-            var properties = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var hasChanges = propertyTracker.HasAnyModifications();
             
-            foreach (var property in properties)
+            // Check item trackers too
+            if (!hasChanges)
             {
-                if (property.CanWrite && (!skipId || property.Name != "Id"))
+                hasChanges = itemTrackers.Values.Any(tracker => tracker.HasAnyModifications());
+            }
+            
+            if (hasChanges != hasUnsavedChanges)
+            {
+                hasUnsavedChanges = hasChanges;
+                UpdateFooter();
+                if (hasChanges)
                 {
-                    var fieldContainer = CreatePropertyField(data, property);
-                    container.Add(fieldContainer);
+                    OnDataModified?.Invoke(currentType);
                 }
             }
         }
         
-        private VisualElement CreatePropertyField(object target, PropertyInfo property)
+        private void CleanupFields()
         {
-            var fieldContainer = new VisualElement();
-            fieldContainer.AddToClassList("property-field");
+            foreach (var field in activeFields)
+            {
+                field.Cleanup();
+            }
+            activeFields.Clear();
             
-            var label = new Label(ObjectNames.NicifyVariableName(property.Name));
-            label.AddToClassList("property-label");
-            fieldContainer.Add(label);
-            
-            var value = property.GetValue(target);
-            var propertyType = property.PropertyType;
-            
-            VisualElement field = null;
-            
-            // Handle different property types
-            if (propertyType == typeof(string))
+            foreach (var tracker in itemTrackers.Values)
             {
-                var textField = new TextField();
-                textField.value = value as string ?? "";
-                textField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                    MarkAsModified();
-                });
-                field = textField;
+                tracker.OnAnyPropertyModified -= OnTrackerModified;
             }
-            else if (propertyType == typeof(int))
-            {
-                var intField = new IntegerField();
-                intField.value = (int)(value ?? 0);
-                intField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                    MarkAsModified();
-                });
-                field = intField;
-            }
-            else if (propertyType == typeof(float))
-            {
-                var floatField = new FloatField();
-                floatField.value = (float)(value ?? 0f);
-                floatField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                    MarkAsModified();
-                });
-                field = floatField;
-            }
-            else if (propertyType == typeof(bool))
-            {
-                var toggle = new Toggle();
-                toggle.value = (bool)(value ?? false);
-                toggle.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                    MarkAsModified();
-                });
-                field = toggle;
-            }
-            else if (propertyType.IsEnum)
-            {
-                var enumField = new EnumField((Enum)value);
-                enumField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                    MarkAsModified();
-                });
-                field = enumField;
-            }
-            else
-            {
-                // For unsupported types, show read-only field
-                var readOnlyField = new TextField();
-                readOnlyField.value = value?.ToString() ?? "null";
-                readOnlyField.isReadOnly = true;
-                readOnlyField.AddToClassList("unsupported-field");
-                field = readOnlyField;
-                
-                // Add type info
-                var typeInfo = new Label($"({propertyType.Name})");
-                typeInfo.AddToClassList("type-info");
-                fieldContainer.Add(typeInfo);
-            }
-            
-            if (field != null)
-            {
-                field.AddToClassList("property-input");
-                fieldContainer.Add(field);
-            }
-            
-            return fieldContainer;
+            itemTrackers.Clear();
         }
         
         private void MarkAsModified()
@@ -515,7 +477,15 @@ namespace Datra.Unity.Editor.Panels
         
         private void SaveChanges()
         {
-            OnSaveRequested?.Invoke();
+            OnSaveRequested?.Invoke(currentType, currentRepository);
+            
+            // Update baselines after save
+            propertyTracker.UpdateBaseline();
+            foreach (var tracker in itemTrackers.Values)
+            {
+                tracker.UpdateBaseline();
+            }
+            
             hasUnsavedChanges = false;
             UpdateFooter();
             UpdateStatus("Changes saved successfully");
@@ -527,7 +497,19 @@ namespace Datra.Unity.Editor.Panels
                 "Are you sure you want to revert all changes?", 
                 "Revert", "Cancel"))
             {
-                RefreshContent();
+                // Revert all trackers
+                propertyTracker.RevertAll();
+                foreach (var tracker in itemTrackers.Values)
+                {
+                    tracker.RevertAll();
+                }
+                
+                // Refresh all fields
+                foreach (var field in activeFields)
+                {
+                    field.RefreshField();
+                }
+                
                 hasUnsavedChanges = false;
                 UpdateFooter();
                 UpdateStatus("Changes reverted");
