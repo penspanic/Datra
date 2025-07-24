@@ -7,17 +7,17 @@ using YamlDotNet.Serialization.NamingConventions;
 using Datra.Interfaces;
 using Datra.Converters;
 
-namespace Datra.Loaders
+namespace Datra.Serializers
 {
     /// <summary>
-    /// Loader for loading/saving data in YAML format
+    /// Serializer for YAML format data
     /// </summary>
-    public class YamlDataLoader : IDataLoader
+    public class YamlDataSerializer : IDataSerializer
     {
         private readonly IDeserializer _deserializer;
         private readonly ISerializer _serializer;
         
-        public YamlDataLoader()
+        public YamlDataSerializer()
         {
             var converter = new DataRefYamlConverter();
             
@@ -33,14 +33,14 @@ namespace Datra.Loaders
                 .Build();
         }
         
-        public T LoadSingle<T>(string text) where T : class, new()
+        public T DeserializeSingle<T>(string text) where T : class, new()
         {
             using var reader = new StringReader(text);
             return _deserializer.Deserialize<T>(reader)
                    ?? throw new InvalidOperationException("Failed to deserialize YAML data.");
         }
         
-        public Dictionary<TKey, T> LoadTable<TKey, T>(string text) 
+        public Dictionary<TKey, T> DeserializeTable<TKey, T>(string text) 
             where T : class, ITableData<TKey>, new()
         {
             using var reader = new StringReader(text);
@@ -50,12 +50,12 @@ namespace Datra.Loaders
             return items.ToDictionary(item => item.Id);
         }
         
-        public string SaveSingle<T>(T data) where T : class
+        public string SerializeSingle<T>(T data) where T : class
         {
             return _serializer.Serialize(data);
         }
         
-        public string SaveTable<TKey, T>(Dictionary<TKey, T> table) 
+        public string SerializeTable<TKey, T>(Dictionary<TKey, T> table) 
             where T : class, ITableData<TKey>
         {
             var items = table.Values.ToList();

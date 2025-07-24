@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
-using Datra.Client.Data;
-using Datra.Loaders;
+using Datra.Serializers;
+using Datra.Unity.Runtime.Providers;
 using Datra.Unity.Sample.Models;
 using UnityEngine;
 
@@ -14,10 +14,10 @@ namespace Datra.Unity.Sample
         public static GameDataContext Init()
         {
             var rawDataProvider = new ResourcesRawDataProvider();
-            var loaderFactory = new DataLoaderFactory();
+            var serializerFactory = new DataSerializerFactory();
 
             // Create GameDataContext
-            return new GameDataContext(rawDataProvider, loaderFactory);
+            return new GameDataContext(rawDataProvider, serializerFactory);
         }
         #endif
     }
@@ -27,10 +27,10 @@ namespace Datra.Unity.Sample
         {
             // Create RawDataProvider and LoaderFactory
             var rawDataProvider = new ResourcesRawDataProvider();
-            var loaderFactory = new DataLoaderFactory();
+            var serializerFactory = new DataSerializerFactory();
 
             // Create GameDataContext
-            var context = new GameDataContext(rawDataProvider, loaderFactory);
+            var context = new GameDataContext(rawDataProvider, serializerFactory);
             Debug.Log("✅ GameDataContext created successfully");
             Debug.Log("");
 

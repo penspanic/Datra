@@ -117,19 +117,19 @@ namespace Datra.Generators.Generators
             GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', format='{format}'");
             
             // Deserialize method
-            codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeTable(string data, Datra.Loaders.IDataLoader loader)");
+            codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeTable(string data, Datra.Serializers.IDataSerializer serializer)");
             
-            // Always use loader for DeserializeTable method
-            codeBuilder.AppendLine($"return loader.LoadTable<{model.KeyType}, {simpleTypeName}>(data);");
+            // Always use serializer for DeserializeTable method
+            codeBuilder.AppendLine($"return serializer.DeserializeTable<{model.KeyType}, {simpleTypeName}>(data);");
             
             codeBuilder.EndMethod();
             codeBuilder.AddBlankLine();
             
             // Serialize method
-            codeBuilder.BeginMethod($"public static string SerializeTable(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Loaders.IDataLoader loader)");
+            codeBuilder.BeginMethod($"public static string SerializeTable(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Serializers.IDataSerializer serializer)");
             
-            // Always use loader for SerializeTable method
-            codeBuilder.AppendLine($"return loader.SaveTable<{model.KeyType}, {simpleTypeName}>(table);");
+            // Always use serializer for SerializeTable method
+            codeBuilder.AppendLine($"return serializer.SerializeTable<{model.KeyType}, {simpleTypeName}>(table);");
             
             codeBuilder.EndMethod();
             
@@ -138,7 +138,7 @@ namespace Datra.Generators.Generators
             {
                 codeBuilder.AddBlankLine();
                 
-                // CSV Deserialize method without loader
+                // CSV Deserialize method without serializer
                 codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data)");
                 var csvBuilder2 = new CsvSerializerBuilder();
                 csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
@@ -146,7 +146,7 @@ namespace Datra.Generators.Generators
                 
                 codeBuilder.AddBlankLine();
                 
-                // CSV Serialize method without loader
+                // CSV Serialize method without serializer
                 codeBuilder.BeginMethod($"public static string SerializeCsv(Dictionary<{model.KeyType}, {simpleTypeName}> table)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
@@ -159,7 +159,7 @@ namespace Datra.Generators.Generators
             var format = CodeBuilder.GetDataFormat(model.Format);
             
             // Deserialize method
-            codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingle(string data, Datra.Loaders.IDataLoader loader)");
+            codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingle(string data, Datra.Serializers.IDataSerializer serializer)");
             
             switch (format)
             {
@@ -169,10 +169,10 @@ namespace Datra.Generators.Generators
                     break;
                 case "Yaml":
                     codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return loader.LoadSingle<{simpleTypeName}>(data);");
+                    codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");
                     break;
                 default:
-                    codeBuilder.AppendLine($"return loader.LoadSingle<{simpleTypeName}>(data);");
+                    codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");
                     break;
             }
             
@@ -180,7 +180,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AddBlankLine();
             
             // Serialize method
-            codeBuilder.BeginMethod($"public static string SerializeSingle({simpleTypeName} data, Datra.Loaders.IDataLoader loader)");
+            codeBuilder.BeginMethod($"public static string SerializeSingle({simpleTypeName} data, Datra.Serializers.IDataSerializer serializer)");
             
             switch (format)
             {
@@ -190,10 +190,10 @@ namespace Datra.Generators.Generators
                     break;
                 case "Yaml":
                     codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return loader.SaveSingle<{simpleTypeName}>(data);");
+                    codeBuilder.AppendLine($"return serializer.SerializeSingle<{simpleTypeName}>(data);");
                     break;
                 default:
-                    codeBuilder.AppendLine($"return loader.SaveSingle<{simpleTypeName}>(data);");
+                    codeBuilder.AppendLine($"return serializer.SerializeSingle<{simpleTypeName}>(data);");
                     break;
             }
             

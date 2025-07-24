@@ -1,7 +1,8 @@
-using Datra.Client.Data;
 using Datra.Interfaces;
-using Datra.Loaders;
+using Datra.Serializers;
 using Datra.Unity.Editor.Attributes;
+using Datra.Unity.Editor.Providers;
+using Datra.Unity.Runtime.Providers;
 using Datra.Unity.Sample.Models;
 using UnityEngine;
 
@@ -18,11 +19,11 @@ namespace Datra.Unity.Sample.Editor
             Debug.Log("[DatraEditorInit] Initializing GameDataContext for editor...");
             
             // Create RawDataProvider and LoaderFactory
-            var rawDataProvider = new ResourcesRawDataProvider();
-            var loaderFactory = new DataLoaderFactory();
+            var rawDataProvider = new AssetDatabaseRawDataProvider("Assets/Resources");
+            var serializerFactory = new DataSerializerFactory();
             
             // Create GameDataContext
-            var context = new GameDataContext(rawDataProvider, loaderFactory);
+            var context = new GameDataContext(rawDataProvider, serializerFactory);
             
             // Load all data synchronously for editor
             var loadTask = context.LoadAllAsync();

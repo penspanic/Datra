@@ -1,6 +1,6 @@
 using System;
 using System.IO;
-using Datra.Loaders;
+using Datra.Serializers;
 using Datra.Tests.Models;
 
 namespace Datra.Tests
@@ -42,7 +42,7 @@ namespace Datra.Tests
         {
             var basePath = FindDataPath();
             var rawDataProvider = new TestRawDataProvider(basePath);
-            var loaderFactory = new DataLoaderFactory();
+            var loaderFactory = new DataSerializerFactory();
             return new GameDataContext(rawDataProvider, loaderFactory);
         }
     }

@@ -5,27 +5,31 @@ using Newtonsoft.Json;
 using Datra.Interfaces;
 using Datra.Converters;
 
-namespace Datra.Loaders
+namespace Datra.Serializers
 {
     /// <summary>
-    /// Loader for loading/saving data in JSON format
+    /// Serializer for JSON format data
     /// </summary>
-    public class JsonDataLoader : IDataLoader
+    public class JsonDataSerializer : IDataSerializer
     {
         private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
         {
             Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore,
-            Converters = new List<JsonConverter> { new DataRefJsonConverter() }
+            Converters = new List<JsonConverter> 
+            { 
+                new DataRefJsonConverter(),
+                new Newtonsoft.Json.Converters.StringEnumConverter()
+            }
         };
         
-        public T LoadSingle<T>(string text) where T : class, new()
+        public T DeserializeSingle<T>(string text) where T : class, new()
         {
             return JsonConvert.DeserializeObject<T>(text, _settings) 
                    ?? throw new InvalidOperationException("Failed to deserialize JSON data.");
         }
         
-        public Dictionary<TKey, T> LoadTable<TKey, T>(string text) 
+        public Dictionary<TKey, T> DeserializeTable<TKey, T>(string text) 
             where T : class, ITableData<TKey>, new()
         {
             // Convert JSON array data to Dictionary
@@ -35,12 +39,12 @@ namespace Datra.Loaders
             return items.ToDictionary(item => item.Id);
         }
         
-        public string SaveSingle<T>(T data) where T : class
+        public string SerializeSingle<T>(T data) where T : class
         {
             return JsonConvert.SerializeObject(data, _settings);
         }
         
-        public string SaveTable<TKey, T>(Dictionary<TKey, T> table) 
+        public string SerializeTable<TKey, T>(Dictionary<TKey, T> table) 
             where T : class, ITableData<TKey>
         {
             // Convert Dictionary to array for saving (more readable format)

@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Datra.Attributes;
 using Datra.Interfaces;
-using Datra.Loaders;
+using Datra.Serializers;
 using Datra.Repositories;
 
 namespace Datra
@@ -19,15 +19,15 @@ namespace Datra
         internal readonly Dictionary<string, object> Repositories = new();
 
         private readonly IRawDataProvider _rawDataProvider;
-        private readonly DataLoaderFactory _loaderFactory;
+        private readonly DataSerializerFactory _serializerFactory;
         
         protected IRawDataProvider RawDataProvider => _rawDataProvider;
-        protected DataLoaderFactory LoaderFactory => _loaderFactory;
+        protected DataSerializerFactory SerializerFactory => _serializerFactory;
         
-        protected BaseDataContext(IRawDataProvider rawDataProvider, DataLoaderFactory loaderFactory)
+        protected BaseDataContext(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory)
         {
             _rawDataProvider = rawDataProvider ?? throw new ArgumentNullException(nameof(rawDataProvider));
-            _loaderFactory = loaderFactory ?? throw new ArgumentNullException(nameof(loaderFactory));
+            _serializerFactory = serializerFactory ?? throw new ArgumentNullException(nameof(serializerFactory));
         }
         
         /// <summary>
@@ -122,17 +122,17 @@ namespace Datra
             var format = GetDataFormat(attribute);
             
             var rawData = await _rawDataProvider.LoadTextAsync(filePath);
-            var loader = _loaderFactory.GetLoader(filePath, format);
+            var serializer = _serializerFactory.GetSerializer(filePath, format);
             
             object repository;
             
             if (attribute is TableDataAttribute)
             {
-                repository = LoadTableData(dataType, rawData, loader);
+                repository = LoadTableData(dataType, rawData, serializer);
             }
             else
             {
-                repository = LoadSingleData(dataType, rawData, loader);
+                repository = LoadSingleData(dataType, rawData, serializer);
             }
             
             property.SetValue(this, repository);
@@ -145,6 +145,16 @@ namespace Datra
             var repository = property.GetValue(this);
             if (repository == null) return;
             
+            // Check if repository has SaveAsync method and use it directly
+            var saveAsyncMethod = repository.GetType().GetMethod("SaveAsync");
+            if (saveAsyncMethod != null)
+            {
+                var task = (Task)saveAsyncMethod.Invoke(repository, null);
+                await task;
+                return;
+            }
+            
+            // Fallback to old behavior for repositories without SaveAsync
             var dataType = GetDataType(property);
             var attribute = GetDataAttribute(dataType);
             
@@ -153,16 +163,16 @@ namespace Datra
             var filePath = GetFilePath(attribute);
             var format = GetDataFormat(attribute);
             
-            var loader = _loaderFactory.GetLoader(filePath, format);
+            var serializer = _serializerFactory.GetSerializer(filePath, format);
             string rawData;
             
             if (attribute is TableDataAttribute)
             {
-                rawData = SaveTableData(repository, dataType, loader);
+                rawData = SaveTableData(repository, dataType, serializer);
             }
             else
             {
-                rawData = SaveSingleData(repository, dataType, loader);
+                rawData = SaveSingleData(repository, dataType, serializer);
             }
             
             await _rawDataProvider.SaveTextAsync(filePath, rawData);
@@ -203,48 +213,48 @@ namespace Datra
             };
         }
         
-        private object LoadTableData(Type dataType, string rawData, IDataLoader loader)
+        private object LoadTableData(Type dataType, string rawData, IDataSerializer serializer)
         {
             var keyType = dataType.GetInterface(typeof(ITableData<>).Name).GetGenericArguments()[0];
-            var loadMethod = loader.GetType().GetMethod(nameof(IDataLoader.LoadTable))
+            var loadMethod = serializer.GetType().GetMethod(nameof(IDataSerializer.DeserializeTable))
                 .MakeGenericMethod(keyType, dataType);
             
-            var data = loadMethod.Invoke(loader, new object[] { rawData });
+            var data = loadMethod.Invoke(serializer, new object[] { rawData });
             
             var repositoryType = typeof(DataRepository<,>).MakeGenericType(keyType, dataType);
             return Activator.CreateInstance(repositoryType, data);
         }
         
-        private object LoadSingleData(Type dataType, string rawData, IDataLoader loader)
+        private object LoadSingleData(Type dataType, string rawData, IDataSerializer serializer)
         {
-            var loadMethod = loader.GetType().GetMethod(nameof(IDataLoader.LoadSingle))
+            var loadMethod = serializer.GetType().GetMethod(nameof(IDataSerializer.DeserializeSingle))
                 .MakeGenericMethod(dataType);
             
-            var data = loadMethod.Invoke(loader, new object[] { rawData });
+            var data = loadMethod.Invoke(serializer, new object[] { rawData });
             
             var repositoryType = typeof(SingleDataRepository<>).MakeGenericType(dataType);
             return Activator.CreateInstance(repositoryType, data);
         }
         
-        private string SaveTableData(object repository, Type dataType, IDataLoader loader)
+        private string SaveTableData(object repository, Type dataType, IDataSerializer serializer)
         {
             var keyType = dataType.GetInterface(typeof(ITableData<>).Name).GetGenericArguments()[0];
             var data = repository.GetType().GetMethod("GetAll").Invoke(repository, null);
             
-            var saveMethod = loader.GetType().GetMethod(nameof(IDataLoader.SaveTable))
+            var saveMethod = serializer.GetType().GetMethod(nameof(IDataSerializer.SerializeTable))
                 .MakeGenericMethod(keyType, dataType);
             
-            return (string)saveMethod.Invoke(loader, new object[] { data });
+            return (string)saveMethod.Invoke(serializer, new object[] { data });
         }
         
-        private string SaveSingleData(object repository, Type dataType, IDataLoader loader)
+        private string SaveSingleData(object repository, Type dataType, IDataSerializer serializer)
         {
             var data = repository.GetType().GetMethod("Get").Invoke(repository, null);
             
-            var saveMethod = loader.GetType().GetMethod(nameof(IDataLoader.SaveSingle))
+            var saveMethod = serializer.GetType().GetMethod(nameof(IDataSerializer.SerializeSingle))
                 .MakeGenericMethod(dataType);
             
-            return (string)saveMethod.Invoke(loader, new object[] { data });
+            return (string)saveMethod.Invoke(serializer, new object[] { data });
         }
     }
 }

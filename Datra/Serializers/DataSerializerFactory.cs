@@ -2,20 +2,20 @@ using System;
 using System.IO;
 using Datra.Attributes;
 
-namespace Datra.Loaders
+namespace Datra.Serializers
 {
     /// <summary>
-    /// Factory for creating appropriate loaders based on data format
+    /// Factory for creating appropriate serializers based on data format
     /// </summary>
-    public class DataLoaderFactory
+    public class DataSerializerFactory
     {
-        private readonly IDataLoader _jsonLoader = new JsonDataLoader();
-        private readonly IDataLoader _yamlLoader = new YamlDataLoader();
+        private readonly IDataSerializer _jsonSerializer = new JsonDataSerializer();
+        private readonly IDataSerializer _yamlSerializer = new YamlDataSerializer();
         
         /// <summary>
-        /// Returns appropriate loader based on file path and format
+        /// Returns appropriate serializer based on file path and format
         /// </summary>
-        public IDataLoader GetLoader(string filePath, DataFormat format = DataFormat.Auto)
+        public IDataSerializer GetSerializer(string filePath, DataFormat format = DataFormat.Auto)
         {
             if (format == DataFormat.Auto)
             {
@@ -24,9 +24,9 @@ namespace Datra.Loaders
             
             return format switch
             {
-                DataFormat.Json => _jsonLoader,
-                DataFormat.Yaml => _yamlLoader,
-                DataFormat.Csv => throw new NotSupportedException("CSV format should be handled by source-generated serializers, not by DataLoader."),
+                DataFormat.Json => _jsonSerializer,
+                DataFormat.Yaml => _yamlSerializer,
+                DataFormat.Csv => throw new NotSupportedException("CSV format should be handled by source-generated serializers, not by DataSerializer."),
                 _ => throw new NotSupportedException($"Data format {format} is not supported.")
             };
         }

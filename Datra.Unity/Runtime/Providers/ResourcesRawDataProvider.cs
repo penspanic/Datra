@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Datra.Interfaces;
 using UnityEngine;
 
-namespace Datra.Client.Data
+namespace Datra.Unity.Runtime.Providers
 {
     public class ResourcesRawDataProvider : IRawDataProvider
     {

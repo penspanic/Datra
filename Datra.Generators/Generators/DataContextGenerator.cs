@@ -21,7 +21,7 @@ namespace Datra.Generators.Generators
                 "System.Threading.Tasks",
                 "Datra",
                 "Datra.Interfaces",
-                "Datra.Loaders",
+                "Datra.Serializers",
                 "Datra.Repositories"
             });
             
@@ -64,8 +64,8 @@ namespace Datra.Generators.Generators
 
         private void GenerateConstructor(CodeBuilder builder, string contextName)
         {
-            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataLoaderFactory loaderFactory = null)");
-            builder.AppendLine("    : base(rawDataProvider, loaderFactory ?? new DataLoaderFactory())");
+            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null)");
+            builder.AppendLine("    : base(rawDataProvider, serializerFactory ?? new DataSerializerFactory())");
             builder.BeginBlock();
             builder.AppendLine("InitializeRepositories();");
             builder.EndBlock();
@@ -108,13 +108,13 @@ namespace Datra.Generators.Generators
             }
             else
             {
-                // Use standard constructor with loader
+                // Use standard constructor with serializer
                 builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
                 builder.AppendLine($"    \"{model.FilePath}\",");
                 builder.AppendLine($"    RawDataProvider,");
-                builder.AppendLine($"    LoaderFactory,");
-                builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeTable(data, loader),");
-                builder.AppendLine($"    (table, loader) => {simpleTypeName}Serializer.SerializeTable(table, loader)");
+                builder.AppendLine($"    SerializerFactory,");
+                builder.AppendLine($"    (data, serializer) => {simpleTypeName}Serializer.DeserializeTable(data, serializer),");
+                builder.AppendLine($"    (table, serializer) => {simpleTypeName}Serializer.SerializeTable(table, serializer)");
                 builder.AppendLine(");");
                 builder.AppendLine($"RegisterRepository(\"{model.PropertyName}\", {model.PropertyName});");
             }
@@ -125,9 +125,9 @@ namespace Datra.Generators.Generators
             builder.AppendLine($"{model.PropertyName} = new SingleDataRepository<{model.TypeName}>(");
             builder.AppendLine($"    \"{model.FilePath}\",");
             builder.AppendLine($"    RawDataProvider,");
-            builder.AppendLine($"    LoaderFactory,");
-            builder.AppendLine($"    (data, loader) => {simpleTypeName}Serializer.DeserializeSingle(data, loader),");
-            builder.AppendLine($"    (obj, loader) => {simpleTypeName}Serializer.SerializeSingle(obj, loader)");
+            builder.AppendLine($"    SerializerFactory,");
+            builder.AppendLine($"    (data, serializer) => {simpleTypeName}Serializer.DeserializeSingle(data, serializer),");
+            builder.AppendLine($"    (obj, serializer) => {simpleTypeName}Serializer.SerializeSingle(obj, serializer)");
             builder.AppendLine(");");
             builder.AppendLine($"RegisterSingleRepository(\"{model.PropertyName}\", {model.PropertyName});");
         }

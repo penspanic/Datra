@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Datra.Interfaces;
-using Datra.Loaders;
+using Datra.Serializers;
 
 namespace Datra.Repositories
 {
@@ -16,9 +16,9 @@ namespace Datra.Repositories
         private Dictionary<TKey, TData> _data;
         private readonly string _filePath;
         private readonly IRawDataProvider _rawDataProvider;
-        private readonly DataLoaderFactory _loaderFactory;
-        private readonly Func<string, IDataLoader, Dictionary<TKey, TData>> _deserializeFunc;
-        private readonly Func<Dictionary<TKey, TData>, IDataLoader, string> _serializeFunc;
+        private readonly DataSerializerFactory _serializerFactory;
+        private readonly Func<string, IDataSerializer, Dictionary<TKey, TData>> _deserializeFunc;
+        private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string> _serializeFunc;
         private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc;
         private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc;
         
@@ -30,13 +30,13 @@ namespace Datra.Repositories
         public DataRepository(
             string filePath,
             IRawDataProvider rawDataProvider,
-            DataLoaderFactory loaderFactory,
-            Func<string, IDataLoader, Dictionary<TKey, TData>> deserializeFunc,
-            Func<Dictionary<TKey, TData>, IDataLoader, string> serializeFunc)
+            DataSerializerFactory serializerFactory,
+            Func<string, IDataSerializer, Dictionary<TKey, TData>> deserializeFunc,
+            Func<Dictionary<TKey, TData>, IDataSerializer, string> serializeFunc)
         {
             _filePath = filePath;
             _rawDataProvider = rawDataProvider;
-            _loaderFactory = loaderFactory;
+            _serializerFactory = serializerFactory;
             _deserializeFunc = deserializeFunc;
             _serializeFunc = serializeFunc;
             _data = new Dictionary<TKey, TData>();
@@ -99,8 +99,8 @@ namespace Datra.Repositories
             }
             else if (_deserializeFunc != null)
             {
-                var loader = _loaderFactory.GetLoader(_filePath);
-                _data = _deserializeFunc(rawData, loader);
+                var serializer = _serializerFactory.GetSerializer(_filePath);
+                _data = _deserializeFunc(rawData, serializer);
             }
             else
             {
@@ -122,8 +122,8 @@ namespace Datra.Repositories
             }
             else if (_serializeFunc != null)
             {
-                var loader = _loaderFactory.GetLoader(_filePath);
-                rawData = _serializeFunc(_data, loader);
+                var serializer = _serializerFactory.GetSerializer(_filePath);
+                rawData = _serializeFunc(_data, serializer);
             }
             else
             {
@@ -143,9 +143,9 @@ namespace Datra.Repositories
         private TData _data;
         private readonly string _filePath;
         private readonly IRawDataProvider _rawDataProvider;
-        private readonly DataLoaderFactory _loaderFactory;
-        private readonly Func<string, IDataLoader, TData> _deserializeFunc;
-        private readonly Func<TData, IDataLoader, string> _serializeFunc;
+        private readonly DataSerializerFactory _serializerFactory;
+        private readonly Func<string, IDataSerializer, TData> _deserializeFunc;
+        private readonly Func<TData, IDataSerializer, string> _serializeFunc;
         
         public SingleDataRepository(TData data)
         {
@@ -155,13 +155,13 @@ namespace Datra.Repositories
         public SingleDataRepository(
             string filePath,
             IRawDataProvider rawDataProvider,
-            DataLoaderFactory loaderFactory,
-            Func<string, IDataLoader, TData> deserializeFunc,
-            Func<TData, IDataLoader, string> serializeFunc)
+            DataSerializerFactory serializerFactory,
+            Func<string, IDataSerializer, TData> deserializeFunc,
+            Func<TData, IDataSerializer, string> serializeFunc)
         {
             _filePath = filePath;
             _rawDataProvider = rawDataProvider;
-            _loaderFactory = loaderFactory;
+            _serializerFactory = serializerFactory;
             _deserializeFunc = deserializeFunc;
             _serializeFunc = serializeFunc;
         }
@@ -189,8 +189,8 @@ namespace Datra.Repositories
                 throw new InvalidOperationException("Repository was not initialized with load functionality.");
                 
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
-            var loader = _loaderFactory.GetLoader(_filePath);
-            _data = _deserializeFunc(rawData, loader);
+            var serializer = _serializerFactory.GetSerializer(_filePath);
+            _data = _deserializeFunc(rawData, serializer);
         }
         
         public async Task SaveAsync()
@@ -198,8 +198,8 @@ namespace Datra.Repositories
             if (_rawDataProvider == null || _serializeFunc == null)
                 throw new InvalidOperationException("Repository was not initialized with save functionality.");
                 
-            var loader = _loaderFactory.GetLoader(_filePath);
-            var rawData = _serializeFunc(_data, loader);
+            var serializer = _serializerFactory.GetSerializer(_filePath);
+            var rawData = _serializeFunc(_data, serializer);
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
     }

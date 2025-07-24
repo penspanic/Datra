@@ -32,7 +32,7 @@ namespace Datra.Unity.Editor
             public bool IsTableData { get; set; }
         }
         
-        [MenuItem("Window/Datra/Data Editor")]
+        [MenuItem("Window/Datra/Data Editor %#d")]
         public static void ShowWindow()
         {
             var window = GetWindow<DatraEditorWindow>();
