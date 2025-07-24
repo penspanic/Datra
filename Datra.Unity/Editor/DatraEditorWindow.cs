@@ -5,559 +5,320 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEditor.UIElements;
 using Datra.Interfaces;
-using Datra.Attributes;
+using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor
 {
     public class DatraEditorWindow : EditorWindow
     {
-        private VisualElement root;
-        private ListView dataListView;
-        private ScrollView dataScrollView;
-        private Label statusLabel;
-        private TextField searchField;
+        // UI Components
+        private DatraToolbarPanel toolbar;
+        private DatraNavigationPanel navigationPanel;
+        private DatraInspectorPanel inspectorPanel;
+        private TwoPaneSplitView splitView;
         
-        private List<DataInfo> availableData = new List<DataInfo>();
-        private DataInfo selectedData;
+        // Data Management
         private IDataContext dataContext;
-        private object currentRepository;
+        private Dictionary<Type, object> repositories = new Dictionary<Type, object>();
+        private HashSet<Type> modifiedTypes = new HashSet<Type>();
         
-        private class DataInfo
-        {
-            public string Name { get; set; }
-            public Type DataType { get; set; }
-            public PropertyInfo Property { get; set; }
-            public bool IsTableData { get; set; }
-        }
+        // Window State
+        private string currentProjectName;
+        private bool isInitialized = false;
         
         [MenuItem("Window/Datra/Data Editor %#d")]
         public static void ShowWindow()
         {
             var window = GetWindow<DatraEditorWindow>();
-            window.titleContent = new GUIContent("Datra Editor");
+            window.titleContent = new GUIContent("Datra Editor", EditorGUIUtility.IconContent("d_ScriptableObject Icon").image);
             window.minSize = new Vector2(1200, 600);
         }
         
         private void CreateGUI()
         {
-            root = rootVisualElement;
-            
-            // Load USS for styling
-            var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>("Packages/com.datra.unity/Editor/DatraEditorWindow.uss");
-            if (styleSheet != null)
-            {
-                root.styleSheets.Add(styleSheet);
-            }
+            // Load stylesheets
+            LoadStyleSheets();
             
             // Create main container
+            var root = rootVisualElement;
+            root.AddToClassList("datra-editor-window");
+            
             var mainContainer = new VisualElement();
             mainContainer.AddToClassList("main-container");
             root.Add(mainContainer);
             
             // Create toolbar
-            CreateToolbar(mainContainer);
+            toolbar = new DatraToolbarPanel();
+            toolbar.OnSaveAllClicked += SaveAllData;
+            toolbar.OnReloadClicked += ReloadData;
+            toolbar.OnSettingsClicked += ShowSettings;
+            mainContainer.Add(toolbar);
             
-            // Create split view
-            var splitView = new TwoPaneSplitView(0, 250, TwoPaneSplitViewOrientation.Horizontal);
-            splitView.AddToClassList("split-view");
-            mainContainer.Add(splitView);
+            // Create content container with split view
+            var contentContainer = new VisualElement();
+            contentContainer.AddToClassList("content-container");
+            mainContainer.Add(contentContainer);
             
-            // Left panel - Data list
-            CreateDataListPanel(splitView);
+            // Create split view with proper initial position
+            splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
+            splitView.fixedPaneIndex = 0; // Left pane is fixed
+            splitView.fixedPaneInitialDimension = 300; // Initial width of left panel
+            contentContainer.Add(splitView);
             
-            // Right panel - Data editor
-            CreateDataEditorPanel(splitView);
+            // Create navigation panel (left)
+            navigationPanel = new DatraNavigationPanel();
+            navigationPanel.style.minWidth = 200;
+            navigationPanel.style.maxWidth = 500;
+            splitView.Add(navigationPanel);
             
-            // Status bar
-            CreateStatusBar(mainContainer);
+            // Create inspector panel (right)
+            inspectorPanel = new DatraInspectorPanel();
+            inspectorPanel.style.minWidth = 400;
+            inspectorPanel.OnDataModified += OnDataModified;
+            inspectorPanel.OnSaveRequested += SaveCurrentData;
+            splitView.Add(inspectorPanel);
             
-            // Try to auto-initialize DataContext
-            TryAutoInitialize();
+            // Initialize data
+            EditorApplication.delayCall += InitializeData;
         }
         
-        private void CreateToolbar(VisualElement parent)
+        private void LoadStyleSheets()
         {
-            var toolbar = new VisualElement();
-            toolbar.AddToClassList("toolbar");
-            parent.Add(toolbar);
-            
-            searchField = new TextField();
-            searchField.AddToClassList("search-field");
-            searchField.RegisterValueChangedCallback(OnSearchChanged);
-            toolbar.Add(searchField);
-            
-            var refreshButton = new Button(LoadAvailableData);
-            refreshButton.text = "Refresh";
-            toolbar.Add(refreshButton);
-            
-            var loadButton = new Button(LoadDataContext);
-            loadButton.text = "Load Context";
-            loadButton.style.marginLeft = 10;
-            toolbar.Add(loadButton);
-            
-            var saveButton = new Button(SaveCurrentData);
-            saveButton.text = "Save";
-            saveButton.style.marginLeft = 10;
-            toolbar.Add(saveButton);
-        }
-        
-        private void CreateDataListPanel(TwoPaneSplitView splitView)
-        {
-            var container = new VisualElement();
-            container.AddToClassList("data-list-container");
-            
-            var header = new Label("Data Types");
-            header.style.fontSize = 14;
-            header.style.unityFontStyleAndWeight = FontStyle.Bold;
-            header.style.marginTop = 10;
-            header.style.marginBottom = 10;
-            header.style.marginLeft = 10;
-            container.Add(header);
-            
-            dataListView = new ListView();
-            dataListView.makeItem = () => new Label();
-            dataListView.bindItem = (element, index) =>
+            var stylePaths = new[]
             {
-                var label = element as Label;
-                if (index < availableData.Count)
-                {
-                    label.text = availableData[index].Name;
-                }
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraEditorWindow.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraNavigationPanel.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss"
             };
-            dataListView.selectionType = SelectionType.Single;
-            dataListView.onSelectionChange += OnDataSelected;
-            dataListView.style.flexGrow = 1;
             
-            container.Add(dataListView);
-            splitView.Add(container);
-        }
-        
-        private void CreateDataEditorPanel(TwoPaneSplitView splitView)
-        {
-            var container = new VisualElement();
-            container.AddToClassList("data-editor-container");
-            
-            dataScrollView = new ScrollView();
-            dataScrollView.style.flexGrow = 1;
-            container.Add(dataScrollView);
-            
-            splitView.Add(container);
-        }
-        
-        private void CreateStatusBar(VisualElement parent)
-        {
-            statusLabel = new Label("Ready");
-            statusLabel.AddToClassList("status-bar");
-            parent.Add(statusLabel);
-        }
-        
-        private void LoadAvailableData()
-        {
-            availableData.Clear();
-            
-            if (dataContext == null)
+            foreach (var path in stylePaths)
             {
-                UpdateStatus("No DataContext loaded. Click 'Load Context' to select one.");
-                return;
-            }
-            
-            var contextType = dataContext.GetType();
-            var properties = contextType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            
-            foreach (var property in properties)
-            {
-                if (IsRepositoryProperty(property))
+                var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
+                if (styleSheet != null)
                 {
-                    var dataType = GetDataType(property);
-                    if (dataType != null)
-                    {
-                        availableData.Add(new DataInfo
-                        {
-                            Name = property.Name,
-                            DataType = dataType,
-                            Property = property,
-                            IsTableData = IsTableData(dataType)
-                        });
-                    }
+                    rootVisualElement.styleSheets.Add(styleSheet);
+                }
+                else
+                {
+                    Debug.LogWarning($"Could not load stylesheet: {path}");
                 }
             }
-            
-            availableData = availableData.OrderBy(d => d.Name).ToList();
-            dataListView.itemsSource = availableData;
-            dataListView.Rebuild();
-            
-            UpdateStatus($"Loaded {availableData.Count} data types");
         }
         
-        private void LoadDataContext()
+        private void InitializeData()
         {
-            var initializers = DatraBootstrapper.FindInitializers();
+            if (isInitialized) return;
             
-            if (initializers.Count == 0)
-            {
-                EditorUtility.DisplayDialog("Error", 
-                    "No Datra initialization methods found.\n\n" +
-                    "Please create a static method with [DatraEditorInit] attribute that returns an IDataContext.", 
-                    "OK");
-                return;
-            }
-            
-            if (initializers.Count == 1)
-            {
-                // Only one initializer, use it directly
-                var initializer = initializers[0];
-                dataContext = DatraBootstrapper.ExecuteInitializer(initializer);
-                
-                if (dataContext != null)
-                {
-                    LoadAvailableData();
-                }
-            }
-            else
-            {
-                // Multiple initializers, show selection dialog
-                var menu = new GenericMenu();
-                
-                foreach (var initializer in initializers)
-                {
-                    var init = initializer; // Capture for closure
-                    menu.AddItem(new GUIContent(init.DisplayName), false, () =>
-                    {
-                        dataContext = DatraBootstrapper.ExecuteInitializer(init);
-                        if (dataContext != null)
-                        {
-                            LoadAvailableData();
-                        }
-                    });
-                }
-                
-                menu.ShowAsContext();
-            }
-        }
-        
-        private bool IsRepositoryProperty(PropertyInfo property)
-        {
-            var type = property.PropertyType;
-            
-            // Check for non-generic ISingleDataRepository first
-            if (type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISingleDataRepository<>)))
-            {
-                return true;
-            }
-            
-            if (!type.IsGenericType) return false;
-            
-            var genericType = type.GetGenericTypeDefinition();
-            return genericType == typeof(IDataRepository<,>) || 
-                   genericType == typeof(ISingleDataRepository<>) ||
-                   type.GetInterfaces().Any(i => i.IsGenericType && 
-                       (i.GetGenericTypeDefinition() == typeof(IDataRepository<,>) || 
-                        i.GetGenericTypeDefinition() == typeof(ISingleDataRepository<>)));
-        }
-        
-        private Type GetDataType(PropertyInfo property)
-        {
-            var type = property.PropertyType;
-            
-            // Check if it's ISingleDataRepository<T> interface implementation
-            var singleRepoInterface = type.GetInterfaces()
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISingleDataRepository<>));
-            
-            if (singleRepoInterface != null)
-            {
-                return singleRepoInterface.GetGenericArguments()[0];
-            }
-            
-            if (!type.IsGenericType) return null;
-            
-            var genericArgs = type.GetGenericArguments();
-            return genericArgs.Last(); // Last generic argument is the data type
-        }
-        
-        private bool IsTableData(Type type)
-        {
-            return type.GetInterfaces().Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableData<>));
-        }
-        
-        private void OnSearchChanged(ChangeEvent<string> evt)
-        {
-            var searchTerm = evt.newValue.ToLower();
-            
-            if (string.IsNullOrEmpty(searchTerm))
-            {
-                dataListView.itemsSource = availableData;
-            }
-            else
-            {
-                var filtered = availableData.Where(d => d.Name.ToLower().Contains(searchTerm)).ToList();
-                dataListView.itemsSource = filtered;
-            }
-            
-            dataListView.Rebuild();
-        }
-        
-        private void OnDataSelected(IEnumerable<object> selection)
-        {
-            var selected = selection.FirstOrDefault() as DataInfo;
-            if (selected == null) return;
-            
-            selectedData = selected;
-            LoadDataForEditing(selected);
-        }
-        
-        private void LoadDataForEditing(DataInfo dataInfo)
-        {
             try
             {
-                currentRepository = dataInfo.Property.GetValue(dataContext);
-                if (currentRepository == null)
+                // Execute bootstrapper to initialize data context
+                dataContext = DatraBootstrapper.AutoInitialize();
+                if (dataContext != null)
                 {
-                    UpdateStatus($"Repository for {dataInfo.Name} is not loaded");
-                    return;
+                    LoadDataTypes();
+                    isInitialized = true;
+                    
+                    // Set project name
+                    currentProjectName = Application.productName;
+                    toolbar.SetProjectName(currentProjectName);
                 }
-                
-                DisplayData();
-                UpdateStatus($"Loaded {dataInfo.Name} for editing");
+                else
+                {
+                    ShowInitializationError("No DataContext found. Please ensure Datra is properly initialized.");
+                }
             }
             catch (Exception e)
             {
-                UpdateStatus($"Failed to load {dataInfo.Name}: {e.Message}");
-                Debug.LogError(e);
+                ShowInitializationError($"Failed to initialize: {e.Message}");
+                Debug.LogError($"Datra Editor initialization failed: {e}");
             }
         }
         
-        private void DisplayData()
+        private void LoadDataTypes()
         {
-            dataScrollView.Clear();
+            repositories.Clear();
             
-            if (selectedData == null || currentRepository == null) return;
+            var dataTypes = new List<Type>();
+            var properties = dataContext.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
             
-            // Add header
-            var headerLabel = new Label(selectedData.Name);
-            headerLabel.style.fontSize = 16;
-            headerLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
-            headerLabel.style.marginBottom = 10;
-            dataScrollView.Add(headerLabel);
-            
-            if (selectedData.IsTableData)
+            foreach (var property in properties)
             {
-                DisplayTableData();
-            }
-            else
-            {
-                DisplaySingleData();
-            }
-        }
-        
-        private void DisplayTableData()
-        {
-            // Add "Add Item" button
-            var addButton = new Button(() => AddNewItem());
-            addButton.text = "+ Add New Item";
-            addButton.AddToClassList("add-item-button");
-            dataScrollView.Add(addButton);
-            
-            // Get all items from repository
-            var getAllMethod = currentRepository.GetType().GetMethod("GetAll");
-            var items = getAllMethod.Invoke(currentRepository, null) as System.Collections.IEnumerable;
-            
-            if (items != null)
-            {
-                int index = 0;
-                foreach (var item in items)
+                var propertyType = property.PropertyType;
+                if (propertyType.IsGenericType)
                 {
-                    var itemContainer = CreateItemElement(item, index++);
-                    dataScrollView.Add(itemContainer);
-                }
-            }
-        }
-        
-        private void DisplaySingleData()
-        {
-            var getMethod = currentRepository.GetType().GetMethod("Get");
-            var data = getMethod.Invoke(currentRepository, null);
-            
-            if (data != null)
-            {
-                var properties = data.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-                
-                foreach (var property in properties)
-                {
-                    if (property.CanWrite)
+                    var genericDef = propertyType.GetGenericTypeDefinition();
+                    if (genericDef == typeof(IDataRepository<,>))
                     {
-                        var fieldContainer = CreatePropertyField(data, property);
-                        dataScrollView.Add(fieldContainer);
+                        var repository = property.GetValue(dataContext);
+                        if (repository != null)
+                        {
+                            var dataType = propertyType.GetGenericArguments()[1];
+                            repositories[dataType] = repository;
+                            dataTypes.Add(dataType);
+                        }
+                    }
+                    else if (genericDef == typeof(ISingleDataRepository<>))
+                    {
+                        var repository = property.GetValue(dataContext);
+                        if (repository != null)
+                        {
+                            var dataType = propertyType.GetGenericArguments()[0];
+                            repositories[dataType] = repository;
+                            dataTypes.Add(dataType);
+                        }
                     }
                 }
             }
+            
+            // Update navigation panel with data types
+            navigationPanel.SetDataTypes(dataTypes, OnDataTypeSelected);
         }
         
-        private VisualElement CreateItemElement(object item, int index)
+        private void OnDataTypeSelected(Type dataType)
         {
-            var itemContainer = new VisualElement();
-            itemContainer.AddToClassList("data-item");
-            
-            // Add item header
-            var itemHeader = new VisualElement();
-            itemHeader.AddToClassList("item-header");
-            
-            var idProperty = item.GetType().GetProperty("Id");
-            var idValue = idProperty?.GetValue(item)?.ToString() ?? "Unknown";
-            
-            var idLabel = new Label($"Item {index + 1} - ID: {idValue}");
-            idLabel.AddToClassList("item-id-label");
-            itemHeader.Add(idLabel);
-            
-            // Add delete button
-            var deleteButton = new Button(() => DeleteItem(item));
-            deleteButton.text = "Delete";
-            deleteButton.AddToClassList("delete-item-button");
-            itemHeader.Add(deleteButton);
-            
-            itemContainer.Add(itemHeader);
-            
-            // Create fields container
-            var fieldsContainer = new VisualElement();
-            fieldsContainer.AddToClassList("item-fields");
-            
-            // Create fields for each property
-            var properties = item.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var property in properties)
+            if (repositories.TryGetValue(dataType, out var repository))
             {
-                if (property.CanWrite && property.Name != "Id") // Id is usually read-only
-                {
-                    var fieldContainer = CreatePropertyField(item, property);
-                    fieldsContainer.Add(fieldContainer);
-                }
+                inspectorPanel.SetDataContext(dataContext, repository, dataType);
             }
-            
-            itemContainer.Add(fieldsContainer);
-            
-            return itemContainer;
         }
         
-        private VisualElement CreatePropertyField(object target, PropertyInfo property)
+        private void OnDataModified(Type dataType)
         {
-            var fieldContainer = new VisualElement();
-            fieldContainer.AddToClassList("property-field");
-            
-            var label = new Label(property.Name);
-            label.AddToClassList("field-label");
-            fieldContainer.Add(label);
-            
-            var value = property.GetValue(target);
-            var propertyType = property.PropertyType;
-            
-            // Handle different property types
-            if (propertyType == typeof(string))
-            {
-                var textField = new TextField();
-                textField.value = value as string ?? "";
-                textField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                });
-                fieldContainer.Add(textField);
-            }
-            else if (propertyType == typeof(int))
-            {
-                var intField = new IntegerField();
-                intField.value = (int)(value ?? 0);
-                intField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                });
-                fieldContainer.Add(intField);
-            }
-            else if (propertyType == typeof(float))
-            {
-                var floatField = new FloatField();
-                floatField.value = (float)(value ?? 0f);
-                floatField.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                });
-                fieldContainer.Add(floatField);
-            }
-            else if (propertyType == typeof(bool))
-            {
-                var toggle = new Toggle();
-                toggle.value = (bool)(value ?? false);
-                toggle.RegisterValueChangedCallback(evt =>
-                {
-                    property.SetValue(target, evt.newValue);
-                });
-                fieldContainer.Add(toggle);
-            }
-            // Add more type handlers as needed (IntDataRef, StringDataRef, etc.)
-            
-            return fieldContainer;
+            modifiedTypes.Add(dataType);
+            navigationPanel.MarkTypeAsModified(dataType, true);
+            toolbar.SetModifiedState(modifiedTypes.Count > 0);
         }
         
-        private void AddNewItem()
+        private async void SaveAllData()
         {
-            // This is a placeholder - in real implementation, you'd create a new instance
-            // and add it to the repository
-            UpdateStatus("Add new item functionality not yet implemented");
-        }
-        
-        private void DeleteItem(object item)
-        {
-            // This is a placeholder - in real implementation, you'd remove the item
-            // from the repository
-            UpdateStatus("Delete item functionality not yet implemented");
-        }
-        
-        private void SaveCurrentData()
-        {
-            if (dataContext == null)
-            {
-                UpdateStatus("No DataContext loaded");
-                return;
-            }
+            if (dataContext == null) return;
             
-            SaveDataAsync();
-        }
-        
-        private async void SaveDataAsync()
-        {
             try
             {
-                UpdateStatus("Saving data...");
+                toolbar.SetSaveButtonEnabled(false);
                 await dataContext.SaveAllAsync();
-                UpdateStatus("Data saved successfully");
                 
-                // Show confirmation dialog
+                // Clear modified states
+                foreach (var type in modifiedTypes)
+                {
+                    navigationPanel.MarkTypeAsModified(type, false);
+                }
+                modifiedTypes.Clear();
+                toolbar.SetModifiedState(false);
+                
+                EditorUtility.DisplayDialog("Success", "All data saved successfully!", "OK");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to save data: {e.Message}", "OK");
+                Debug.LogError($"Failed to save data: {e}");
+            }
+            finally
+            {
+                toolbar.SetSaveButtonEnabled(true);
+            }
+        }
+        
+        private async void SaveCurrentData()
+        {
+            if (dataContext == null) return;
+            
+            try
+            {
+                await dataContext.SaveAllAsync();
                 EditorUtility.DisplayDialog("Success", "Data saved successfully!", "OK");
             }
             catch (Exception e)
             {
-                UpdateStatus($"Failed to save data: {e.Message}");
-                EditorUtility.DisplayDialog("Error", $"Failed to save data:\n{e.Message}", "OK");
+                EditorUtility.DisplayDialog("Error", $"Failed to save data: {e.Message}", "OK");
                 Debug.LogError($"Failed to save data: {e}");
             }
         }
         
-        private void UpdateStatus(string message)
+        private async void ReloadData()
         {
-            statusLabel.text = $"[{DateTime.Now:HH:mm:ss}] {message}";
+            if (dataContext == null) return;
+            
+            if (modifiedTypes.Count > 0)
+            {
+                var result = EditorUtility.DisplayDialogComplex(
+                    "Unsaved Changes",
+                    "You have unsaved changes. What would you like to do?",
+                    "Save and Reload",
+                    "Cancel",
+                    "Discard and Reload"
+                );
+                
+                if (result == 1) return; // Cancel
+                if (result == 0) await dataContext.SaveAllAsync(); // Save first
+            }
+            
+            try
+            {
+                toolbar.SetReloadButtonEnabled(false);
+                await dataContext.LoadAllAsync();
+                
+                // Clear modified states
+                modifiedTypes.Clear();
+                toolbar.SetModifiedState(false);
+                
+                // Refresh current view
+                inspectorPanel.SetDataContext(dataContext, inspectorPanel.CurrentRepository, inspectorPanel.CurrentType);
+                
+                EditorUtility.DisplayDialog("Success", "Data reloaded successfully!", "OK");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to reload data: {e.Message}", "OK");
+                Debug.LogError($"Failed to reload data: {e}");
+            }
+            finally
+            {
+                toolbar.SetReloadButtonEnabled(true);
+            }
         }
         
-        private void TryAutoInitialize()
+        private void ShowSettings()
         {
-            // Try to auto-initialize DataContext using bootstrapper
-            dataContext = DatraBootstrapper.AutoInitialize();
+            // TODO: Implement settings window
+            EditorUtility.DisplayDialog("Settings", "Settings window coming soon!", "OK");
+        }
+        
+        private void ShowInitializationError(string message)
+        {
+            var errorContainer = new VisualElement();
+            errorContainer.AddToClassList("initialization-error");
             
-            if (dataContext != null)
+            var errorLabel = new Label(message);
+            errorLabel.AddToClassList("error-message");
+            errorContainer.Add(errorLabel);
+            
+            var retryButton = new Button(() => {
+                errorContainer.RemoveFromHierarchy();
+                EditorApplication.delayCall += InitializeData;
+            });
+            retryButton.text = "Retry";
+            retryButton.AddToClassList("retry-button");
+            errorContainer.Add(retryButton);
+            
+            rootVisualElement.Add(errorContainer);
+        }
+        
+        private void OnDestroy()
+        {
+            // Clean up if needed
+            isInitialized = false;
+        }
+        
+        private void OnFocus()
+        {
+            // Refresh data when window gains focus
+            if (isInitialized && inspectorPanel != null)
             {
-                LoadAvailableData();
-                UpdateStatus("DataContext auto-initialized successfully");
-            }
-            else
-            {
-                UpdateStatus("No DataContext loaded. Click 'Load Context' to initialize.");
+                inspectorPanel.RefreshContent();
             }
         }
     }

@@ -1,0 +1,287 @@
+/* Inspector Panel Styles */
+.datra-inspector-panel {
+    flex: 1;
+    background-color: #383838;
+    flex-direction: column;
+}
+
+/* Header */
+.inspector-header {
+    background-color: #313131;
+    border-bottom-width: 1px;
+    border-bottom-color: #282828;
+    padding: 12px;
+}
+
+.breadcrumb-container {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.breadcrumb-item {
+    background-color: transparent;
+    border-width: 0;
+    color: #5a9fd4;
+    font-size: 11px;
+    padding: 0;
+    margin: 0;
+}
+
+.breadcrumb-item:hover {
+    color: #7abfe4;
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    margin: 0 6px;
+    color: #696969;
+    font-size: 12px;
+}
+
+.breadcrumb-current {
+    color: #d4d4d4;
+    font-size: 11px;
+}
+
+.title-section {
+    flex-direction: column;
+}
+
+.inspector-title {
+    font-size: 18px;
+    -unity-font-style: bold;
+    color: #d4d4d4;
+    margin-bottom: 4px;
+}
+
+.inspector-subtitle {
+    font-size: 12px;
+    color: #969696;
+}
+
+.header-actions {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    flex-direction: row;
+}
+
+/* Content */
+.inspector-content-scroll {
+    flex: 1;
+    background-color: #383838;
+}
+
+.inspector-content {
+    padding: 16px;
+}
+
+/* Table Toolbar */
+.table-toolbar {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 12px;
+    padding: 8px;
+    background-color: #313131;
+    border-radius: 4px;
+}
+
+.add-button {
+    background-color: #4caf50;
+    color: white;
+    border-width: 0;
+    padding: 6px 12px;
+    border-radius: 3px;
+    margin-right: 12px;
+}
+
+.add-button:hover {
+    background-color: #5cbf60;
+}
+
+.table-search {
+    flex: 1;
+    height: 28px;
+    background-color: #252525;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+}
+
+.table-search > .unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    color: #d4d4d4;
+    font-size: 12px;
+    padding: 0 8px;
+}
+
+/* Table Items */
+.table-items-container {
+    flex-direction: column;
+}
+
+.table-item {
+    margin-bottom: 8px;
+    background-color: #313131;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: #282828;
+}
+
+.table-item-foldout {
+    margin: 0;
+}
+
+.table-item-foldout > .unity-foldout__toggle {
+    background-color: transparent;
+    padding: 8px 12px;
+    min-height: 36px;
+    border-radius: 4px 4px 0 0;
+}
+
+.table-item-foldout > .unity-foldout__toggle:hover {
+    background-color: #3a3a3a;
+}
+
+.table-item-foldout > .unity-foldout__toggle > .unity-text-element {
+    font-size: 13px;
+    color: #d4d4d4;
+    flex: 1;
+}
+
+.delete-button {
+    position: absolute;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 3px;
+    font-size: 14px;
+    color: #969696;
+}
+
+.delete-button:hover {
+    background-color: #f44336;
+    color: white;
+}
+
+.table-item-fields {
+    padding: 12px;
+    background-color: #2d2d2d;
+    border-radius: 0 0 4px 4px;
+}
+
+/* Single Data Form */
+.single-data-form {
+    background-color: #313131;
+    border-radius: 4px;
+    padding: 16px;
+}
+
+/* Property Fields */
+.property-field {
+    margin-bottom: 12px;
+}
+
+.property-label {
+    font-size: 12px;
+    color: #b4b4b4;
+    margin-bottom: 4px;
+}
+
+.property-input {
+    background-color: #252525;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+    padding: 4px 8px;
+    min-height: 24px;
+}
+
+.property-input:focus {
+    border-color: #5a9fd4;
+}
+
+/* Text Fields */
+.unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    color: #d4d4d4;
+    font-size: 12px;
+    padding: 0;
+}
+
+/* Integer/Float Fields */
+.unity-integer-field__input,
+.unity-float-field__input {
+    background-color: transparent;
+    border-width: 0;
+    color: #d4d4d4;
+    font-size: 12px;
+    padding: 0;
+}
+
+/* Toggle */
+.unity-toggle {
+    margin: 0;
+    flex-direction: row;
+}
+
+.unity-toggle > .unity-toggle__input {
+    margin-right: 6px;
+}
+
+/* Enum Field */
+.unity-enum-field {
+    background-color: #252525;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+    min-height: 24px;
+}
+
+.unity-enum-field:focus {
+    border-color: #5a9fd4;
+}
+
+/* Unsupported Field */
+.unsupported-field {
+    opacity: 0.6;
+}
+
+.type-info {
+    font-size: 10px;
+    color: #696969;
+    margin-top: 2px;
+}
+
+/* Footer */
+.inspector-footer {
+    background-color: #313131;
+    border-top-width: 1px;
+    border-top-color: #282828;
+    padding: 8px 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+}
+
+.status-area {
+    flex: 1;
+}
+
+.action-area {
+    flex-direction: row;
+    gap: 8px;
+}
+
+/* Empty State for Inspector */
+.inspector-content .empty-state {
+    background-color: #313131;
+    border-radius: 4px;
+    margin: 20px;
+}

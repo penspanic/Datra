@@ -1,0 +1,232 @@
+/* Navigation Panel Styles */
+.datra-navigation-panel {
+    background-color: #383838;
+}
+
+/* Header */
+.navigation-header {
+    height: 36px;
+    background-color: #313131;
+    border-bottom-width: 1px;
+    border-bottom-color: #282828;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
+.navigation-title-container {
+    flex-direction: row;
+    align-items: center;
+}
+
+.navigation-title-icon {
+    width: 16px;
+    height: 16px;
+    background-color: #5a9fd4;
+    border-radius: 2px;
+    margin-right: 6px;
+}
+
+.navigation-title {
+    font-size: 12px;
+    -unity-font-style: bold;
+    color: #d4d4d4;
+}
+
+.navigation-actions {
+    flex-direction: row;
+}
+
+/* Search */
+.search-container {
+    padding: 8px;
+    background-color: #313131;
+    border-bottom-width: 1px;
+    border-bottom-color: #282828;
+}
+
+.search-field {
+    height: 24px;
+    background-color: #252525;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+    padding-left: 24px;
+}
+
+.search-field > .unity-text-field__input {
+    background-color: transparent;
+    border-width: 0;
+    color: #d4d4d4;
+    font-size: 12px;
+}
+
+.search-field > .unity-text-field__input::placeholder {
+    color: #696969;
+}
+
+.search-icon {
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    width: 16px;
+    height: 16px;
+    background-color: #696969;
+    -unity-background-image-tint-color: #696969;
+}
+
+/* Tree View */
+.navigation-scroll-view {
+    flex: 1;
+}
+
+.data-tree-view {
+    flex: 1;
+    background-color: transparent;
+}
+
+/* Tree View Item */
+.tree-item {
+    height: 26px;
+}
+
+.tree-item-content {
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+    padding: 0 8px;
+}
+
+/* Category Items */
+.tree-item-category > .tree-item-content {
+    background-color: #2d2d2d;
+    border-bottom-width: 1px;
+    border-bottom-color: #252525;
+}
+
+.tree-item-category > .tree-item-content:hover {
+    background-color: #353535;
+}
+
+/* Data Items */
+.tree-item-data > .tree-item-content {
+    padding-left: 32px;
+}
+
+.tree-item-data > .tree-item-content:hover {
+    background-color: #2d2d2d;
+}
+
+/* Selection */
+.unity-tree-view__item--selected > .tree-item-data > .tree-item-content {
+    background-color: #2d5a8d;
+}
+
+.unity-tree-view__item--selected > .tree-item-data > .tree-item-content:hover {
+    background-color: #3d6a9d;
+}
+
+.unity-tree-view__item--selected > .tree-item-data > .tree-item-content .tree-item-label {
+    color: white;
+}
+
+/* Icons */
+.tree-item-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 6px;
+    background-color: #696969;
+    border-radius: 2px;
+}
+
+.icon-single-data {
+    background-color: #4caf50;
+}
+
+.icon-table-data {
+    background-color: #2196f3;
+}
+
+/* Labels */
+.tree-item-label {
+    font-size: 12px;
+    color: #d4d4d4;
+    flex: 1;
+}
+
+.tree-item-category .tree-item-label {
+    font-size: 11px;
+    color: #b4b4b4;
+    -unity-font-style: bold;
+}
+
+/* Modified Indicator */
+.tree-item-modified {
+    width: 6px;
+    height: 6px;
+    background-color: #ff9800;
+    border-radius: 3px;
+    margin-left: 4px;
+}
+
+/* TreeView Toggle Arrow */
+.unity-tree-view__item-toggle {
+    -unity-background-image-tint-color: #969696;
+    margin-left: 3px;
+}
+
+.unity-tree-view__item-toggle:hover {
+    -unity-background-image-tint-color: #b4b4b4;
+}
+
+/* Remove default TreeView background */
+.unity-tree-view__item {
+    background-color: transparent;
+}
+
+.unity-tree-view__item:hover {
+    background-color: transparent;
+}
+
+/* Status Bar */
+.navigation-status-bar {
+    height: 22px;
+    background-color: #2d2d2d;
+    border-top-width: 1px;
+    border-top-color: #282828;
+    padding: 0 8px;
+    justify-content: center;
+}
+
+.navigation-status-bar .status-label {
+    font-size: 11px;
+    color: #969696;
+}
+
+/* Hover Effects */
+.type-item.hover {
+    background-color: #2d2d2d;
+}
+
+/* Icon Buttons */
+.icon-button {
+    width: 20px;
+    height: 20px;
+    background-color: transparent;
+    border-width: 0;
+    border-radius: 2px;
+    margin: 0 1px;
+    font-size: 14px;
+    color: #969696;
+    -unity-text-align: middle-center;
+}
+
+.icon-button:hover {
+    background-color: #3d3d3d;
+    color: #d4d4d4;
+}
+
+.icon-button:active {
+    background-color: #2d2d2d;
+}

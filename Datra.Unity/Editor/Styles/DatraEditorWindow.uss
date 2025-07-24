@@ -1,0 +1,244 @@
+/* Main Window Styles */
+.datra-editor-window {
+    flex: 1;
+    background-color: #383838;
+}
+
+/* Main Layout */
+.main-container {
+    flex: 1;
+    flex-direction: column;
+}
+
+.content-container {
+    flex: 1;
+    flex-direction: row;
+}
+
+/* Splitter */
+.unity-two-pane-split-view {
+    flex: 1;
+}
+
+.unity-two-pane-split-view__dragline-anchor {
+    background-color: #282828;
+    cursor: resize-horizontal;
+}
+
+.unity-two-pane-split-view__dragline-anchor:hover {
+    background-color: #5a9fd4;
+}
+
+.unity-two-pane-split-view__content-container {
+    flex: 1;
+}
+
+/* Toolbar Styles */
+.datra-toolbar {
+    height: 40px;
+    background-color: #393939;
+    border-bottom-width: 1px;
+    border-bottom-color: #282828;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 10px;
+}
+
+.toolbar-left {
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+}
+
+.toolbar-center {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-right {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.logo-container {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 20px;
+}
+
+.datra-logo {
+    width: 24px;
+    height: 24px;
+    background-color: #5a9fd4;
+    border-radius: 4px;
+    margin-right: 8px;
+}
+
+.toolbar-title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: #d4d4d4;
+}
+
+.project-label {
+    font-size: 12px;
+    color: #969696;
+}
+
+.toolbar-button {
+    height: 28px;
+    margin: 0 2px;
+    padding: 0 12px;
+    background-color: #494949;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #393939;
+    color: #d4d4d4;
+}
+
+.toolbar-button:hover {
+    background-color: #5a5a5a;
+    border-color: #696969;
+}
+
+.toolbar-button:active {
+    background-color: #393939;
+}
+
+.toolbar-button:disabled {
+    opacity: 0.5;
+}
+
+.toolbar-button.highlighted {
+    background-color: #5a9fd4;
+    border-color: #4a8fc4;
+}
+
+.toolbar-button.highlighted:hover {
+    background-color: #6aafE4;
+}
+
+.icon-button {
+    width: 28px;
+    padding: 0;
+    -unity-text-align: middle-center;
+    font-size: 16px;
+}
+
+.toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: #282828;
+    margin: 0 5px;
+}
+
+.modified-indicator {
+    width: 8px;
+    height: 8px;
+    background-color: #ff9800;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+/* Common Button Styles */
+.primary-button {
+    background-color: #5a9fd4;
+    color: white;
+    border-width: 0;
+    padding: 6px 16px;
+    border-radius: 3px;
+}
+
+.primary-button:hover {
+    background-color: #6aafe4;
+}
+
+.primary-button:disabled {
+    background-color: #494949;
+    color: #696969;
+}
+
+.secondary-button {
+    background-color: #494949;
+    color: #d4d4d4;
+    border-width: 1px;
+    border-color: #393939;
+    padding: 6px 16px;
+    border-radius: 3px;
+}
+
+.secondary-button:hover {
+    background-color: #5a5a5a;
+    border-color: #696969;
+}
+
+.secondary-button:disabled {
+    opacity: 0.5;
+}
+
+/* Status Bar */
+.status-label {
+    font-size: 11px;
+    color: #969696;
+}
+
+.status-label.status-warning {
+    color: #ff9800;
+}
+
+.status-label.status-error {
+    color: #f44336;
+}
+
+/* Empty State */
+.empty-state {
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+}
+
+.empty-state-icon {
+    width: 64px;
+    height: 64px;
+    background-color: #494949;
+    border-radius: 32px;
+    margin-bottom: 20px;
+}
+
+.empty-state-message {
+    font-size: 14px;
+    color: #969696;
+    -unity-text-align: middle-center;
+}
+
+/* Scrollbars */
+.unity-scroll-view__vertical-scroller {
+    width: 12px;
+}
+
+.unity-scroll-view__horizontal-scroller {
+    height: 12px;
+}
+
+.unity-scroller__slider {
+    background-color: #494949;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+.unity-scroller__slider:hover {
+    background-color: #5a5a5a;
+}
+
+/* Loading State */
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border-radius: 16px;
+    border-width: 3px;
+    border-color: #5a9fd4;
+    border-top-color: transparent;
+}
