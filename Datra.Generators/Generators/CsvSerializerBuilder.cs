@@ -133,8 +133,7 @@ namespace Datra.Generators.Generators
                     // Enum handling
                     if (prop.Type.Contains("."))
                     {
-                        var simpleType = prop.Type.Split('.').Last();
-                        return $"Enum.TryParse<{simpleType}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({simpleType})";
+                        return $"Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
                     }
                     return $"default({prop.Type})";
             }
@@ -177,6 +176,11 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
                 default:
+                    // Handle enum arrays
+                    if (elementType.Contains("."))
+                    {
+                        return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
+                    }
                     return $"new {prop.Type}[0]"; // Empty array for unsupported types
             }
         }
@@ -217,6 +221,11 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"{itemVar}.{prop.Name}.ToString()";
                 default:
+                    // Handle enums - they don't need null check since they're value types
+                    if (prop.Type.Contains(".") || !prop.Type.Contains("?"))
+                    {
+                        return $"{itemVar}.{prop.Name}.ToString()";
+                    }
                     return $"{itemVar}.{prop.Name}?.ToString() ?? string.Empty";
             }
         }
@@ -256,6 +265,11 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";
                 default:
+                    // Handle enum arrays - enums are value types and don't need null check
+                    if (prop.ElementType.Contains("."))
+                    {
+                        return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";
+                    }
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x?.ToString() ?? string.Empty))";
             }
         }

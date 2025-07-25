@@ -3,6 +3,14 @@ using Datra.Interfaces;
 
 namespace Datra.Tests.Models
 {
+    public enum CharacterGrade
+    {
+        Common,
+        Rare,
+        Epic,
+        Legendary
+    }
+
     [TableData("Characters.csv", Format = DataFormat.Csv)]
     public partial class CharacterData : ITableData<string>
     {
@@ -15,6 +23,8 @@ namespace Datra.Tests.Models
         public int Intelligence { get; set; }
         public int Agility { get; set; }
         public string ClassName { get; set; }
+        public CharacterGrade Grade { get; set; }
+        public StatType[] Stats { get; set; } // Array of stat types
         public int[] UpgradeCosts { get; set; } // Array of upgrade costs for each level
     }
 }

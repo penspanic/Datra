@@ -74,6 +74,8 @@ namespace Datra.Tests
                 10,
                 12,
                 "Warrior",
+                CharacterGrade.Epic,
+                new[] { StatType.Attack, StatType.Defense },
                 new[] { 50, 100, 200, 400 }
             );
             
@@ -111,6 +113,157 @@ namespace Datra.Tests
             
             // Assert
             Assert.Contains("2001|2002|2003", csvContent);
+        }
+        
+        [Fact]
+        public void Should_ParseEnumValue_FromCsv()
+        {
+            // Act
+            var character = _context.Character.GetById("hero_001");
+            
+            // Assert
+            Assert.NotNull(character);
+            Assert.Equal(CharacterGrade.Common, character.Grade);
+        }
+        
+        [Fact]
+        public void Should_SerializeEnumValue_ToCsv()
+        {
+            // Arrange
+            var newCharacter = new CharacterData(
+                "hero_007",
+                "LegendaryHero",
+                10,
+                1000,
+                500,
+                30,
+                25,
+                20,
+                "Paladin",
+                CharacterGrade.Legendary,
+                new[] { StatType.Attack, StatType.Defense, StatType.HealthRegen },
+                new[] { 100, 200, 400, 800, 1600 }
+            );
+            
+            // Act
+            string csvContent = CharacterDataSerializer.SerializeCsv(new Dictionary<string, CharacterData>()
+            {
+                { "hero_007", newCharacter }
+            });
+
+            // Assert
+            Assert.Contains("Legendary", csvContent);
+            Assert.Contains("hero_007", csvContent);
+        }
+        
+        [Fact]
+        public void Should_ParseDifferentEnumValues_FromCsv()
+        {
+            // Create test CSV with different enum values
+            var csvData = @"Id,Name,Level,Health,Mana,Strength,Intelligence,Agility,ClassName,Grade,Stats,UpgradeCosts
+test_common,CommonHero,1,100,50,10,5,8,Warrior,Common,Attack|Defense,10|20|30
+test_rare,RareHero,5,200,100,15,10,12,Mage,Rare,Attack|ManaRegen,50|100|200
+test_epic,EpicHero,10,400,200,20,15,18,Rogue,Epic,Speed|CriticalRate,100|200|400
+test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defense|HealthRegen,200|400|800";
+            
+            // Act
+            var characters = CharacterDataSerializer.DeserializeCsv(csvData);
+            
+            // Assert
+            Assert.Equal(CharacterGrade.Common, characters["test_common"].Grade);
+            Assert.Equal(CharacterGrade.Rare, characters["test_rare"].Grade);
+            Assert.Equal(CharacterGrade.Epic, characters["test_epic"].Grade);
+            Assert.Equal(CharacterGrade.Legendary, characters["test_legendary"].Grade);
+        }
+        
+        [Fact]
+        public void Should_ParseEnumArray_FromCsv()
+        {
+            // Act
+            var character = _context.Character.GetById("hero_001");
+            
+            // Assert
+            Assert.NotNull(character);
+            Assert.NotNull(character.Stats);
+            Assert.Equal(3, character.Stats.Length);
+            Assert.Equal(StatType.Attack, character.Stats[0]);
+            Assert.Equal(StatType.Defense, character.Stats[1]);
+            Assert.Equal(StatType.HealthRegen, character.Stats[2]);
+        }
+        
+        [Fact]
+        public void Should_ParseDifferentEnumArrays_FromCsv()
+        {
+            // Act
+            var arthur = _context.Character.GetById("hero_001");
+            var lena = _context.Character.GetById("hero_003");
+            var thor = _context.Character.GetById("hero_004");
+            
+            // Assert
+            Assert.NotNull(arthur.Stats);
+            Assert.Equal(3, arthur.Stats.Length);
+            Assert.Contains(StatType.Attack, arthur.Stats);
+            Assert.Contains(StatType.Defense, arthur.Stats);
+            
+            Assert.NotNull(lena.Stats);
+            Assert.Equal(4, lena.Stats.Length);
+            Assert.Contains(StatType.Speed, lena.Stats);
+            Assert.Contains(StatType.CriticalRate, lena.Stats);
+            Assert.Contains(StatType.Accuracy, lena.Stats);
+            
+            Assert.NotNull(thor.Stats);
+            Assert.Equal(5, thor.Stats.Length);
+            Assert.Contains(StatType.Attack, thor.Stats);
+            Assert.Contains(StatType.Defense, thor.Stats);
+            Assert.Contains(StatType.CriticalDamage, thor.Stats);
+            Assert.Contains(StatType.HealthRegen, thor.Stats);
+            Assert.Contains(StatType.Speed, thor.Stats);
+        }
+        
+        [Fact]
+        public void Should_SerializeEnumArray_ToCsv()
+        {
+            // Arrange
+            var newCharacter = new CharacterData(
+                "hero_008",
+                "TestWarrior",
+                20,
+                2000,
+                1000,
+                40,
+                30,
+                35,
+                "Warrior",
+                CharacterGrade.Epic,
+                new[] { StatType.Attack, StatType.Defense, StatType.CriticalRate, StatType.Evasion },
+                new[] { 500, 1000, 2000, 4000 }
+            );
+            
+            // Act
+            string csvContent = CharacterDataSerializer.SerializeCsv(new Dictionary<string, CharacterData>()
+            {
+                { "hero_008", newCharacter }
+            });
+
+            // Assert
+            Assert.Contains("Attack|Defense|CriticalRate|Evasion", csvContent);
+            Assert.Contains("Epic", csvContent);
+        }
+        
+        [Fact]
+        public void Should_HandleEmptyEnumArray_FromCsv()
+        {
+            // Create test CSV with empty enum array
+            var csvData = @"Id,Name,Level,Health,Mana,Strength,Intelligence,Agility,ClassName,Grade,Stats,UpgradeCosts
+test_empty,EmptyStatsHero,1,100,50,10,5,8,Warrior,Common,,10|20|30";
+            
+            // Act
+            var characters = CharacterDataSerializer.DeserializeCsv(csvData);
+            
+            // Assert
+            Assert.NotNull(characters["test_empty"]);
+            Assert.NotNull(characters["test_empty"].Stats);
+            Assert.Empty(characters["test_empty"].Stats);
         }
     }
 }
