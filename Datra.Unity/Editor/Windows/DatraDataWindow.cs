@@ -49,7 +49,23 @@ namespace Datra.Unity.Editor.Windows
         private void CreateGUI()
         {
             var root = rootVisualElement;
-            root.styleSheets.Add(AssetDatabase.LoadAssetAtPath<StyleSheet>("Assets/Datra/Editor/Styles/DatraDataWindow.uss"));
+            // Load stylesheets
+            var stylePaths = new[]
+            {
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraDataWindow.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraTableView.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss"
+            };
+            
+            foreach (var path in stylePaths)
+            {
+                var styleSheet = AssetDatabase.LoadAssetAtPath<StyleSheet>(path);
+                if (styleSheet != null)
+                {
+                    root.styleSheets.Add(styleSheet);
+                }
+            }
             
             // Create toolbar
             var toolbar = CreateToolbar();

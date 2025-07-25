@@ -101,7 +101,6 @@ namespace Datra.Unity.Editor.Panels
             treeView.bindItem = BindTreeItem;
             treeView.selectionType = SelectionType.Single;
             treeView.onSelectionChange += OnTreeSelectionChanged;
-            treeView.RegisterCallback<ContextualMenuPopulateEvent>(OnTreeContextMenu);
             
             // Wrap TreeView in ScrollView for consistent styling
             var scrollView = new ScrollView();
@@ -178,6 +177,10 @@ namespace Datra.Unity.Editor.Panels
                 label.text = itemData.Name;
                 modifiedIndicator.style.display = itemData.IsModified ? DisplayStyle.Flex : DisplayStyle.None;
             }
+            
+            // Register context menu on the item element
+            element.AddManipulator(new ContextualMenuManipulator(OnItemContextMenu));
+            element.userData = itemData;
         }
         
         private void OnTreeSelectionChanged(IEnumerable<object> selectedItems)
@@ -388,35 +391,39 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        private void OnTreeContextMenu(ContextualMenuPopulateEvent evt)
+        private void OnItemContextMenu(ContextualMenuPopulateEvent evt)
         {
-            var selectedItem = treeView.selectedItem as DataTypeItem;
-            if (selectedItem == null || selectedItem.IsCategory || selectedItem.DataType == null)
+            var element = evt.target as VisualElement;
+            var itemData = element?.userData as DataTypeItem;
+            
+            if (itemData == null || itemData.IsCategory || itemData.DataType == null)
                 return;
             
             evt.menu.AppendAction("Open in New Window", 
-                (action) => OpenInNewWindow(selectedItem.DataType),
+                _ => OpenInNewWindow(itemData.DataType),
                 DropdownMenuAction.AlwaysEnabled);
                 
             evt.menu.AppendAction("Open in New Tab", 
-                (action) => OpenInNewTab(selectedItem.DataType),
+                _ => OpenInNewTab(itemData.DataType),
                 DropdownMenuAction.AlwaysEnabled);
                 
             evt.menu.AppendSeparator();
             
             evt.menu.AppendAction("View as Table", 
-                (action) => OpenAsTable(selectedItem.DataType),
+                _ => OpenAsTable(itemData.DataType),
                 DropdownMenuAction.AlwaysEnabled);
                 
             evt.menu.AppendSeparator();
             
             evt.menu.AppendAction("Export.../JSON", 
-                (action) => ExportData(selectedItem.DataType, "json"),
+                _ => ExportData(itemData.DataType, "json"),
                 DropdownMenuAction.AlwaysEnabled);
                 
             evt.menu.AppendAction("Export.../CSV", 
-                (action) => ExportData(selectedItem.DataType, "csv"),
+                _ => ExportData(itemData.DataType, "csv"),
                 DropdownMenuAction.AlwaysEnabled);
+            
+            evt.StopPropagation();
         }
         
         private void OpenInNewWindow(Type dataType)
