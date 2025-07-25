@@ -15,7 +15,6 @@ namespace Datra.Unity.Editor.Views
     {
         private VisualElement formContainer;
         private VisualElement itemsContainer;
-        private TextField searchField;
         
         public DatraFormView() : base()
         {
@@ -30,6 +29,10 @@ namespace Datra.Unity.Editor.Views
         
         public override void RefreshContent()
         {
+            // Store current state before clearing
+            var previousNewItems = new HashSet<object>(this.newItems);
+            var previousTrackers = new Dictionary<object, DatraPropertyTracker>(itemTrackers);
+            
             contentContainer.Clear();
             
             if (repository == null || dataType == null) return;
@@ -37,6 +40,9 @@ namespace Datra.Unity.Editor.Views
             if (IsTableData(dataType))
             {
                 DisplayTableDataAsForm();
+                
+                // Restore state for table data items
+                RestoreTableDataState(previousNewItems, previousTrackers);
             }
             else
             {
@@ -89,6 +95,13 @@ namespace Datra.Unity.Editor.Views
                 foreach (var item in items)
                 {
                     var itemElement = CreateTableItemElement(item, index++);
+                    
+                    // Mark as new if it was just added
+                    if (this.newItems.Contains(item))
+                    {
+                        itemElement.AddToClassList("new-item");
+                    }
+                    
                     itemsContainer.Add(itemElement);
                 }
                 
@@ -114,12 +127,12 @@ namespace Datra.Unity.Editor.Views
             addButton.style.marginRight = 16;
             toolbar.Add(addButton);
             
-            searchField = new TextField();
+            this.searchField = new TextField();
             //searchField.placeholder = "Search items...";
-            searchField.AddToClassList("table-search");
-            searchField.style.flexGrow = 1;
-            searchField.RegisterValueChangedCallback(evt => FilterTableItems(evt.newValue));
-            toolbar.Add(searchField);
+            this.searchField.AddToClassList("table-search");
+            this.searchField.style.flexGrow = 1;
+            (searchField as TextField).RegisterValueChangedCallback(evt => FilterItems(evt.newValue));
+            toolbar.Add(this.searchField);
             
             return toolbar;
         }
@@ -166,7 +179,9 @@ namespace Datra.Unity.Editor.Views
             // Delete button
             if (!isReadOnly)
             {
-                var deleteButton = new Button(() => base.DeleteItem(item));
+                var deleteButton = new Button(() => {
+                    base.DeleteItem(item);
+                });
                 deleteButton.text = "🗑";
                 deleteButton.tooltip = "Delete Item";
                 deleteButton.AddToClassList("delete-button");
@@ -275,7 +290,7 @@ namespace Datra.Unity.Editor.Views
         
         
         
-        private void FilterTableItems(string searchTerm)
+        protected override void FilterItems(string searchTerm)
         {
             if (itemsContainer == null) return;
             
@@ -290,6 +305,80 @@ namespace Datra.Unity.Editor.Views
                     item.style.display = text.Contains(searchTerm.ToLower()) 
                         ? DisplayStyle.Flex 
                         : DisplayStyle.None;
+                }
+            }
+        }
+        
+        private void RestoreTableDataState(HashSet<object> previousNewItems, Dictionary<object, DatraPropertyTracker> previousTrackers)
+        {
+            if (itemsContainer == null) return;
+            
+            var items = itemsContainer.Query<VisualElement>(className: "table-item").ToList();
+            foreach (var itemElement in items)
+            {
+                var item = itemElement.userData;
+                if (item != null)
+                {
+                    // Restore tracker state
+                    if (previousTrackers.ContainsKey(item))
+                    {
+                        itemTrackers[item] = previousTrackers[item];
+                    }
+                    
+                    // Restore new item state
+                    if (previousNewItems.Contains(item))
+                    {
+                        this.newItems.Add(item);
+                        itemElement.AddToClassList("new-item");
+                    }
+                }
+            }
+        }
+        
+        protected override void OnItemMarkedForDeletion(object item)
+        {
+            var itemElements = itemsContainer?.Query<VisualElement>(className: "table-item").ToList();
+            if (itemElements != null)
+            {
+                foreach (var element in itemElements)
+                {
+                    if (element.userData == item)
+                    {
+                        element.AddToClassList("deleted-item");
+                        break;
+                    }
+                }
+            }
+        }
+        
+        protected override void SaveChanges()
+        {
+            base.SaveChanges();
+            
+            // Clear visual indicators
+            if (itemsContainer != null)
+            {
+                var items = itemsContainer.Query<VisualElement>(className: "table-item").ToList();
+                foreach (var itemElement in items)
+                {
+                    itemElement.RemoveFromClassList("new-item");
+                    itemElement.RemoveFromClassList("deleted-item");
+                }
+            }
+        }
+        
+        protected override void RevertChanges()
+        {
+            base.RevertChanges();
+            
+            // Clear visual indicators
+            if (itemsContainer != null)
+            {
+                var items = itemsContainer.Query<VisualElement>(className: "table-item").ToList();
+                foreach (var itemElement in items)
+                {
+                    itemElement.RemoveFromClassList("new-item");
+                    itemElement.RemoveFromClassList("deleted-item");
                 }
             }
         }

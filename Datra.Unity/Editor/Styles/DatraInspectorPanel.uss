@@ -129,6 +129,19 @@
     border-color: #282828;
 }
 
+/* New items in form view */
+.table-item.new-item {
+    background-color: rgba(76, 175, 80, 0.15);
+    border-color: #4CAF50;
+    border-width: 2px;
+}
+
+/* Deleted items in form view */
+.table-item.deleted-item {
+    background-color: rgba(244, 67, 54, 0.15);
+    opacity: 0.6;
+}
+
 .table-item-foldout {
     margin: 0;
 }

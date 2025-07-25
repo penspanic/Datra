@@ -20,7 +20,8 @@ namespace Datra.Unity.Editor.Views
         private Dictionary<object, Dictionary<string, VisualElement>> cellElements;
         private Dictionary<object, VisualElement> rowElements;
         private HashSet<(object item, string property)> modifiedCells;
-        private ToolbarSearchField searchField;
+        private ScrollView bodyScrollView;
+        private VisualElement deleteColumnContainer;
         
         // Events
         public event Action<object> OnItemSelected;
@@ -49,18 +50,28 @@ namespace Datra.Unity.Editor.Views
             var toolbar = CreateToolbar();
             headerContainer.Add(toolbar);
             
-            // Create table container
+            // Create main table container with horizontal layout
             tableContainer = new VisualElement();
             tableContainer.AddToClassList("table-container");
             tableContainer.style.flexGrow = 1;
-            tableContainer.style.flexDirection = FlexDirection.Column;
+            tableContainer.style.flexDirection = FlexDirection.Row;
             
-            // Create header container
+            // Create scrollable container for both header and body
+            bodyScrollView = new ScrollView(ScrollViewMode.VerticalAndHorizontal);
+            bodyScrollView.name = "table-body";
+            bodyScrollView.AddToClassList("table-body-scroll");
+            bodyScrollView.style.flexGrow = 1;
+            
+            var scrollableContent = new VisualElement();
+            scrollableContent.style.flexDirection = FlexDirection.Column;
+            
+            // Create header container (inside scroll for horizontal sync)
             var tableHeaderContainer = new VisualElement();
             tableHeaderContainer.AddToClassList("table-header-container");
             tableHeaderContainer.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
             tableHeaderContainer.style.borderBottomWidth = 1;
             tableHeaderContainer.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            tableHeaderContainer.style.position = Position.Relative;
             
             headerRow = new VisualElement();
             headerRow.AddToClassList("table-header-row");
@@ -68,7 +79,47 @@ namespace Datra.Unity.Editor.Views
             headerRow.style.height = RowHeight;
             tableHeaderContainer.Add(headerRow);
             
-            tableContainer.Add(tableHeaderContainer);
+            scrollableContent.Add(tableHeaderContainer);
+            
+            bodyScrollView.Add(scrollableContent);
+            tableContainer.Add(bodyScrollView);
+            
+            // Create delete column container (fixed, outside scroll)
+            deleteColumnContainer = new VisualElement();
+            deleteColumnContainer.AddToClassList("delete-column-container");
+            deleteColumnContainer.style.flexDirection = FlexDirection.Column;
+            deleteColumnContainer.style.width = 60;
+            deleteColumnContainer.style.minWidth = 60;
+            deleteColumnContainer.style.borderLeftWidth = 1;
+            deleteColumnContainer.style.borderLeftColor = new Color(0.1f, 0.1f, 0.1f);
+            deleteColumnContainer.style.backgroundColor = new Color(0.13f, 0.13f, 0.13f);
+            
+            // Add header for delete column
+            var deleteHeader = new VisualElement();
+            deleteHeader.AddToClassList("table-header-cell");
+            deleteHeader.style.height = RowHeight;
+            deleteHeader.style.justifyContent = Justify.Center;
+            deleteHeader.style.alignItems = Align.Center;
+            deleteHeader.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+            deleteHeader.style.borderBottomWidth = 1;
+            deleteHeader.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            
+            var deleteHeaderLabel = new Label("Actions");
+            deleteHeaderLabel.style.fontSize = 11;
+            deleteHeaderLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            deleteHeader.Add(deleteHeaderLabel);
+            deleteColumnContainer.Add(deleteHeader);
+            
+            // Container for delete buttons
+            var deleteButtonsContainer = new VisualElement();
+            deleteButtonsContainer.name = "delete-buttons-container";
+            deleteButtonsContainer.AddToClassList("delete-buttons-container");
+            deleteButtonsContainer.style.flexGrow = 1;
+            deleteButtonsContainer.style.overflow = Overflow.Hidden;
+            deleteColumnContainer.Add(deleteButtonsContainer);
+            
+            tableContainer.Add(deleteColumnContainer);
+            
             contentContainer.Add(tableContainer);
         }
         
@@ -99,7 +150,7 @@ namespace Datra.Unity.Editor.Views
             searchField = new ToolbarSearchField();
             searchField.AddToClassList("table-search");
             searchField.style.flexGrow = 1;
-            searchField.RegisterValueChangedCallback(evt => FilterRows(evt.newValue));
+            (searchField as ToolbarSearchField).RegisterValueChangedCallback(evt => FilterRows(evt.newValue));
             toolbar.Add(searchField);
             
             // View options
@@ -143,17 +194,28 @@ namespace Datra.Unity.Editor.Views
         {
             if (tableContainer == null) return;
             
-            // Clear table body
-            var tableBody = tableContainer.Q<ScrollView>("table-body");
-            if (tableBody != null)
+            // Store current modified state before clearing
+            var previousModifiedCells = new HashSet<(object, string)>(modifiedCells);
+            var previousNewItems = new HashSet<object>(newItems);
+            var previousTrackers = new Dictionary<object, DatraPropertyTracker>(itemTrackers);
+            
+            // Clear table content
+            var scrollContent = bodyScrollView?.Q<VisualElement>();
+            if (scrollContent != null && scrollContent.childCount > 1)
             {
-                tableContainer.Remove(tableBody);
+                // Keep header, remove body
+                for (int i = scrollContent.childCount - 1; i > 0; i--)
+                {
+                    scrollContent.RemoveAt(i);
+                }
             }
+            
+            var deleteButtons = deleteColumnContainer?.Q<VisualElement>("delete-buttons-container");
+            deleteButtons?.Clear();
             
             headerRow?.Clear();
             cellElements.Clear();
             rowElements.Clear();
-            modifiedCells.Clear();
             
             if (dataType == null || repository == null) return;
             
@@ -196,24 +258,51 @@ namespace Datra.Unity.Editor.Views
             // Create header cells
             CreateHeaderCells();
             
-            // Create scrollable body
-            var bodyScrollView = new ScrollView(ScrollViewMode.Vertical);
-            bodyScrollView.name = "table-body";
-            bodyScrollView.AddToClassList("table-body-scroll");
-            bodyScrollView.style.flexGrow = 1;
-            
             var bodyContainer = new VisualElement();
             bodyContainer.AddToClassList("table-body-container");
             bodyContainer.style.flexDirection = FlexDirection.Column;
             
+            var deleteButtonsContainer = deleteColumnContainer?.Q<VisualElement>("delete-buttons-container");
+            
             // Create data rows
             foreach (var item in items)
             {
-                CreateDataRow(item, bodyContainer);
+                CreateDataRow(item, bodyContainer, deleteButtonsContainer);
+                
+                // Restore tracking state
+                if (previousTrackers.ContainsKey(item))
+                {
+                    itemTrackers[item] = previousTrackers[item];
+                }
+                
+                // Restore modified cells
+                foreach (var (modItem, prop) in previousModifiedCells)
+                {
+                    if (modItem.Equals(item))
+                    {
+                        modifiedCells.Add((item, prop));
+                        if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(prop, out var cell))
+                        {
+                            cell.AddToClassList("modified-cell");
+                        }
+                    }
+                }
+                
+                // Restore new items
+                if (previousNewItems.Contains(item))
+                {
+                    newItems.Add(item);
+                    if (rowElements.TryGetValue(item, out var row))
+                    {
+                        row.AddToClassList("new-row");
+                    }
+                }
             }
             
-            bodyScrollView.Add(bodyContainer);
-            tableContainer.Add(bodyScrollView);
+            scrollContent?.Add(bodyContainer);
+            
+            // Sync scroll position of delete buttons with main content
+            SyncDeleteButtonsScroll();
         }
         
         private void CreateHeaderCells()
@@ -244,12 +333,7 @@ namespace Datra.Unity.Editor.Views
                 headerRow.Add(headerCell);
             }
             
-            // Actions column
-            if (ShowActionsColumn)
-            {
-                var actionsHeader = CreateHeaderCell("Actions", 60);
-                headerRow.Add(actionsHeader);
-            }
+            // Actions column header is now in the fixed delete column container
         }
         
         private VisualElement CreateHeaderCell(string text, float width)
@@ -282,7 +366,7 @@ namespace Datra.Unity.Editor.Views
             return cell;
         }
         
-        private void CreateDataRow(object item, VisualElement container)
+        private void CreateDataRow(object item, VisualElement container, VisualElement deleteContainer)
         {
             var row = new VisualElement();
             row.AddToClassList("table-row");
@@ -335,26 +419,28 @@ namespace Datra.Unity.Editor.Views
                 row.Add(cell);
             }
             
-            // Actions
-            if (ShowActionsColumn)
+            // Create delete button in the fixed column
+            if (ShowActionsColumn && deleteContainer != null)
             {
-                var actionsCell = new VisualElement();
-                actionsCell.AddToClassList("table-cell");
-                actionsCell.style.width = 60;
-                actionsCell.style.minWidth = 60;
-                actionsCell.style.flexDirection = FlexDirection.Row;
-                actionsCell.style.justifyContent = Justify.Center;
+                var deleteButtonContainer = new VisualElement();
+                deleteButtonContainer.style.height = RowHeight;
+                deleteButtonContainer.style.justifyContent = Justify.Center;
+                deleteButtonContainer.style.alignItems = Align.Center;
+                deleteButtonContainer.style.paddingLeft = 8;
+                deleteButtonContainer.style.paddingRight = 8;
                 
                 var deleteButton = new Button(() => {
                     if (!isReadOnly)
+                    {
                         base.DeleteItem(item);
+                    }
                 });
                 deleteButton.text = "🗑";
                 deleteButton.tooltip = "Delete Row";
                 deleteButton.AddToClassList("table-delete-button");
-                actionsCell.Add(deleteButton);
+                deleteButtonContainer.Add(deleteButton);
                 
-                row.Add(actionsCell);
+                deleteContainer.Add(deleteButtonContainer);
             }
             
             // Row hover effect
@@ -481,7 +567,7 @@ namespace Datra.Unity.Editor.Views
                    type.IsEnum;
         }
         
-        private void FilterRows(string searchTerm)
+        protected override void FilterItems(string searchTerm)
         {
             if (items == null) return;
             
@@ -506,6 +592,11 @@ namespace Datra.Unity.Editor.Views
                 
                 row.style.display = matches ? DisplayStyle.Flex : DisplayStyle.None;
             }
+        }
+        
+        private void FilterRows(string searchTerm)
+        {
+            FilterItems(searchTerm);
         }
         
         private void ShowViewOptions()
@@ -582,6 +673,19 @@ namespace Datra.Unity.Editor.Views
         }
         
         
+        private void SyncDeleteButtonsScroll()
+        {
+            if (bodyScrollView == null || deleteColumnContainer == null) return;
+            
+            var deleteButtonsContainer = deleteColumnContainer.Q<VisualElement>("delete-buttons-container");
+            if (deleteButtonsContainer == null) return;
+            
+            // Sync vertical scroll position
+            bodyScrollView.verticalScroller.valueChanged += (value) => {
+                deleteButtonsContainer.style.top = -value;
+            };
+        }
+        
         protected override void UpdateEditability()
         {
             base.UpdateEditability();
@@ -590,11 +694,22 @@ namespace Datra.Unity.Editor.Views
             var addButton = headerContainer.Q<Button>(className: "table-add-button");
             addButton?.SetEnabled(!isReadOnly);
             
-            // Update delete buttons
-            foreach (var row in rowElements.Values)
+            // Update delete buttons in the fixed column
+            var deleteButtons = deleteColumnContainer?.Q<VisualElement>("delete-buttons-container")?.Query<Button>(className: "table-delete-button").ToList();
+            if (deleteButtons != null)
             {
-                var deleteButton = row.Q<Button>(className: "table-delete-button");
-                deleteButton?.SetEnabled(!isReadOnly);
+                foreach (var button in deleteButtons)
+                {
+                    button.SetEnabled(!isReadOnly);
+                }
+            }
+        }
+        
+        protected override void OnItemMarkedForDeletion(object item)
+        {
+            if (rowElements.TryGetValue(item, out var row))
+            {
+                row.AddToClassList("deleted-row");
             }
         }
         
@@ -610,6 +725,14 @@ namespace Datra.Unity.Editor.Views
                     cell.RemoveFromClassList("modified-cell");
                 }
             }
+            
+            // Clear new row indicators
+            foreach (var row in rowElements.Values)
+            {
+                row.RemoveFromClassList("new-row");
+                row.RemoveFromClassList("deleted-row");
+            }
+            
             modifiedCells.Clear();
         }
         
@@ -625,6 +748,14 @@ namespace Datra.Unity.Editor.Views
                     cell.RemoveFromClassList("modified-cell");
                 }
             }
+            
+            // Clear new row indicators
+            foreach (var row in rowElements.Values)
+            {
+                row.RemoveFromClassList("new-row");
+                row.RemoveFromClassList("deleted-row");
+            }
+            
             modifiedCells.Clear();
         }
     }

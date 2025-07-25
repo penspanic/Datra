@@ -20,6 +20,13 @@ namespace Datra.Unity.Editor.Views
         protected Dictionary<object, DatraPropertyTracker> itemTrackers = new Dictionary<object, DatraPropertyTracker>();
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
         
+        // Tracking collections
+        protected HashSet<object> newItems = new HashSet<object>();
+        protected HashSet<object> deletedItems = new HashSet<object>();
+        
+        // Common UI elements
+        protected VisualElement searchField;  // Base type to support both TextField and ToolbarSearchField
+        
         // UI Elements
         protected VisualElement headerContainer;
         protected new VisualElement contentContainer;
@@ -237,6 +244,10 @@ namespace Datra.Unity.Editor.Views
                 tracker.UpdateBaseline();
             }
             
+            // Clear tracking collections
+            newItems.Clear();
+            deletedItems.Clear();
+            
             hasUnsavedChanges = false;
             UpdateFooter();
             UpdateStatus("Changes saved successfully");
@@ -256,6 +267,10 @@ namespace Datra.Unity.Editor.Views
                 {
                     tracker.RevertAll();
                 }
+                
+                // Clear tracking collections
+                newItems.Clear();
+                deletedItems.Clear();
                 
                 // Refresh all fields
                 foreach (var field in activeFields)
@@ -300,6 +315,13 @@ namespace Datra.Unity.Editor.Views
             {
                 var keyProperty = itemType.GetProperty("Key");
                 return keyProperty?.GetValue(item);
+            }
+            
+            // For non-KeyValuePair items, try to get the ID property
+            var idProperty = item.GetType().GetProperty("Id");
+            if (idProperty != null)
+            {
+                return idProperty.GetValue(item);
             }
             
             return item;
@@ -411,6 +433,9 @@ namespace Datra.Unity.Editor.Views
                     {
                         addMethod.Invoke(repository, new[] { newItem });
                         
+                        // Mark item as new before refresh
+                        OnNewItemAdded(newItem);
+                        
                         // Refresh the display
                         RefreshContent();
                         MarkAsModified();
@@ -471,6 +496,10 @@ namespace Datra.Unity.Editor.Views
             {
                 try
                 {
+                    // Mark item as deleted before actually deleting
+                    deletedItems.Add(item);
+                    OnItemMarkedForDeletion(item);
+                    
                     // Extract actual data from KeyValuePair if needed
                     object keyToRemove = GetKeyFromItem(item);
                     
@@ -606,10 +635,27 @@ namespace Datra.Unity.Editor.Views
             return true;
         }
         
+        protected virtual void OnNewItemAdded(object newItem)
+        {
+            newItems.Add(newItem);
+        }
+        
+        protected virtual void OnItemMarkedForDeletion(object item)
+        {
+            // Override in derived classes to add visual feedback
+        }
+        
+        protected virtual void FilterItems(string searchTerm)
+        {
+            // Override in derived classes to implement filtering
+        }
+        
         public virtual void Cleanup()
         {
             CleanupFields();
             propertyTracker.OnAnyPropertyModified -= OnTrackerModified;
+            newItems.Clear();
+            deletedItems.Clear();
         }
     }
 }
