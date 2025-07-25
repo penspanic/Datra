@@ -10,7 +10,11 @@ namespace Datra.Unity.Runtime.Providers
         {
             // Remove extension if it exists, as Resources.Load does not require it
             path = path.IndexOf('.') > 0 ? path.Substring(0, path.LastIndexOf('.')) : path;
-            return Task.FromResult(Resources.Load<TextAsset>(path).text);
+            var textAsset = Resources.Load<TextAsset>(path);
+            if (textAsset == null)
+                throw new System.IO.FileNotFoundException($"Text asset not found at path: {path}");
+
+            return Task.FromResult(textAsset.text);
         }
 
         public Task SaveTextAsync(string path, string content)
