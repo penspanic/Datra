@@ -1,0 +1,35 @@
+/* Data Window Styles */
+.data-window-toolbar {
+    background-color: #2d2d2d;
+    border-bottom-width: 1px;
+    border-bottom-color: #222;
+    min-height: 32px;
+}
+
+.data-window-toolbar .unity-toolbar-button {
+    margin: 0 2px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    background-color: transparent;
+    border-width: 0;
+}
+
+.data-window-toolbar .unity-toolbar-button:hover {
+    background-color: #444;
+}
+
+.data-window-toolbar .unity-toolbar-button.active {
+    background-color: #5a9fd4;
+    color: white;
+}
+
+.data-window-content {
+    flex: 1;
+    background-color: #383838;
+}
+
+/* Ensure inspector and table view styles are loaded */
+.data-window-content .datra-inspector-panel,
+.data-window-content .datra-table-view {
+    flex: 1;
+}

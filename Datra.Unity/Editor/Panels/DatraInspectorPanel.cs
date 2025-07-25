@@ -35,6 +35,11 @@ namespace Datra.Unity.Editor.Panels
         private Dictionary<object, DatraPropertyTracker> itemTrackers = new Dictionary<object, DatraPropertyTracker>();
         private List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
         
+        // View mode
+        public enum ViewMode { Form, Table }
+        private ViewMode currentViewMode = ViewMode.Form;
+        private DatraTableView tableView;
+        
         // Properties
         public Type CurrentType => currentType;
         public object CurrentRepository => currentRepository;
@@ -79,6 +84,29 @@ namespace Datra.Unity.Editor.Panels
             // Action buttons in header
             var headerActions = new VisualElement();
             headerActions.AddToClassList("header-actions");
+            
+            // View mode toggle
+            var viewModeContainer = new VisualElement();
+            viewModeContainer.style.flexDirection = FlexDirection.Row;
+            viewModeContainer.style.marginRight = 12;
+            
+            var formViewButton = new Button(() => SetViewMode(ViewMode.Form));
+            formViewButton.text = "📝";
+            formViewButton.tooltip = "Form View";
+            formViewButton.AddToClassList("view-mode-button");
+            if (currentViewMode == ViewMode.Form)
+                formViewButton.AddToClassList("active");
+            viewModeContainer.Add(formViewButton);
+            
+            var tableViewButton = new Button(() => SetViewMode(ViewMode.Table));
+            tableViewButton.text = "📊";
+            tableViewButton.tooltip = "Table View";
+            tableViewButton.AddToClassList("view-mode-button");
+            if (currentViewMode == ViewMode.Table)
+                tableViewButton.AddToClassList("active");
+            viewModeContainer.Add(tableViewButton);
+            
+            headerActions.Add(viewModeContainer);
             
             var refreshButton = new Button(() => RefreshContent());
             refreshButton.text = "↻";
@@ -200,14 +228,40 @@ namespace Datra.Unity.Editor.Panels
                 return;
             }
             
-            if (IsTableData(currentType))
+            if (currentViewMode == ViewMode.Table)
             {
-                DisplayTableData();
+                DisplayAsTable();
             }
             else
             {
-                DisplaySingleData();
+                if (IsTableData(currentType))
+                {
+                    DisplayTableData();
+                }
+                else
+                {
+                    DisplaySingleData();
+                }
             }
+        }
+        
+        private void SetViewMode(ViewMode mode)
+        {
+            currentViewMode = mode;
+            
+            // Update button states
+            var viewButtons = headerContainer.Query<Button>(className: "view-mode-button").ToList();
+            foreach (var button in viewButtons)
+            {
+                button.RemoveFromClassList("active");
+            }
+            
+            if (mode == ViewMode.Form)
+                viewButtons[0]?.AddToClassList("active");
+            else
+                viewButtons[1]?.AddToClassList("active");
+            
+            RefreshContent();
         }
         
         private void ShowEmptyState()
@@ -301,6 +355,56 @@ namespace Datra.Unity.Editor.Panels
                 
                 contentContainer.Add(formContainer);
             }
+        }
+        
+        private void DisplayAsTable()
+        {
+            tableView = new DatraTableView();
+            
+            var items = new List<object>();
+            
+            if (IsTableData(currentType))
+            {
+                // Get all items from repository
+                var getAllMethod = currentRepository.GetType().GetMethod("GetAll");
+                var data = getAllMethod?.Invoke(currentRepository, null) as System.Collections.IEnumerable;
+                
+                if (data != null)
+                {
+                    foreach (var item in data)
+                    {
+                        // Extract value from KeyValuePair if needed
+                        var actualData = item;
+                        var itemType = item.GetType();
+                        if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+                        {
+                            var valueProperty = itemType.GetProperty("Value");
+                            actualData = valueProperty?.GetValue(item);
+                        }
+                        items.Add(actualData);
+                    }
+                }
+            }
+            else
+            {
+                // Single data - show as single row
+                var getMethod = currentRepository.GetType().GetMethod("Get");
+                var singleData = getMethod?.Invoke(currentRepository, null);
+                if (singleData != null)
+                {
+                    items.Add(singleData);
+                }
+            }
+            
+            tableView.SetData(currentType, items, propertyTracker);
+            tableView.OnCellValueChanged += (item, property, value) => MarkAsModified();
+            tableView.OnAddNewItem += AddNewItem;
+            tableView.OnItemDeleted += DeleteItem;
+            tableView.OnItemSelected += (item) => {
+                // Could show detail view in future
+            };
+            
+            contentContainer.Add(tableView);
         }
         
         private VisualElement CreateTableItemElement(object item, int index)

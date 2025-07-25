@@ -19,6 +19,22 @@ namespace Datra.Unity.Editor
         private DatraNavigationPanel navigationPanel;
         private DatraInspectorPanel inspectorPanel;
         private TwoPaneSplitView splitView;
+        private VisualElement tabContainer;
+        private VisualElement contentArea;
+        
+        // Tab Management
+        private class DataTab
+        {
+            public Type DataType { get; set; }
+            public object Repository { get; set; }
+            public object DataContext { get; set; }
+            public VisualElement TabButton { get; set; }
+            public VisualElement Content { get; set; }
+            public bool IsModified { get; set; }
+        }
+        
+        private List<DataTab> openTabs = new List<DataTab>();
+        private DataTab activeTab;
         
         // Data Management
         private IDataContext dataContext;
@@ -48,6 +64,7 @@ namespace Datra.Unity.Editor
             
             var mainContainer = new VisualElement();
             mainContainer.AddToClassList("main-container");
+            mainContainer.style.flexDirection = FlexDirection.Column;
             root.Add(mainContainer);
             
             // Create toolbar
@@ -57,10 +74,26 @@ namespace Datra.Unity.Editor
             toolbar.OnSettingsClicked += ShowSettings;
             mainContainer.Add(toolbar);
             
-            // Create content container with split view
+            // Create tab container
+            tabContainer = new VisualElement();
+            tabContainer.AddToClassList("tab-container");
+            tabContainer.style.display = DisplayStyle.None; // Hidden by default
+            tabContainer.style.flexDirection = FlexDirection.Row;
+            tabContainer.style.height = 32;
+            tabContainer.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
+            mainContainer.Add(tabContainer);
+            
+            // Create content area
+            contentArea = new VisualElement();
+            contentArea.AddToClassList("content-area");
+            contentArea.style.flexGrow = 1;
+            mainContainer.Add(contentArea);
+            
+            // Create main content container with split view
             var contentContainer = new VisualElement();
             contentContainer.AddToClassList("content-container");
-            mainContainer.Add(contentContainer);
+            contentContainer.style.flexGrow = 1;
+            contentArea.Add(contentContainer);
             
             // Create split view with proper initial position
             splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
@@ -183,6 +216,95 @@ namespace Datra.Unity.Editor
             if (repositories.TryGetValue(dataType, out var repository))
             {
                 inspectorPanel.SetDataContext(dataContext, repository, dataType);
+            }
+        }
+        
+        public void AddDataTab(Type dataType, object repository, object context)
+        {
+            // Check if tab already exists
+            var existingTab = openTabs.FirstOrDefault(t => t.DataType == dataType);
+            if (existingTab != null)
+            {
+                ActivateTab(existingTab);
+                return;
+            }
+            
+            // Create new tab
+            var tab = new DataTab
+            {
+                DataType = dataType,
+                Repository = repository,
+                DataContext = context
+            };
+            
+            // Create tab button
+            var tabButton = new Button(() => ActivateTab(tab));
+            tabButton.AddToClassList("tab-button");
+            tabButton.style.flexDirection = FlexDirection.Row;
+            
+            var tabLabel = new Label(dataType.Name);
+            tabLabel.style.marginRight = 8;
+            tabButton.Add(tabLabel);
+            
+            // Close button
+            var closeButton = new Button(() => CloseTab(tab));
+            closeButton.text = "×";
+            closeButton.AddToClassList("tab-close-button");
+            tabButton.Add(closeButton);
+            
+            tab.TabButton = tabButton;
+            tabContainer.Add(tabButton);
+            
+            // Show tab container if this is the first tab
+            if (openTabs.Count == 0)
+            {
+                tabContainer.style.display = DisplayStyle.Flex;
+            }
+            
+            openTabs.Add(tab);
+            ActivateTab(tab);
+        }
+        
+        private void ActivateTab(DataTab tab)
+        {
+            // Deactivate current tab
+            if (activeTab != null)
+            {
+                activeTab.TabButton.RemoveFromClassList("active");
+            }
+            
+            activeTab = tab;
+            tab.TabButton.AddToClassList("active");
+            
+            // Update inspector with tab data
+            inspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType);
+        }
+        
+        private void CloseTab(DataTab tab)
+        {
+            if (tab.IsModified)
+            {
+                if (!EditorUtility.DisplayDialog("Unsaved Changes", 
+                    $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?", 
+                    "Close", "Cancel"))
+                {
+                    return;
+                }
+            }
+            
+            openTabs.Remove(tab);
+            tabContainer.Remove(tab.TabButton);
+            
+            // Hide tab container if no tabs
+            if (openTabs.Count == 0)
+            {
+                tabContainer.style.display = DisplayStyle.None;
+                activeTab = null;
+            }
+            else if (activeTab == tab)
+            {
+                // Activate another tab
+                ActivateTab(openTabs[0]);
             }
         }
         

@@ -1,0 +1,256 @@
+/* Table View Styles */
+.datra-table-view {
+    flex: 1;
+    background-color: #383838;
+}
+
+/* Table Toolbar */
+.table-toolbar {
+    background-color: #2d2d2d;
+    border-bottom-width: 1px;
+    border-bottom-color: #222;
+    flex-direction: row;
+    align-items: center;
+    padding: 4px 8px;
+}
+
+.table-add-button {
+    background-color: #4caf50;
+    color: white;
+    border-width: 0;
+    padding: 4px 12px;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.table-add-button:hover {
+    background-color: #5cbf60;
+}
+
+.table-search {
+    flex: 1;
+    margin-left: 8px;
+    margin-right: 8px;
+}
+
+.table-search .unity-toolbar-search-field__search-button {
+    display: none;
+}
+
+.table-search .unity-toolbar-search-field__cancel-button {
+    display: none;
+}
+
+.table-search .unity-text-field__input {
+    background-color: #252525;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #1e1e1e;
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+.table-options-button {
+    background-color: transparent;
+    border-width: 0;
+    padding: 4px 8px;
+    font-size: 14px;
+}
+
+.table-options-button:hover {
+    background-color: #444;
+    border-radius: 3px;
+}
+
+/* Table Header */
+.table-header-container {
+    background-color: #2a2a2a;
+    border-bottom-width: 2px;
+    border-bottom-color: #1e1e1e;
+}
+
+.table-header-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 28px;
+}
+
+.table-header-cell {
+    border-right-width: 1px;
+    border-right-color: #444;
+    padding: 0 8px;
+    flex-direction: row;
+    align-items: center;
+}
+
+.table-header-cell Label {
+    font-size: 11px;
+    color: #b4b4b4;
+    -unity-font-style: bold;
+}
+
+.table-resize-handle {
+    cursor: resize-horizontal;
+}
+
+.table-resize-handle:hover {
+    background-color: #5a9fd4;
+}
+
+/* Table Content */
+.table-scroll-view {
+    flex: 1;
+}
+
+.table-content {
+    flex-direction: column;
+}
+
+.table-row {
+    flex-direction: row;
+    align-items: center;
+    min-height: 28px;
+    border-bottom-width: 1px;
+    border-bottom-color: #2a2a2a;
+}
+
+.table-row:hover {
+    background-color: rgba(90, 159, 212, 0.1);
+}
+
+.table-row.selected {
+    background-color: rgba(90, 159, 212, 0.2);
+}
+
+.table-cell {
+    border-right-width: 1px;
+    border-right-color: #2a2a2a;
+    padding: 0 8px;
+    flex-direction: row;
+    align-items: center;
+    overflow: hidden;
+}
+
+.table-cell Label {
+    font-size: 11px;
+    color: #d4d4d4;
+}
+
+.table-cell .unity-text-field,
+.table-cell .unity-integer-field,
+.table-cell .unity-float-field,
+.table-cell .unity-enum-field {
+    margin: 2px 0;
+}
+
+.table-cell .unity-text-field__input,
+.table-cell .unity-integer-field__input,
+.table-cell .unity-float-field__input {
+    background-color: transparent;
+    border-width: 0;
+    padding: 2px 4px;
+    font-size: 11px;
+    min-height: 20px;
+}
+
+.table-cell .unity-text-field__input:focus,
+.table-cell .unity-integer-field__input:focus,
+.table-cell .unity-float-field__input:focus {
+    background-color: #252525;
+    border-width: 1px;
+    border-color: #5a9fd4;
+    border-radius: 2px;
+}
+
+.table-cell .unity-enum-field {
+    background-color: transparent;
+    border-width: 0;
+    font-size: 11px;
+    min-height: 20px;
+}
+
+.table-cell .unity-enum-field:hover {
+    background-color: #252525;
+}
+
+.table-cell .unity-toggle {
+    margin: 0;
+}
+
+.table-delete-button {
+    background-color: transparent;
+    border-width: 0;
+    padding: 2px 6px;
+    font-size: 12px;
+    color: #969696;
+    border-radius: 2px;
+}
+
+.table-delete-button:hover {
+    background-color: #f44336;
+    color: white;
+}
+
+/* View Mode Buttons */
+.view-mode-button {
+    background-color: transparent;
+    border-width: 0;
+    padding: 4px 8px;
+    margin: 0 2px;
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+.view-mode-button:hover {
+    background-color: #444;
+}
+
+.view-mode-button.active {
+    background-color: #5a9fd4;
+    color: white;
+}
+
+/* Tab Styles */
+.tab-container {
+    background-color: #2a2a2a;
+    border-bottom-width: 1px;
+    border-bottom-color: #1e1e1e;
+    padding: 0 8px;
+}
+
+.tab-button {
+    background-color: transparent;
+    border-width: 0;
+    padding: 6px 12px;
+    margin: 0 2px;
+    border-radius: 4px 4px 0 0;
+    flex-direction: row;
+    align-items: center;
+}
+
+.tab-button:hover {
+    background-color: #333;
+}
+
+.tab-button.active {
+    background-color: #383838;
+    border-bottom-color: #383838;
+}
+
+.tab-button Label {
+    font-size: 12px;
+    color: #d4d4d4;
+}
+
+.tab-close-button {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0 4px;
+    margin-left: 4px;
+    font-size: 14px;
+    color: #969696;
+}
+
+.tab-close-button:hover {
+    color: #f44336;
+}

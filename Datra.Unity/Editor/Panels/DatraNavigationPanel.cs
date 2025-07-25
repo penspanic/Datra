@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -100,6 +101,7 @@ namespace Datra.Unity.Editor.Panels
             treeView.bindItem = BindTreeItem;
             treeView.selectionType = SelectionType.Single;
             treeView.onSelectionChange += OnTreeSelectionChanged;
+            treeView.RegisterCallback<ContextualMenuPopulateEvent>(OnTreeContextMenu);
             
             // Wrap TreeView in ScrollView for consistent styling
             var scrollView = new ScrollView();
@@ -384,6 +386,104 @@ namespace Datra.Unity.Editor.Panels
                     }
                 }
             }
+        }
+        
+        private void OnTreeContextMenu(ContextualMenuPopulateEvent evt)
+        {
+            var selectedItem = treeView.selectedItem as DataTypeItem;
+            if (selectedItem == null || selectedItem.IsCategory || selectedItem.DataType == null)
+                return;
+            
+            evt.menu.AppendAction("Open in New Window", 
+                (action) => OpenInNewWindow(selectedItem.DataType),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendAction("Open in New Tab", 
+                (action) => OpenInNewTab(selectedItem.DataType),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendSeparator();
+            
+            evt.menu.AppendAction("View as Table", 
+                (action) => OpenAsTable(selectedItem.DataType),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendSeparator();
+            
+            evt.menu.AppendAction("Export.../JSON", 
+                (action) => ExportData(selectedItem.DataType, "json"),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendAction("Export.../CSV", 
+                (action) => ExportData(selectedItem.DataType, "csv"),
+                DropdownMenuAction.AlwaysEnabled);
+        }
+        
+        private void OpenInNewWindow(Type dataType)
+        {
+            var window = EditorWindow.GetWindow<DatraEditorWindow>();
+            if (window != null)
+            {
+                var repository = GetRepositoryForType(window, dataType);
+                if (repository != null)
+                {
+                    Windows.DatraDataWindow.CreateWindow(dataType, repository, GetDataContext(window), dataType.Name);
+                }
+            }
+        }
+        
+        private void OpenInNewTab(Type dataType)
+        {
+            var window = EditorWindow.GetWindow<DatraEditorWindow>();
+            if (window != null)
+            {
+                var repository = GetRepositoryForType(window, dataType);
+                if (repository != null)
+                {
+                    window.AddDataTab(dataType, repository, GetDataContext(window));
+                }
+            }
+        }
+        
+        private void OpenAsTable(Type dataType)
+        {
+            var window = EditorWindow.GetWindow<DatraEditorWindow>();
+            if (window != null)
+            {
+                var repository = GetRepositoryForType(window, dataType);
+                if (repository != null)
+                {
+                    var dataWindow = Windows.DatraDataWindow.CreateWindow(dataType, repository, 
+                        GetDataContext(window), dataType.Name + " - Table View");
+                    dataWindow.SetViewMode(Windows.DatraDataWindow.ViewMode.Table);
+                }
+            }
+        }
+        
+        private void ExportData(Type dataType, string format)
+        {
+            Debug.Log($"Export {dataType.Name} as {format} - Not implemented yet");
+        }
+        
+        private object GetRepositoryForType(DatraEditorWindow window, Type dataType)
+        {
+            // Access repositories through reflection since it's private
+            var repoField = window.GetType().GetField("repositories", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (repoField != null)
+            {
+                var repositories = repoField.GetValue(window) as Dictionary<Type, object>;
+                if (repositories != null && repositories.TryGetValue(dataType, out var repository))
+                {
+                    return repository;
+                }
+            }
+            return null;
+        }
+        
+        private object GetDataContext(DatraEditorWindow window)
+        {
+            var contextField = window.GetType().GetField("dataContext", BindingFlags.NonPublic | BindingFlags.Instance);
+            return contextField?.GetValue(window);
         }
     }
 }
