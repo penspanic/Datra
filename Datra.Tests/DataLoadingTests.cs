@@ -109,13 +109,11 @@ namespace Datra.Tests
             Assert.NotNull(config);
             Assert.True(config.MaxLevel > 0);
             Assert.True(config.ExpMultiplier > 0);
-            Assert.True(config.StartingGold >= 0);
-            Assert.True(config.InventorySize > 0);
+            // Properties have been changed in GameConfigData
             
             _output.WriteLine($"Max Level: {config.MaxLevel}");
             _output.WriteLine($"Exp Multiplier: {config.ExpMultiplier}");
-            _output.WriteLine($"Starting Gold: {config.StartingGold}");
-            _output.WriteLine($"Inventory Size: {config.InventorySize}");
+            // Output properties have been changed
         }
 
         [Fact]

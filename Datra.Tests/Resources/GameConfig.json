@@ -1,0 +1,12 @@
+{
+  "GameName": "Epic Adventure",
+  "MaxLevel": 100,
+  "ExpMultiplier": 1.5,
+  "DefaultMode": "Normal",
+  "AvailableModes": ["Easy", "Normal", "Hard", "Expert"],
+  "EnabledRewards": ["Gold", "Experience", "Item"],
+  "DefaultCharacter": "hero_001",
+  "StartingItem": 1001,
+  "UnlockableCharacters": ["hero_002", "hero_003", "hero_004"],
+  "StartingItems": [1001, 1002, 2001]
+}

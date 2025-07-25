@@ -8,68 +8,22 @@ namespace Datra.Generators.Generators
     {
         public void GenerateTableDeserializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("// For immutable types, we need to parse JSON manually");
-            codeBuilder.AppendLine("var array = JArray.Parse(data);");
-            codeBuilder.AppendLine($"var result = new Dictionary<{model.KeyType}, {typeName}>();");
-            codeBuilder.AddBlankLine();
-            
-            codeBuilder.AppendLine("foreach (var element in array)");
-            codeBuilder.BeginBlock();
-            
-            // Extract each property value
-            foreach (var prop in model.Properties)
-            {
-                var varName = CodeBuilder.ToCamelCase(prop.Name);
-                var propNameLower = CodeBuilder.ToCamelCase(prop.Name);
-                
-                GenerateJsonPropertyExtraction(codeBuilder, prop, varName, propNameLower, "element");
-            }
-            
-            // Create object using constructor
-            codeBuilder.AppendLine($"var item = new {typeName}(");
-            var constructorParams = model.Properties.Select(p => 
-                $"    {CodeBuilder.ToCamelCase(p.Name)}"
-            );
-            codeBuilder.AppendLine(string.Join(",\n", constructorParams));
-            codeBuilder.AppendLine(");");
-            codeBuilder.AppendLine("result[item.Id] = item;");
-            
-            codeBuilder.EndBlock();
-            codeBuilder.AddBlankLine();
-            
-            codeBuilder.AppendLine("return result;");
+            codeBuilder.AppendLine($"return serializer.DeserializeTable<{model.KeyType}, {typeName}>(data);");
         }
         
         public void GenerateTableSerializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("return JsonConvert.SerializeObject(table.Values.ToList(), Formatting.Indented);");
+            codeBuilder.AppendLine($"return serializer.SerializeTable<{model.KeyType}, {typeName}>(table);");
         }
         
         public void GenerateSingleDeserializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("// For immutable types, we need to parse JSON manually");
-            codeBuilder.AppendLine("var root = JObject.Parse(data);");
-            codeBuilder.AddBlankLine();
-            
-            foreach (var prop in model.Properties)
-            {
-                var varName = CodeBuilder.ToCamelCase(prop.Name);
-                var propNameLower = CodeBuilder.ToCamelCase(prop.Name);
-                
-                GenerateJsonPropertyExtraction(codeBuilder, prop, varName, propNameLower, "root");
-            }
-            
-            codeBuilder.AppendLine($"return new {typeName}(");
-            var constructorParams = model.Properties.Select(p => 
-                $"    {CodeBuilder.ToCamelCase(p.Name)}"
-            );
-            codeBuilder.AppendLine(string.Join(",\n", constructorParams));
-            codeBuilder.AppendLine(");");
+            codeBuilder.AppendLine($"return serializer.DeserializeSingle<{typeName}>(data);");
         }
         
         public void GenerateSingleSerializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("return JsonConvert.SerializeObject(data, Formatting.Indented);");
+            codeBuilder.AppendLine($"return serializer.SerializeSingle<{typeName}>(data);");
         }
         
         private void GenerateJsonPropertyExtraction(CodeBuilder codeBuilder, PropertyInfo prop, string varName, string propNameLower, string elementVar)
