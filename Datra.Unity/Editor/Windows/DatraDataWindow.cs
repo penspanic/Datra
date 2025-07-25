@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Unity.Editor.Panels;
-using Datra.Unity.Editor.Components;
+using Datra.Unity.Editor.Views;
 using UnityEditor.UIElements;
 
 namespace Datra.Unity.Editor.Windows
@@ -16,8 +16,7 @@ namespace Datra.Unity.Editor.Windows
         private object dataContext;
         private string windowTitle;
         
-        private DatraInspectorPanel inspectorPanel;
-        private DatraTableView tableView;
+        private DatraDataView currentView;
         private VisualElement contentContainer;
         
         // View modes
@@ -169,80 +168,54 @@ namespace Datra.Unity.Editor.Windows
         
         private void ShowFormView()
         {
-            inspectorPanel = new DatraInspectorPanel();
-            inspectorPanel.SetDataContext(dataContext, repository, dataType);
-            inspectorPanel.OnSaveRequested += HandleSaveRequest;
-            contentContainer.Add(inspectorPanel);
+            // Clean up previous view
+            CleanupCurrentView();
+            
+            currentView = new DatraFormView();
+            currentView.SetData(dataType, repository, dataContext);
+            currentView.OnSaveRequested += HandleSaveRequest;
+            currentView.OnDataModified += HandleDataModified;
+            contentContainer.Add(currentView);
         }
         
         private void ShowTableView()
         {
-            tableView = new DatraTableView();
+            // Clean up previous view
+            CleanupCurrentView();
             
-            // Get data based on type
-            if (IsTableData(dataType))
-            {
-                var getAllMethod = repository.GetType().GetMethod("GetAll");
-                var data = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
-                
-                var items = new System.Collections.Generic.List<object>();
-                if (data != null)
-                {
-                    foreach (var item in data)
-                    {
-                        // Extract value from KeyValuePair if needed
-                        var actualData = item;
-                        var itemType = item.GetType();
-                        if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.KeyValuePair<,>))
-                        {
-                            var valueProperty = itemType.GetProperty("Value");
-                            actualData = valueProperty?.GetValue(item);
-                        }
-                        items.Add(actualData);
-                    }
-                }
-                
-                tableView.SetData(dataType, items);
-            }
-            else
-            {
-                // Single data - show as single row table
-                var getMethod = repository.GetType().GetMethod("Get");
-                var singleData = getMethod?.Invoke(repository, null);
-                if (singleData != null)
-                {
-                    tableView.SetData(dataType, new[] { singleData });
-                }
-            }
-            
-            tableView.OnCellValueChanged += (item, property, value) => MarkAsModified();
-            tableView.OnAddNewItem += HandleAddNewItem;
-            tableView.OnItemDeleted += HandleDeleteItem;
-            
-            contentContainer.Add(tableView);
+            currentView = new DatraTableView();
+            currentView.SetData(dataType, repository, dataContext);
+            currentView.OnSaveRequested += HandleSaveRequest;
+            currentView.OnDataModified += HandleDataModified;
+            contentContainer.Add(currentView);
         }
         
         private void ShowSplitView()
         {
+            // Clean up previous view
+            CleanupCurrentView();
+            
             var splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
             
             // Left pane - Table
             var leftPane = new VisualElement();
             leftPane.style.minWidth = 200;
             
-            tableView = new DatraTableView();
+            var tableView = new DatraTableView();
             tableView.ShowActionsColumn = false; // Simplified for split view
-            ConfigureTableView();
+            tableView.SetData(dataType, repository, dataContext);
+            tableView.OnDataModified += HandleDataModified;
             leftPane.Add(tableView);
             
             // Right pane - Form
             var rightPane = new VisualElement();
             rightPane.style.minWidth = 300;
             
-            inspectorPanel = new DatraInspectorPanel();
-            inspectorPanel.SetDataContext(dataContext, repository, dataType);
-            inspectorPanel.OnSaveRequested += HandleSaveRequest;
-            rightPane.Add(inspectorPanel);
+            var formView = new DatraFormView();
+            formView.SetData(dataType, repository, dataContext);
+            formView.OnSaveRequested += HandleSaveRequest;
+            formView.OnDataModified += HandleDataModified;
+            rightPane.Add(formView);
             
             splitView.Add(leftPane);
             splitView.Add(rightPane);
@@ -251,47 +224,21 @@ namespace Datra.Unity.Editor.Windows
             
             // Connect selection
             tableView.OnItemSelected += (item) => {
-                // Update inspector to show selected item
-                // This would require extending DatraInspectorPanel to support single item display
+                // Update form to show selected item
+                // This would require extending DatraFormView to support single item display
             };
         }
         
-        private void ConfigureTableView()
+        private void CleanupCurrentView()
         {
-            if (tableView == null) return;
-            
-            // Configure based on data type
-            if (IsTableData(dataType))
+            if (currentView != null)
             {
-                var getAllMethod = repository.GetType().GetMethod("GetAll");
-                var data = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
-                
-                var items = new System.Collections.Generic.List<object>();
-                if (data != null)
-                {
-                    foreach (var item in data)
-                    {
-                        var actualData = ExtractActualData(item);
-                        items.Add(actualData);
-                    }
-                }
-                
-                tableView.SetData(dataType, items);
+                currentView.OnSaveRequested -= HandleSaveRequest;
+                currentView.OnDataModified -= HandleDataModified;
+                currentView.Cleanup();
+                contentContainer.Remove(currentView);
+                currentView = null;
             }
-        }
-        
-        private object ExtractActualData(object item)
-        {
-            if (item == null) return null;
-            
-            var itemType = item.GetType();
-            if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(System.Collections.Generic.KeyValuePair<,>))
-            {
-                var valueProperty = itemType.GetProperty("Value");
-                return valueProperty?.GetValue(item);
-            }
-            
-            return item;
         }
         
         private bool IsTableData(Type type)
@@ -353,19 +300,8 @@ namespace Datra.Unity.Editor.Windows
             Debug.Log($"Saving {type.Name}");
         }
         
-        private void HandleAddNewItem()
-        {
-            // Add new item logic
-            Debug.Log("Add new item");
-        }
         
-        private void HandleDeleteItem(object item)
-        {
-            // Delete item logic
-            Debug.Log($"Delete item: {item}");
-        }
-        
-        private void MarkAsModified()
+        private void HandleDataModified(Type type)
         {
             // Update title to show modified state
             titleContent.text = windowTitle + " *";
@@ -374,10 +310,7 @@ namespace Datra.Unity.Editor.Windows
         private void OnDestroy()
         {
             // Cleanup
-            if (inspectorPanel != null)
-            {
-                inspectorPanel.OnSaveRequested -= HandleSaveRequest;
-            }
+            CleanupCurrentView();
         }
     }
 }

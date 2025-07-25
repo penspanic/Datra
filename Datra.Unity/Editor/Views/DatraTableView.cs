@@ -2,79 +2,74 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Datra.Unity.Editor.Components;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Cursor = UnityEngine.UIElements.Cursor;
 
-namespace Datra.Unity.Editor.Components
+namespace Datra.Unity.Editor.Views
 {
-    public class DatraTableView : VisualElement
+    public class DatraTableView : DatraDataView
     {
-        private ScrollView scrollView;
+        private VisualElement tableContainer;
         private VisualElement headerRow;
-        private VisualElement contentContainer;
         private List<PropertyInfo> columns;
-        private Type dataType;
         private List<object> items;
-        private DatraPropertyTracker propertyTracker;
         private Dictionary<object, Dictionary<string, VisualElement>> cellElements;
+        private Dictionary<object, VisualElement> rowElements;
+        private HashSet<(object item, string property)> modifiedCells;
+        private ToolbarSearchField searchField;
         
         // Events
         public event Action<object> OnItemSelected;
         public event Action<object, string, object> OnCellValueChanged;
-        public event Action<object> OnItemDeleted;
-        public event Action OnAddNewItem;
         
         // Properties
+        public bool ShowSelectionColumn { get; set; } = true;
         public bool ShowIdColumn { get; set; } = true;
         public bool ShowActionsColumn { get; set; } = true;
-        public bool IsEditable { get; set; } = true;
         public float RowHeight { get; set; } = 28f;
         
-        public DatraTableView()
+        public DatraTableView() : base()
         {
             AddToClassList("datra-table-view");
             cellElements = new Dictionary<object, Dictionary<string, VisualElement>>();
-            Initialize();
+            rowElements = new Dictionary<object, VisualElement>();
+            modifiedCells = new HashSet<(object, string)>();
         }
         
-        private void Initialize()
+        protected override void InitializeView()
         {
-            style.flexGrow = 1;
-            style.flexDirection = FlexDirection.Column;
+            // Clear content container from base class
+            contentContainer.Clear();
+            
+            // Add toolbar to header
+            var toolbar = CreateToolbar();
+            headerContainer.Add(toolbar);
+            
+            // Create table container
+            tableContainer = new VisualElement();
+            tableContainer.AddToClassList("table-container");
+            tableContainer.style.flexGrow = 1;
+            tableContainer.style.flexDirection = FlexDirection.Column;
             
             // Create header container
-            var headerContainer = new VisualElement();
-            headerContainer.AddToClassList("table-header-container");
-            headerContainer.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
-            headerContainer.style.borderBottomWidth = 1;
-            headerContainer.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            var tableHeaderContainer = new VisualElement();
+            tableHeaderContainer.AddToClassList("table-header-container");
+            tableHeaderContainer.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+            tableHeaderContainer.style.borderBottomWidth = 1;
+            tableHeaderContainer.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
             
             headerRow = new VisualElement();
             headerRow.AddToClassList("table-header-row");
             headerRow.style.flexDirection = FlexDirection.Row;
             headerRow.style.height = RowHeight;
-            headerContainer.Add(headerRow);
+            tableHeaderContainer.Add(headerRow);
             
-            Add(headerContainer);
-            
-            // Create scrollable content area
-            scrollView = new ScrollView(ScrollViewMode.Vertical);
-            scrollView.AddToClassList("table-scroll-view");
-            scrollView.style.flexGrow = 1;
-            
-            contentContainer = new VisualElement();
-            contentContainer.AddToClassList("table-content");
-            contentContainer.style.flexDirection = FlexDirection.Column;
-            scrollView.Add(contentContainer);
-            
-            Add(scrollView);
-            
-            // Add toolbar
-            var toolbar = CreateToolbar();
-            Insert(0, toolbar);
+            tableContainer.Add(tableHeaderContainer);
+            contentContainer.Add(tableContainer);
         }
         
         private VisualElement CreateToolbar()
@@ -82,21 +77,26 @@ namespace Datra.Unity.Editor.Components
             var toolbar = new VisualElement();
             toolbar.AddToClassList("table-toolbar");
             toolbar.style.flexDirection = FlexDirection.Row;
-            toolbar.style.height = 30;
-            toolbar.style.backgroundColor = new Color(0.2f, 0.2f, 0.2f);
+            toolbar.style.height = 36;
             toolbar.style.paddingLeft = 8;
             toolbar.style.paddingRight = 8;
             toolbar.style.alignItems = Align.Center;
+            toolbar.style.borderBottomWidth = 1;
+            toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
             
             // Add button
-            var addButton = new Button(() => OnAddNewItem?.Invoke());
+            var addButton = new Button(() => {
+                if (!isReadOnly)
+                    AddNewItem();
+            });
             addButton.text = "➕ Add Row";
             addButton.AddToClassList("table-add-button");
             addButton.style.marginRight = 8;
+            addButton.SetEnabled(!isReadOnly);
             toolbar.Add(addButton);
             
             // Search field
-            var searchField = new ToolbarSearchField();
+            searchField = new ToolbarSearchField();
             searchField.AddToClassList("table-search");
             searchField.style.flexGrow = 1;
             searchField.RegisterValueChangedCallback(evt => FilterRows(evt.newValue));
@@ -113,46 +113,120 @@ namespace Datra.Unity.Editor.Components
             return toolbar;
         }
         
-        public void SetData(Type type, IEnumerable<object> data, DatraPropertyTracker tracker = null)
+        public override void SetData(Type type, object repo, object context)
         {
+            // Don't call base.SetData yet - we need to initialize columns first
             dataType = type;
-            items = data?.ToList() ?? new List<object>();
-            propertyTracker = tracker ?? new DatraPropertyTracker();
+            repository = repo;
+            dataContext = context;
+            hasUnsavedChanges = false;
             
-            // Get columns (properties)
+            // Get columns (properties) BEFORE calling RefreshContent
             columns = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && IsSupportedType(p.PropertyType))
                 .ToList();
+                
             
-            RefreshTable();
+            // Now cleanup and refresh
+            CleanupFields();
+            RefreshContent();
+            UpdateFooter();
         }
         
-        private void RefreshTable()
+        public void SetTableData(IEnumerable<object> data)
         {
-            headerRow.Clear();
-            contentContainer.Clear();
-            cellElements.Clear();
+            items = data?.ToList() ?? new List<object>();
+            RefreshContent();
+        }
+        
+        public override void RefreshContent()
+        {
+            if (tableContainer == null) return;
             
-            if (columns == null || columns.Count == 0) return;
+            // Clear table body
+            var tableBody = tableContainer.Q<ScrollView>("table-body");
+            if (tableBody != null)
+            {
+                tableContainer.Remove(tableBody);
+            }
+            
+            headerRow?.Clear();
+            cellElements.Clear();
+            rowElements.Clear();
+            modifiedCells.Clear();
+            
+            if (dataType == null || repository == null) return;
+            
+            
+            // Get items from repository
+            if (IsTableData(dataType))
+            {
+                var getAllMethod = repository.GetType().GetMethod("GetAll");
+                
+                var data = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
+                
+                if (data != null)
+                {
+                    items = new List<object>();
+                    foreach (var item in data)
+                    {
+                        // Extract value from KeyValuePair if needed
+                        var actualData = ExtractActualData(item);
+                        items.Add(actualData);
+                    }
+                }
+                else
+                {
+                }
+            }
+            else
+            {
+                // Single data - show as single row
+                var getMethod = repository.GetType().GetMethod("Get");
+                var singleData = getMethod?.Invoke(repository, null);
+                if (singleData != null)
+                {
+                    items = new List<object> { singleData };
+                }
+            }
+            
+            
+            if (columns == null || columns.Count == 0 || items == null) return;
             
             // Create header cells
             CreateHeaderCells();
             
+            // Create scrollable body
+            var bodyScrollView = new ScrollView(ScrollViewMode.Vertical);
+            bodyScrollView.name = "table-body";
+            bodyScrollView.AddToClassList("table-body-scroll");
+            bodyScrollView.style.flexGrow = 1;
+            
+            var bodyContainer = new VisualElement();
+            bodyContainer.AddToClassList("table-body-container");
+            bodyContainer.style.flexDirection = FlexDirection.Column;
+            
             // Create data rows
             foreach (var item in items)
             {
-                CreateDataRow(item);
+                CreateDataRow(item, bodyContainer);
             }
+            
+            bodyScrollView.Add(bodyContainer);
+            tableContainer.Add(bodyScrollView);
         }
         
         private void CreateHeaderCells()
         {
             // Selection column
-            var selectHeader = new VisualElement();
-            selectHeader.AddToClassList("table-header-cell");
-            selectHeader.style.width = 30;
-            selectHeader.style.minWidth = 30;
-            headerRow.Add(selectHeader);
+            if (ShowSelectionColumn)
+            {
+                var selectHeader = new VisualElement();
+                selectHeader.AddToClassList("table-header-cell");
+                selectHeader.style.width = 30;
+                selectHeader.style.minWidth = 30;
+                headerRow.Add(selectHeader);
+            }
             
             // ID column
             if (ShowIdColumn)
@@ -208,7 +282,7 @@ namespace Datra.Unity.Editor.Components
             return cell;
         }
         
-        private void CreateDataRow(object item)
+        private void CreateDataRow(object item, VisualElement container)
         {
             var row = new VisualElement();
             row.AddToClassList("table-row");
@@ -219,21 +293,25 @@ namespace Datra.Unity.Editor.Components
             var cells = new Dictionary<string, VisualElement>();
             cellElements[item] = cells;
             
-            // Selection checkbox
-            var selectCell = new VisualElement();
-            selectCell.AddToClassList("table-cell");
-            selectCell.style.width = 30;
-            selectCell.style.minWidth = 30;
-            selectCell.style.justifyContent = Justify.Center;
             
-            var checkbox = new Toggle();
-            checkbox.style.marginLeft = 6;
-            checkbox.RegisterValueChangedCallback(evt => {
-                if (evt.newValue)
-                    OnItemSelected?.Invoke(item);
-            });
-            selectCell.Add(checkbox);
-            row.Add(selectCell);
+            // Selection checkbox
+            if (ShowSelectionColumn)
+            {
+                var selectCell = new VisualElement();
+                selectCell.AddToClassList("table-cell");
+                selectCell.style.width = 30;
+                selectCell.style.minWidth = 30;
+                selectCell.style.justifyContent = Justify.Center;
+                
+                var checkbox = new Toggle();
+                checkbox.style.marginLeft = 6;
+                checkbox.RegisterValueChangedCallback(evt => {
+                    if (evt.newValue)
+                        OnItemSelected?.Invoke(item);
+                });
+                selectCell.Add(checkbox);
+                row.Add(selectCell);
+            }
             
             // ID field
             if (ShowIdColumn)
@@ -267,7 +345,10 @@ namespace Datra.Unity.Editor.Components
                 actionsCell.style.flexDirection = FlexDirection.Row;
                 actionsCell.style.justifyContent = Justify.Center;
                 
-                var deleteButton = new Button(() => OnItemDeleted?.Invoke(item));
+                var deleteButton = new Button(() => {
+                    if (!isReadOnly)
+                        base.DeleteItem(item);
+                });
                 deleteButton.text = "🗑";
                 deleteButton.tooltip = "Delete Row";
                 deleteButton.AddToClassList("table-delete-button");
@@ -278,16 +359,17 @@ namespace Datra.Unity.Editor.Components
             
             // Row hover effect
             row.RegisterCallback<MouseEnterEvent>(evt => {
-                if (!row.ClassListContains("selected"))
+                if (!row.ClassListContains("selected") && !row.ClassListContains("modified-row"))
                     row.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f, 0.2f);
             });
             
             row.RegisterCallback<MouseLeaveEvent>(evt => {
-                if (!row.ClassListContains("selected"))
+                if (!row.ClassListContains("selected") && !row.ClassListContains("modified-row"))
                     row.style.backgroundColor = Color.clear;
             });
             
-            contentContainer.Add(row);
+            container.Add(row);
+            rowElements[item] = row;
         }
         
         private VisualElement CreateEditableCell(object item, PropertyInfo property, float width)
@@ -299,7 +381,7 @@ namespace Datra.Unity.Editor.Components
             cell.style.paddingLeft = 8;
             cell.style.paddingRight = 8;
             
-            if (!IsEditable || !property.CanWrite)
+            if (isReadOnly || !property.CanWrite)
             {
                 // Read-only display
                 var value = property.GetValue(item);
@@ -312,15 +394,33 @@ namespace Datra.Unity.Editor.Components
             else
             {
                 // Editable field
-                var field = CreateFieldForType(property.PropertyType, property.GetValue(item));
+                var field = CreateFieldForType(property.PropertyType, property.GetValue(item), (newValue) => {
+                    property.SetValue(item, newValue);
+                    OnCellValueChanged?.Invoke(item, property.Name, newValue);
+                    
+                    // Track changes
+                    if (!itemTrackers.ContainsKey(item))
+                    {
+                        var tracker = new DatraPropertyTracker();
+                        tracker.StartTracking(item, false);
+                        tracker.OnAnyPropertyModified += OnTrackerModified;
+                        itemTrackers[item] = tracker;
+                    }
+                    itemTrackers[item].TrackChange(item, property.Name, newValue);
+                    MarkAsModified();
+                    
+                    // Track modified cell
+                    modifiedCells.Add((item, property.Name));
+                    
+                    // Update cell visual state
+                    if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(property.Name, out var cell))
+                    {
+                        cell.AddToClassList("modified-cell");
+                    }
+                });
                 if (field != null)
                 {
                     field.style.flexGrow = 1;
-                    field.RegisterCallback<ChangeEvent<object>>(evt => {
-                        property.SetValue(item, evt.newValue);
-                        OnCellValueChanged?.Invoke(item, property.Name, evt.newValue);
-                        propertyTracker?.TrackChange(item, property.Name, evt.newValue);
-                    });
                     cell.Add(field);
                 }
             }
@@ -328,13 +428,14 @@ namespace Datra.Unity.Editor.Components
             return cell;
         }
         
-        private VisualElement CreateFieldForType(Type type, object value)
+        private VisualElement CreateFieldForType(Type type, object value, Action<object> onValueChanged)
         {
             if (type == typeof(string))
             {
                 var field = new TextField();
                 field.value = value as string ?? "";
                 field.style.minHeight = 20;
+                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
                 return field;
             }
             else if (type == typeof(int))
@@ -342,6 +443,7 @@ namespace Datra.Unity.Editor.Components
                 var field = new IntegerField();
                 field.value = (int)(value ?? 0);
                 field.style.minHeight = 20;
+                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
                 return field;
             }
             else if (type == typeof(float))
@@ -349,18 +451,21 @@ namespace Datra.Unity.Editor.Components
                 var field = new FloatField();
                 field.value = (float)(value ?? 0f);
                 field.style.minHeight = 20;
+                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
                 return field;
             }
             else if (type == typeof(bool))
             {
                 var field = new Toggle();
                 field.value = (bool)(value ?? false);
+                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
                 return field;
             }
             else if (type.IsEnum)
             {
                 var field = new EnumField((Enum)(value ?? Activator.CreateInstance(type)));
                 field.style.minHeight = 20;
+                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
                 return field;
             }
             
@@ -378,11 +483,12 @@ namespace Datra.Unity.Editor.Components
         
         private void FilterRows(string searchTerm)
         {
-            var rows = contentContainer.Children().ToList();
-            for (int i = 0; i < rows.Count; i++)
+            if (items == null) return;
+            
+            foreach (var kvp in rowElements)
             {
-                var row = rows[i];
-                var item = items[i];
+                var item = kvp.Key;
+                var row = kvp.Value;
                 
                 bool matches = string.IsNullOrEmpty(searchTerm);
                 if (!matches)
@@ -407,11 +513,11 @@ namespace Datra.Unity.Editor.Components
             var menu = new GenericMenu();
             menu.AddItem(new GUIContent("Show ID Column"), ShowIdColumn, () => {
                 ShowIdColumn = !ShowIdColumn;
-                RefreshTable();
+                RefreshContent();
             });
             menu.AddItem(new GUIContent("Show Actions"), ShowActionsColumn, () => {
                 ShowActionsColumn = !ShowActionsColumn;
-                RefreshTable();
+                RefreshContent();
             });
             menu.AddSeparator("");
             menu.AddItem(new GUIContent("Export to CSV"), false, ExportToCSV);
@@ -441,14 +547,85 @@ namespace Datra.Unity.Editor.Components
                     if (property != null)
                     {
                         cell.Clear();
-                        var newField = CreateFieldForType(property.PropertyType, property.GetValue(item));
+                        var newField = CreateFieldForType(property.PropertyType, property.GetValue(item), (newValue) => {
+                            property.SetValue(item, newValue);
+                            OnCellValueChanged?.Invoke(item, property.Name, newValue);
+                            
+                            // Track changes
+                            if (!itemTrackers.ContainsKey(item))
+                            {
+                                var tracker = new DatraPropertyTracker();
+                                tracker.StartTracking(item, false);
+                                tracker.OnAnyPropertyModified += OnTrackerModified;
+                                itemTrackers[item] = tracker;
+                            }
+                            itemTrackers[item].TrackChange(item, property.Name, newValue);
+                            MarkAsModified();
+                            
+                            // Track modified cell
+                            modifiedCells.Add((item, property.Name));
+                            
+                            // Update cell visual state
+                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(property.Name, out var cell))
+                            {
+                                cell.AddToClassList("modified-cell");
+                            }
+                        });
                         if (newField != null)
                         {
+                            newField.style.flexGrow = 1;
                             cell.Add(newField);
                         }
                     }
                 }
             }
+        }
+        
+        
+        protected override void UpdateEditability()
+        {
+            base.UpdateEditability();
+            
+            // Update toolbar buttons
+            var addButton = headerContainer.Q<Button>(className: "table-add-button");
+            addButton?.SetEnabled(!isReadOnly);
+            
+            // Update delete buttons
+            foreach (var row in rowElements.Values)
+            {
+                var deleteButton = row.Q<Button>(className: "table-delete-button");
+                deleteButton?.SetEnabled(!isReadOnly);
+            }
+        }
+        
+        protected override void SaveChanges()
+        {
+            base.SaveChanges();
+            
+            // Clear visual modifications from all cells after save
+            foreach (var (item, cells) in cellElements)
+            {
+                foreach (var (property, cell) in cells)
+                {
+                    cell.RemoveFromClassList("modified-cell");
+                }
+            }
+            modifiedCells.Clear();
+        }
+        
+        protected override void RevertChanges()
+        {
+            base.RevertChanges();
+            
+            // Clear visual modifications from all cells
+            foreach (var (item, cells) in cellElements)
+            {
+                foreach (var (property, cell) in cells)
+                {
+                    cell.RemoveFromClassList("modified-cell");
+                }
+            }
+            modifiedCells.Clear();
         }
     }
 }

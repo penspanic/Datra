@@ -122,6 +122,17 @@
     background-color: rgba(90, 159, 212, 0.2);
 }
 
+/* Highlight only modified cells */
+.table-cell.modified-cell {
+    background-color: rgba(255, 193, 7, 0.20) !important;
+    border-left-width: 3px;
+    border-left-color: #FFC107;
+}
+
+.table-row:hover .table-cell.modified-cell {
+    background-color: rgba(255, 193, 7, 0.30) !important;
+}
+
 .table-cell {
     border-right-width: 1px;
     border-right-color: #2a2a2a;

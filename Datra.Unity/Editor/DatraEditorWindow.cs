@@ -125,7 +125,8 @@ namespace Datra.Unity.Editor
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraEditorWindow.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraNavigationPanel.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss",
-                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss"
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraTableView.uss"
             };
             
             foreach (var path in stylePaths)
@@ -500,11 +501,8 @@ namespace Datra.Unity.Editor
         
         private void OnFocus()
         {
-            // Refresh data when window gains focus
-            if (isInitialized && inspectorPanel != null)
-            {
-                inspectorPanel.RefreshContent();
-            }
+            // Don't refresh content on focus - it clears all UI state including modified indicators
+            // If refresh is needed, it should be done explicitly by user action
         }
     }
 }
