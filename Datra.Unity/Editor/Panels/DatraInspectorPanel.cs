@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Views;
+using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
 {
@@ -85,16 +86,14 @@ namespace Datra.Unity.Editor.Panels
             formViewButton.text = "📝";
             formViewButton.tooltip = "Form View";
             formViewButton.AddToClassList("view-mode-button");
-            if (currentViewMode == ViewMode.Form)
-                formViewButton.AddToClassList("active");
+            formViewButton.name = "form-view-button";
             viewModeContainer.Add(formViewButton);
             
             var tableViewButton = new Button(() => SetViewMode(ViewMode.Table));
             tableViewButton.text = "📊";
             tableViewButton.tooltip = "Table View";
             tableViewButton.AddToClassList("view-mode-button");
-            if (currentViewMode == ViewMode.Table)
-                tableViewButton.AddToClassList("active");
+            tableViewButton.name = "table-view-button";
             viewModeContainer.Add(tableViewButton);
             
             headerActions.Add(viewModeContainer);
@@ -125,6 +124,24 @@ namespace Datra.Unity.Editor.Panels
             currentRepository = repository;
             currentType = dataType;
             
+            // Determine the default view mode based on data type
+            if (dataType != null)
+            {
+                var isTableData = IsTableData(dataType);
+                var defaultMode = isTableData ? ViewMode.Table : ViewMode.Form;
+                
+                // Get user's preferred view mode for this type
+                var savedMode = DatraUserPreferences.GetViewMode(dataType);
+                if (!string.IsNullOrEmpty(savedMode) && Enum.TryParse<ViewMode>(savedMode, out var mode))
+                {
+                    currentViewMode = mode;
+                }
+                else
+                {
+                    currentViewMode = defaultMode;
+                }
+            }
+            
             UpdateHeader();
             RefreshContent();
         }
@@ -148,6 +165,9 @@ namespace Datra.Unity.Editor.Panels
             
             // Update breadcrumb
             UpdateBreadcrumb();
+            
+            // Update view mode buttons
+            UpdateViewModeButtons();
         }
         
         private void UpdateBreadcrumb()
@@ -166,6 +186,28 @@ namespace Datra.Unity.Editor.Panels
             var currentLabel = new Label(currentType.Name);
             currentLabel.AddToClassList("breadcrumb-current");
             breadcrumbContainer.Add(currentLabel);
+        }
+        
+        private void UpdateViewModeButtons()
+        {
+            var formButton = headerContainer.Q<Button>("form-view-button");
+            var tableButton = headerContainer.Q<Button>("table-view-button");
+            
+            if (formButton != null)
+            {
+                if (currentViewMode == ViewMode.Form)
+                    formButton.AddToClassList("active");
+                else
+                    formButton.RemoveFromClassList("active");
+            }
+            
+            if (tableButton != null)
+            {
+                if (currentViewMode == ViewMode.Table)
+                    tableButton.AddToClassList("active");
+                else
+                    tableButton.RemoveFromClassList("active");
+            }
         }
         
         public void RefreshContent()
@@ -218,6 +260,12 @@ namespace Datra.Unity.Editor.Panels
         private void SetViewMode(ViewMode mode)
         {
             currentViewMode = mode;
+            
+            // Save user preference for this data type
+            if (currentType != null)
+            {
+                DatraUserPreferences.SetViewMode(currentType, mode.ToString());
+            }
             
             // Update button states
             var viewButtons = headerContainer.Query<Button>(className: "view-mode-button").ToList();

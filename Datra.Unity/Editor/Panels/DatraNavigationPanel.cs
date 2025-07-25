@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Interfaces;
 using Datra.Attributes;
+using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
 {
@@ -194,6 +195,8 @@ namespace Datra.Unity.Editor.Panels
 
             if (!selectedItem.IsCategory && selectedItem.DataType != null)
             {
+                // Save selected type
+                DatraUserPreferences.SetLastSelectedTreePath(selectedItem.DataType.FullName);
                 onTypeSelected?.Invoke(selectedItem.DataType);
             }
         }
@@ -203,6 +206,9 @@ namespace Datra.Unity.Editor.Panels
             onTypeSelected = selectionCallback;
             BuildTreeData(dataTypes);
             UpdateStatusLabel();
+            
+            // Restore last selected item
+            RestoreLastSelection();
         }
         
         private void BuildTreeData(IEnumerable<Type> dataTypes)
@@ -491,6 +497,37 @@ namespace Datra.Unity.Editor.Panels
         {
             var contextField = window.GetType().GetField("dataContext", BindingFlags.NonPublic | BindingFlags.Instance);
             return contextField?.GetValue(window);
+        }
+        
+        private void RestoreLastSelection()
+        {
+            var lastSelectedPath = DatraUserPreferences.GetLastSelectedTreePath();
+            if (string.IsNullOrEmpty(lastSelectedPath)) return;
+            
+            // Find the item with matching type name
+            var itemToSelect = FindItemByTypeName(treeData, lastSelectedPath);
+            if (itemToSelect.HasValue)
+            {
+                treeView.SetSelectionById(itemToSelect.Value.id);
+            }
+        }
+        
+        private TreeViewItemData<DataTypeItem>? FindItemByTypeName(
+            IEnumerable<TreeViewItemData<DataTypeItem>> items, string typeName)
+        {
+            foreach (var item in items)
+            {
+                if (item.data?.DataType?.FullName == typeName)
+                    return item;
+                    
+                if (item.hasChildren)
+                {
+                    var found = FindItemByTypeName(item.children, typeName);
+                    if (found.HasValue)
+                        return found;
+                }
+            }
+            return null;
         }
     }
 }
