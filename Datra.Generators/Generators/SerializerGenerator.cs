@@ -76,7 +76,14 @@ namespace Datra.Generators.Generators
             
             foreach (var prop in model.Properties)
             {
-                if (prop.Type == "string")
+                if (prop.IsArray)
+                {
+                    // Initialize arrays with empty array
+                    // Remove [] from the type since we're adding [0] at the end
+                    var arrayElementType = prop.Type.EndsWith("[]") ? prop.Type.Substring(0, prop.Type.Length - 2) : prop.Type;
+                    codeBuilder.AppendLine($"{prop.Name} = new {arrayElementType}[0];");
+                }
+                else if (prop.Type == "string")
                 {
                     codeBuilder.AppendLine($"{prop.Name} = string.Empty;");
                 }
@@ -139,7 +146,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Deserialize method without serializer
-                codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data)");
+                codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, Datra.Configuration.DatraConfiguration config = null)");
                 var csvBuilder2 = new CsvSerializerBuilder();
                 csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();
@@ -147,7 +154,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Serialize method without serializer
-                codeBuilder.BeginMethod($"public static string SerializeCsv(Dictionary<{model.KeyType}, {simpleTypeName}> table)");
+                codeBuilder.BeginMethod($"public static string SerializeCsv(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Configuration.DatraConfiguration config = null)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();

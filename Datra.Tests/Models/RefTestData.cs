@@ -10,5 +10,6 @@ namespace Datra.Tests.Models
         public string Id { get; set; }
         public StringDataRef<CharacterData> CharacterRef { get; set; }
         public IntDataRef<ItemData> ItemRef { get; set; }
+        public IntDataRef<ItemData>[] ItemRefs { get; set; } // Array of item references
     }
 }

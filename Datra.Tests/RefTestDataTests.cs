@@ -17,15 +17,15 @@ namespace Datra.Tests
             // Arrange
             var refTestData = new Dictionary<string, RefTestData>
             {
-                ["ref1"] = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "char_001" }, new IntDataRef<ItemData> { Value = 1001 }),
-                ["ref2"] = new RefTestData("ref2", new StringDataRef<CharacterData> { Value = "char_002" }, new IntDataRef<ItemData> { Value = 1002 })
+                ["ref1"] = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "char_001" }, new IntDataRef<ItemData> { Value = 1001 }, new IntDataRef<ItemData>[0]),
+                ["ref2"] = new RefTestData("ref2", new StringDataRef<CharacterData> { Value = "char_002" }, new IntDataRef<ItemData> { Value = 1002 }, new IntDataRef<ItemData>[0])
             };
             
             // Act - Serialize
             var csv = RefTestDataSerializer.SerializeCsv(refTestData);
             
             // Assert - Check CSV format
-            Assert.Contains("Id,CharacterRef,ItemRef", csv);
+            Assert.Contains("Id,CharacterRef,ItemRef,ItemRefs", csv);
             Assert.Contains("ref1,char_001,1001", csv);
             Assert.Contains("ref2,char_002,1002", csv);
             
@@ -56,7 +56,7 @@ namespace Datra.Tests
             Assert.NotNull(firstItem);
             
             // Create ref test data pointing to the first character and item
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = firstCharacter.Id }, new IntDataRef<ItemData> { Value = firstItem.Id });
+            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = firstCharacter.Id }, new IntDataRef<ItemData> { Value = firstItem.Id }, new IntDataRef<ItemData>[0]);
             
             // Act - Evaluate the reference
             var character = refData.CharacterRef.Evaluate(context);
@@ -84,7 +84,7 @@ namespace Datra.Tests
             var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "invalid_id_that_does_not_exist" }, new IntDataRef<ItemData> { Value = 1001 });
+            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "invalid_id_that_does_not_exist" }, new IntDataRef<ItemData> { Value = 1001 }, new IntDataRef<ItemData>[0]);
             
             // Act & Assert
             Assert.Throws<KeyNotFoundException>(() => refData.CharacterRef.Evaluate(context));
@@ -96,7 +96,7 @@ namespace Datra.Tests
             // Arrange
             var context = TestDataHelper.CreateGameDataContext();
             
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "" }, new IntDataRef<ItemData> { Value = 0 });
+            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "" }, new IntDataRef<ItemData> { Value = 0 }, new IntDataRef<ItemData>[0]);
             
             // Act
             var characterResult = refData.CharacterRef.Evaluate(context);
@@ -114,7 +114,7 @@ namespace Datra.Tests
             var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
             
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "hero_001" }, new IntDataRef<ItemData> { Value = 99999 });
+            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "hero_001" }, new IntDataRef<ItemData> { Value = 99999 }, new IntDataRef<ItemData>[0]);
             
             // Act & Assert
             Assert.Throws<KeyNotFoundException>(() => refData.ItemRef.Evaluate(context));

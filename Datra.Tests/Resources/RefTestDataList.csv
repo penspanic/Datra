@@ -1,6 +1,6 @@
-Id,CharacterRef,ItemRef
-test_01,hero_001,1001
-test_02,hero_002,1002
-test_03,hero_003,2001
-test_04,hero_004,3001
-test_05,hero_005,3002
+Id,CharacterRef,ItemRef,ItemRefs
+test_01,hero_001,1001,1001|1002|1003
+test_02,hero_002,1002,2001|2002
+test_03,hero_003,2001,3001|3002|3003|3004
+test_04,hero_004,3001,1001
+test_05,hero_005,3002,

@@ -161,9 +161,32 @@ namespace Datra.Generators.Analyzers
                     var isDataRef = false;
                     string dataRefKeyType = null;
                     string dataRefTargetType = null;
+                    var isArray = false;
+                    string elementType = null;
                     
-                    // Check if it's any DataRef type
-                    if (propertyType is INamedTypeSymbol namedType && 
+                    // Check if it's an array type
+                    if (propertyType is IArrayTypeSymbol arrayType)
+                    {
+                        isArray = true;
+                        var elementTypeSymbol = arrayType.ElementType;
+                        elementType = elementTypeSymbol.ToDisplayString();
+                        
+                        // Check if array element is DataRef
+                        if (elementTypeSymbol is INamedTypeSymbol namedElementType && 
+                            namedElementType.IsGenericType)
+                        {
+                            var constructedFrom = namedElementType.ConstructedFrom.ToDisplayString();
+                            if (constructedFrom == "Datra.DataTypes.StringDataRef<T>" ||
+                                constructedFrom == "Datra.DataTypes.IntDataRef<T>")
+                            {
+                                isDataRef = true;
+                                dataRefKeyType = constructedFrom.Contains("StringDataRef") ? "string" : "int";
+                                dataRefTargetType = namedElementType.TypeArguments[0].Name;
+                            }
+                        }
+                    }
+                    // Check if it's any DataRef type (non-array)
+                    else if (propertyType is INamedTypeSymbol namedType && 
                         namedType.IsGenericType)
                     {
                         var constructedFrom = namedType.ConstructedFrom.ToDisplayString();
@@ -183,7 +206,9 @@ namespace Datra.Generators.Analyzers
                         IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated,
                         IsDataRef = isDataRef,
                         DataRefKeyType = dataRefKeyType,
-                        DataRefTargetType = dataRefTargetType
+                        DataRefTargetType = dataRefTargetType,
+                        IsArray = isArray,
+                        ElementType = elementType
                     });
                 }
             }

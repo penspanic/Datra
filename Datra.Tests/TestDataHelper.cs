@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Datra.Configuration;
 using Datra.Serializers;
 using Datra.Tests.Models;
 

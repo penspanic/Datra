@@ -38,6 +38,10 @@ namespace Datra.Generators.Generators
             builder.BeginNamespace(namespaceName);
             builder.BeginClass(contextName, "public partial", "BaseDataContext");
             
+            // Add field for configuration
+            builder.AppendLine("private readonly Datra.Configuration.DatraConfiguration _config;");
+            builder.AddBlankLine();
+            
             // Constructor
             GenerateConstructor(builder, contextName);
             builder.AddBlankLine();
@@ -64,9 +68,10 @@ namespace Datra.Generators.Generators
 
         private void GenerateConstructor(CodeBuilder builder, string contextName)
         {
-            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null)");
+            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null, Datra.Configuration.DatraConfiguration config = null)");
             builder.AppendLine("    : base(rawDataProvider, serializerFactory ?? new DataSerializerFactory())");
             builder.BeginBlock();
+            builder.AppendLine("_config = config ?? Datra.Configuration.DatraConfiguration.CreateDefault();");
             builder.AppendLine("InitializeRepositories();");
             builder.EndBlock();
         }
@@ -101,8 +106,8 @@ namespace Datra.Generators.Generators
                 builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
                 builder.AppendLine($"    \"{model.FilePath}\",");
                 builder.AppendLine($"    RawDataProvider,");
-                builder.AppendLine($"    (data) => {simpleTypeName}Serializer.DeserializeCsv(data),");
-                builder.AppendLine($"    (table) => {simpleTypeName}Serializer.SerializeCsv(table)");
+                builder.AppendLine($"    (data) => {simpleTypeName}Serializer.DeserializeCsv(data, _config),");
+                builder.AppendLine($"    (table) => {simpleTypeName}Serializer.SerializeCsv(table, _config)");
                 builder.AppendLine(");");
                 builder.AppendLine($"RegisterRepository(\"{model.PropertyName}\", {model.PropertyName});");
             }

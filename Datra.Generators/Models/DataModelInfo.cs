@@ -21,6 +21,8 @@ namespace Datra.Generators.Models
         public bool IsDataRef { get; set; }
         public string DataRefKeyType { get; set; } // e.g., "string", "int"
         public string DataRefTargetType { get; set; } // e.g., "CharacterData" for DataRef<CharacterData>
+        public bool IsArray { get; set; }
+        public string ElementType { get; set; } // e.g., "int" for int[], "IntDataRef<ItemData>" for IntDataRef<ItemData>[]
         
         // For backward compatibility
         public bool IsStringDataRef => IsDataRef && DataRefKeyType == "string";

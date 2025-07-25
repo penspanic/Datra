@@ -15,5 +15,6 @@ namespace Datra.Tests.Models
         public int Intelligence { get; set; }
         public int Agility { get; set; }
         public string ClassName { get; set; }
+        public int[] UpgradeCosts { get; set; } // Array of upgrade costs for each level
     }
 }
