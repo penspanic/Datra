@@ -849,13 +849,18 @@ namespace Datra.Unity.Editor.Components
                     });
                 }
             });
-            selectButton.text = " 🔍";
+            selectButton.text = "🔍";
             selectButton.AddToClassList("dataref-select-button");
-            selectButton.style.width = 20;
-            selectButton.style.minWidth = 20;
-            selectButton.style.paddingLeft = 2;
-            selectButton.style.paddingRight = 2;
+            selectButton.style.width = 24;
+            selectButton.style.minWidth = 24;
+            selectButton.style.height = 20;
+            selectButton.style.minHeight = 20;
+            selectButton.style.paddingLeft = 0;
+            selectButton.style.paddingRight = 0;
+            selectButton.style.paddingTop = 0;
+            selectButton.style.paddingBottom = 0;
             selectButton.style.marginRight = 2;
+            selectButton.style.fontSize = 12;
             
             // Clear button
             var clearButton = new Button(() =>
@@ -870,11 +875,16 @@ namespace Datra.Unity.Editor.Components
             clearButton.text = "×";
             clearButton.tooltip = "Clear";
             clearButton.AddToClassList("dataref-clear-button");
-            clearButton.style.width = 20;
-            clearButton.style.minWidth = 20;
-            clearButton.style.paddingLeft = 2;
-            clearButton.style.paddingRight = 2;
+            clearButton.style.width = 24;
+            clearButton.style.minWidth = 24;
+            clearButton.style.height = 20;
+            clearButton.style.minHeight = 20;
+            clearButton.style.paddingLeft = 0;
+            clearButton.style.paddingRight = 0;
+            clearButton.style.paddingTop = 0;
+            clearButton.style.paddingBottom = 0;
             clearButton.style.marginRight = 4;
+            clearButton.style.fontSize = 14;
             
             UpdateDisplayValue();
             

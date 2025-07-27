@@ -254,9 +254,9 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Check if user wants to save before closing/switching
         /// </summary>
-        public async Task<bool> CheckUnsavedChangesAsync(string action = "continue")
+        public Task<bool> CheckUnsavedChangesAsync(string action = "continue")
         {
-            if (modifiedTypes.Count == 0) return true;
+            if (modifiedTypes.Count == 0) return Task.FromResult(true);
             
             var result = EditorUtility.DisplayDialogComplex(
                 "Unsaved Changes",
@@ -270,13 +270,13 @@ namespace Datra.Unity.Editor.Utilities
             {
                 case 0: // Save
                     // This needs to be handled by the caller since we need repositories
-                    return false;
+                    return Task.FromResult(false);
                 case 1: // Cancel
-                    return false;
+                    return Task.FromResult(false);
                 case 2: // Don't Save
-                    return true;
+                    return Task.FromResult(true);
                 default:
-                    return false;
+                    return Task.FromResult(false);
             }
         }
     }

@@ -62,10 +62,6 @@
     font-size: 12px;
 }
 
-.search-field > .unity-text-field__input::placeholder {
-    color: #696969;
-}
-
 .search-icon {
     position: absolute;
     left: 6px;

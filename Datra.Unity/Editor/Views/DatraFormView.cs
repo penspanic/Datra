@@ -15,6 +15,8 @@ namespace Datra.Unity.Editor.Views
     {
         private VisualElement formContainer;
         private VisualElement itemsContainer;
+        private ScrollView scrollView;
+        private VisualElement scrollContent;
         
         public DatraFormView() : base()
         {
@@ -25,6 +27,21 @@ namespace Datra.Unity.Editor.Views
         {
             // Header already created by base class
             // Add any form-specific header elements if needed
+            
+            // Create ScrollView for form content
+            scrollView = new ScrollView();
+            scrollView.AddToClassList("form-view-scroll");
+            scrollView.style.flexGrow = 1;
+            scrollView.verticalScrollerVisibility = ScrollerVisibility.Auto;
+            scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
+            
+            // Create scroll content container
+            scrollContent = new VisualElement();
+            scrollContent.AddToClassList("form-view-scroll-content");
+            scrollView.Add(scrollContent);
+            
+            // Add ScrollView to the main content container
+            contentContainer.Add(scrollView);
         }
         
         public override void RefreshContent()
@@ -33,7 +50,8 @@ namespace Datra.Unity.Editor.Views
             var previousNewItems = new HashSet<object>(this.newItems);
             var previousTrackers = new Dictionary<object, DatraPropertyTracker>(itemTrackers);
             
-            contentContainer.Clear();
+            // Clear the scroll content, not the main container
+            scrollContent.Clear();
             
             if (repository == null || dataType == null) return;
             
@@ -72,7 +90,7 @@ namespace Datra.Unity.Editor.Views
                     activeFields.Add(field);
                 }
                 
-                contentContainer.Add(formContainer);
+                scrollContent.Add(formContainer);
             }
         }
         
@@ -80,7 +98,7 @@ namespace Datra.Unity.Editor.Views
         {
             // Add toolbar for table data
             var toolbar = CreateTableToolbar();
-            contentContainer.Add(toolbar);
+            scrollContent.Add(toolbar);
             
             // Get all items from repository
             var getAllMethod = repository.GetType().GetMethod("GetAll");
@@ -105,7 +123,7 @@ namespace Datra.Unity.Editor.Views
                     itemsContainer.Add(itemElement);
                 }
                 
-                contentContainer.Add(itemsContainer);
+                scrollContent.Add(itemsContainer);
             }
         }
         

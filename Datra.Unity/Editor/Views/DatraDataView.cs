@@ -80,15 +80,11 @@ namespace Datra.Unity.Editor.Views
             headerContainer.AddToClassList("data-view-header");
             Add(headerContainer);
             
-            // Content
-            var contentScroll = new ScrollView();
-            contentScroll.AddToClassList("data-view-content-scroll");
-            contentScroll.style.flexGrow = 1;
-            
+            // Content container (no scroll - let subclasses handle scrolling)
             contentContainer = new VisualElement();
             contentContainer.AddToClassList("data-view-content");
-            contentScroll.Add(contentContainer);
-            Add(contentScroll);
+            contentContainer.style.flexGrow = 1;
+            Add(contentContainer);
             
             // Footer
             footerContainer = new VisualElement();

@@ -80,7 +80,7 @@ namespace Datra.Unity.Editor.UI
             
             _listView.selectionType = SelectionType.Single;
             _listView.style.flexGrow = 1;
-            _listView.onSelectionChange += OnSelectionChanged;
+            _listView.selectionChanged += OnSelectionChanged;
             
             root.Add(_listView);
             

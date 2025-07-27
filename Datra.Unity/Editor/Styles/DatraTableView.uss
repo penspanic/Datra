@@ -93,7 +93,6 @@
     cursor: resize-horizontal;
     background-color: transparent;
     transition: background-color 0.1s ease;
-    z-index: 10;
 }
 
 .table-resize-handle:hover {
@@ -169,7 +168,6 @@
 .table-row.deleted-row {
     background-color: rgba(244, 67, 54, 0.15) !important;
     opacity: 0.6;
-    text-decoration: line-through;
 }
 
 /* Delete column styles */

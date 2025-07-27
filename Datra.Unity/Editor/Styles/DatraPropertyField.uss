@@ -198,8 +198,7 @@
 .array-field-container {
     background-color: #1e1e1e;
     border-radius: 3px;
-    border-width: 1px;
-    border-color: #151515;
+    border-width: 0;
     padding: 8px;
 }
 
@@ -294,8 +293,7 @@
 .dataref-field-container {
     background-color: #1e1e1e;
     border-radius: 3px;
-    border-width: 1px;
-    border-color: #151515;
+    border-width: 0;
     padding: 4px;
 }
 
@@ -320,7 +318,7 @@
     border-width: 0;
     color: white;
     font-size: 12px;
-    margin-left: 4px;
+    margin-left: 2px;
     padding: 2px 8px;
 }
 

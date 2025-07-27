@@ -108,6 +108,8 @@ namespace Datra.Unity.Editor.Views
             deleteHeader.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
             deleteHeader.style.borderBottomWidth = 1;
             deleteHeader.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            deleteHeader.style.width = 60;
+            deleteHeader.style.minWidth = 60;
             
             var deleteHeaderLabel = new Label("Actions");
             deleteHeaderLabel.style.fontSize = 11;
@@ -463,8 +465,8 @@ namespace Datra.Unity.Editor.Views
                 deleteButtonContainer.style.height = RowHeight;
                 deleteButtonContainer.style.justifyContent = Justify.Center;
                 deleteButtonContainer.style.alignItems = Align.Center;
-                deleteButtonContainer.style.paddingLeft = 8;
-                deleteButtonContainer.style.paddingRight = 8;
+                deleteButtonContainer.style.width = 60;
+                deleteButtonContainer.style.minWidth = 60;
                 
                 var deleteButton = new Button(() => {
                     if (!isReadOnly)

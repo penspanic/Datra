@@ -101,7 +101,7 @@ namespace Datra.Unity.Editor.Panels
             treeView.makeItem = MakeTreeItem;
             treeView.bindItem = BindTreeItem;
             treeView.selectionType = SelectionType.Single;
-            treeView.onSelectionChange += OnTreeSelectionChanged;
+            treeView.selectionChanged += OnTreeSelectionChanged;
             
             // Wrap TreeView in ScrollView for consistent styling
             var scrollView = new ScrollView();
