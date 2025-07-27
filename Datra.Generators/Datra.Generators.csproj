@@ -9,9 +9,6 @@
         <IncludeBuildOutput>true</IncludeBuildOutput>
         <DevelopmentDependency>true</DevelopmentDependency>
         <RootNamespace>Datra.Generators</RootNamespace>
-        <!-- Build output path settings -->
-        <OutputPath>..\Output\Datra.Generators\bin\$(Configuration)\</OutputPath>
-        <BaseIntermediateOutputPath>..\Output\Datra.Generators\obj\</BaseIntermediateOutputPath>
     </PropertyGroup>
 
     <ItemGroup>

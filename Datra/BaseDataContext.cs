@@ -114,6 +114,8 @@ namespace Datra
         private async Task LoadRepositoryAsync(PropertyInfo property)
         {
             var dataType = GetDataType(property);
+            if (dataType == null) return;
+            
             var attribute = GetDataAttribute(dataType);
             
             if (attribute == null) return;
@@ -156,6 +158,8 @@ namespace Datra
             
             // Fallback to old behavior for repositories without SaveAsync
             var dataType = GetDataType(property);
+            if (dataType == null) return;
+            
             var attribute = GetDataAttribute(dataType);
             
             if (attribute == null) return;
@@ -178,7 +182,7 @@ namespace Datra
             await _rawDataProvider.SaveTextAsync(filePath, rawData);
         }
         
-        private Type GetDataType(PropertyInfo property)
+        private Type? GetDataType(PropertyInfo property)
         {
             var type = property.PropertyType;
             if (!type.IsGenericType) return null;

@@ -58,7 +58,7 @@ namespace Datra.Tests
             // Assert
             Assert.NotNull(refData);
             Assert.NotNull(refData.ItemRefs);
-            Assert.Equal(0, refData.ItemRefs.Length);
+            Assert.Empty(refData.ItemRefs);
         }
         
         [Fact]

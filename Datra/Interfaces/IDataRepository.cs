@@ -22,7 +22,7 @@ namespace Datra.Interfaces
         /// <summary>
         /// Get data by ID (returns null if not found)
         /// </summary>
-        TData TryGetById(TKey id);
+        TData? TryGetById(TKey id);
         
         /// <summary>
         /// Find data matching the predicate

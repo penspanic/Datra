@@ -35,7 +35,7 @@ namespace Datra.Converters
             {
                 if (reader.TokenType != JsonToken.String)
                     throw new JsonSerializationException($"Unexpected token {reader.TokenType} when parsing string DataRef.");
-                valueProperty.SetValue(instance, (string)reader.Value);
+                valueProperty.SetValue(instance, (string?)reader.Value);
             }
             else if (valueProperty.PropertyType == typeof(int))
             {

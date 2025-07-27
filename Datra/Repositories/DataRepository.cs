@@ -13,14 +13,14 @@ namespace Datra.Repositories
     public class DataRepository<TKey, TData> : IEditableDataRepository<TKey, TData>
         where TData : class, ITableData<TKey>
     {
-        private Dictionary<TKey, TData> _data;
-        private readonly string _filePath;
-        private readonly IRawDataProvider _rawDataProvider;
-        private readonly DataSerializerFactory _serializerFactory;
-        private readonly Func<string, IDataSerializer, Dictionary<TKey, TData>> _deserializeFunc;
-        private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string> _serializeFunc;
-        private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc;
-        private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc;
+        private Dictionary<TKey, TData> _data = null!;
+        private readonly string _filePath = null!;
+        private readonly IRawDataProvider _rawDataProvider = null!;
+        private readonly DataSerializerFactory _serializerFactory = null!;
+        private readonly Func<string, IDataSerializer, Dictionary<TKey, TData>> _deserializeFunc = null!;
+        private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string> _serializeFunc = null!;
+        private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc = null!;
+        private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc = null!;
         
         public DataRepository(Dictionary<TKey, TData> data)
         {
@@ -54,6 +54,9 @@ namespace Datra.Repositories
             _csvDeserializeFunc = csvDeserializeFunc;
             _csvSerializeFunc = csvSerializeFunc;
             _data = new Dictionary<TKey, TData>();
+            _serializerFactory = null!;
+            _deserializeFunc = null!;
+            _serializeFunc = null!;
         }
         
         public IReadOnlyDictionary<TKey, TData> GetAll() => _data;
@@ -68,7 +71,7 @@ namespace Datra.Repositories
             throw new KeyNotFoundException($"Data with ID '{id}' not found.");
         }
         
-        public TData TryGetById(TKey id)
+        public TData? TryGetById(TKey id)
         {
             return _data.TryGetValue(id, out var data) ? data : null;
         }
@@ -140,7 +143,7 @@ namespace Datra.Repositories
             if (!_data.TryGetValue(oldKey, out var data))
                 return false;
                 
-            if (_data.ContainsKey(newKey) && !oldKey.Equals(newKey))
+            if (_data.ContainsKey(newKey) && !oldKey!.Equals(newKey))
                 throw new InvalidOperationException($"Item with ID '{newKey}' already exists.");
                 
             // If the Id property has a setter, update it
@@ -194,12 +197,12 @@ namespace Datra.Repositories
     public class SingleDataRepository<TData> : IEditableSingleDataRepository<TData>
         where TData : class
     {
-        private TData _data;
-        private readonly string _filePath;
-        private readonly IRawDataProvider _rawDataProvider;
-        private readonly DataSerializerFactory _serializerFactory;
-        private readonly Func<string, IDataSerializer, TData> _deserializeFunc;
-        private readonly Func<TData, IDataSerializer, string> _serializeFunc;
+        private TData _data = null!;
+        private readonly string _filePath = null!;
+        private readonly IRawDataProvider _rawDataProvider = null!;
+        private readonly DataSerializerFactory _serializerFactory = null!;
+        private readonly Func<string, IDataSerializer, TData> _deserializeFunc = null!;
+        private readonly Func<TData, IDataSerializer, string> _serializeFunc = null!;
         
         public SingleDataRepository(TData data)
         {

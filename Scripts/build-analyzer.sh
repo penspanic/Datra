@@ -29,7 +29,7 @@ fi
 echo -e "${GREEN}✓ Build successful!${NC}"
 
 # Build output path
-SOURCE_DLL="$PROJECT_ROOT/../Output/Datra.Analyzers/bin/Release/netstandard2.0/Datra.Analyzers.dll"
+SOURCE_DLL="$PROJECT_ROOT/Output/Datra.Analyzers/bin/Release/netstandard2.0/Datra.Analyzers.dll"
 
 # Datra package Plugins directory
 UNITY_PLUGINS_DIR="$PROJECT_ROOT/Datra/Plugins"
