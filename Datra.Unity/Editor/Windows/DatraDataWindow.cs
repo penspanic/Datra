@@ -222,11 +222,7 @@ namespace Datra.Unity.Editor.Windows
             
             contentContainer.Add(splitView);
             
-            // Connect selection
-            tableView.OnItemSelected += (item) => {
-                // Update form to show selected item
-                // This would require extending DatraFormView to support single item display
-            };
+            // Note: Item selection functionality has been removed from TableView
         }
         
         private void CleanupCurrentView()

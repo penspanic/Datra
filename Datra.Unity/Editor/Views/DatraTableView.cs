@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Datra.Unity.Editor.Components;
+using Datra.DataTypes;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -24,14 +25,18 @@ namespace Datra.Unity.Editor.Views
         private VisualElement deleteColumnContainer;
         
         // Events
-        public event Action<object> OnItemSelected;
         public event Action<object, string, object> OnCellValueChanged;
         
         // Properties
-        public bool ShowSelectionColumn { get; set; } = true;
         public bool ShowIdColumn { get; set; } = true;
         public bool ShowActionsColumn { get; set; } = true;
         public float RowHeight { get; set; } = 28f;
+        
+        // Column resize tracking
+        private bool isResizing = false;
+        private VisualElement resizingColumn;
+        private float resizeStartX;
+        private float resizeStartWidth;
         
         public DatraTableView() : base()
         {
@@ -307,21 +312,17 @@ namespace Datra.Unity.Editor.Views
         
         private void CreateHeaderCells()
         {
-            // Selection column
-            if (ShowSelectionColumn)
-            {
-                var selectHeader = new VisualElement();
-                selectHeader.AddToClassList("table-header-cell");
-                selectHeader.style.width = 30;
-                selectHeader.style.minWidth = 30;
-                headerRow.Add(selectHeader);
-            }
+            int columnIndex = 0;
             
             // ID column
             if (ShowIdColumn)
             {
                 var idHeader = CreateHeaderCell("ID", 80);
+                // Hide left resize handle for first column
+                var leftHandle = idHeader.Q<VisualElement>(className: "resize-handle-left");
+                if (leftHandle != null) leftHandle.style.display = DisplayStyle.None;
                 headerRow.Add(idHeader);
+                columnIndex++;
             }
             
             // Data columns
@@ -330,7 +331,14 @@ namespace Datra.Unity.Editor.Views
                 if (column.Name == "Id" && ShowIdColumn) continue; // Skip ID if already shown
                 
                 var headerCell = CreateHeaderCell(ObjectNames.NicifyVariableName(column.Name), 150);
+                // Hide left resize handle for first column if no ID column
+                if (columnIndex == 0)
+                {
+                    var leftHandle = headerCell.Q<VisualElement>(className: "resize-handle-left");
+                    if (leftHandle != null) leftHandle.style.display = DisplayStyle.None;
+                }
                 headerRow.Add(headerCell);
+                columnIndex++;
             }
             
             // Actions column header is now in the fixed delete column container
@@ -351,17 +359,64 @@ namespace Datra.Unity.Editor.Views
             label.style.fontSize = 11;
             cell.Add(label);
             
-            // Add resize handle
-            var resizeHandle = new VisualElement();
-            resizeHandle.AddToClassList("table-resize-handle");
-            resizeHandle.style.position = Position.Absolute;
-            resizeHandle.style.right = 0;
-            resizeHandle.style.top = 0;
-            resizeHandle.style.bottom = 0;
-            resizeHandle.style.width = 4;
-            resizeHandle.style.cursor = new Cursor();
-            resizeHandle.RegisterCallback<MouseDownEvent>(evt => StartResize(evt, cell));
-            cell.Add(resizeHandle);
+            // Add resize handle on the right
+            var resizeHandleRight = new VisualElement();
+            resizeHandleRight.AddToClassList("table-resize-handle");
+            resizeHandleRight.AddToClassList("resize-handle-right");
+            resizeHandleRight.style.position = Position.Absolute;
+            resizeHandleRight.style.right = -3; // Extend 3px to the right
+            resizeHandleRight.style.top = 0;
+            resizeHandleRight.style.bottom = 0;
+            resizeHandleRight.style.width = 6;
+            resizeHandleRight.pickingMode = PickingMode.Position;
+            
+            // Add resize handle on the left (except for first column)
+            var resizeHandleLeft = new VisualElement();
+            resizeHandleLeft.AddToClassList("table-resize-handle");
+            resizeHandleLeft.AddToClassList("resize-handle-left");
+            resizeHandleLeft.style.position = Position.Absolute;
+            resizeHandleLeft.style.left = -3; // Extend 3px to the left
+            resizeHandleLeft.style.top = 0;
+            resizeHandleLeft.style.bottom = 0;
+            resizeHandleLeft.style.width = 6;
+            resizeHandleLeft.pickingMode = PickingMode.Position;
+            
+            // Set cursor style for right handle
+            resizeHandleRight.RegisterCallback<MouseEnterEvent>(evt => {
+                resizeHandleRight.style.cursor = new Cursor() { hotspot = Vector2.zero };
+                resizeHandleRight.style.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
+            });
+            
+            resizeHandleRight.RegisterCallback<MouseLeaveEvent>(evt => {
+                resizeHandleRight.style.cursor = StyleKeyword.Null;
+                resizeHandleRight.style.backgroundColor = Color.clear;
+            });
+            
+            resizeHandleRight.RegisterCallback<MouseDownEvent>(evt => StartResize(evt, cell));
+            
+            // Set cursor style for left handle
+            resizeHandleLeft.RegisterCallback<MouseEnterEvent>(evt => {
+                resizeHandleLeft.style.cursor = new Cursor() { hotspot = Vector2.zero };
+                resizeHandleLeft.style.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
+            });
+            
+            resizeHandleLeft.RegisterCallback<MouseLeaveEvent>(evt => {
+                resizeHandleLeft.style.cursor = StyleKeyword.Null;
+                resizeHandleLeft.style.backgroundColor = Color.clear;
+            });
+            
+            resizeHandleLeft.RegisterCallback<MouseDownEvent>(evt => {
+                // Find previous cell to resize
+                var index = headerRow.IndexOf(cell);
+                if (index > 0)
+                {
+                    var previousCell = headerRow[index - 1];
+                    StartResize(evt, previousCell);
+                }
+            });
+            
+            cell.Add(resizeHandleRight);
+            cell.Add(resizeHandleLeft);
             
             return cell;
         }
@@ -378,24 +433,6 @@ namespace Datra.Unity.Editor.Views
             cellElements[item] = cells;
             
             
-            // Selection checkbox
-            if (ShowSelectionColumn)
-            {
-                var selectCell = new VisualElement();
-                selectCell.AddToClassList("table-cell");
-                selectCell.style.width = 30;
-                selectCell.style.minWidth = 30;
-                selectCell.style.justifyContent = Justify.Center;
-                
-                var checkbox = new Toggle();
-                checkbox.style.marginLeft = 6;
-                checkbox.RegisterValueChangedCallback(evt => {
-                    if (evt.newValue)
-                        OnItemSelected?.Invoke(item);
-                });
-                selectCell.Add(checkbox);
-                row.Add(selectCell);
-            }
             
             // ID field
             if (ShowIdColumn)
@@ -471,7 +508,8 @@ namespace Datra.Unity.Editor.Views
             {
                 // Read-only display
                 var value = property.GetValue(item);
-                var label = new Label(value?.ToString() ?? "");
+                var displayValue = GetDisplayValue(property.PropertyType, value);
+                var label = new Label(displayValue);
                 label.style.fontSize = 11;
                 label.style.overflow = Overflow.Hidden;
                 label.style.textOverflow = TextOverflow.Ellipsis;
@@ -479,92 +517,91 @@ namespace Datra.Unity.Editor.Views
             }
             else
             {
-                // Editable field
-                var field = CreateFieldForType(property.PropertyType, property.GetValue(item), (newValue) => {
-                    property.SetValue(item, newValue);
-                    OnCellValueChanged?.Invoke(item, property.Name, newValue);
-                    
-                    // Track changes
-                    if (!itemTrackers.ContainsKey(item))
-                    {
-                        var tracker = new DatraPropertyTracker();
-                        tracker.StartTracking(item, false);
-                        tracker.OnAnyPropertyModified += OnTrackerModified;
-                        itemTrackers[item] = tracker;
-                    }
-                    itemTrackers[item].TrackChange(item, property.Name, newValue);
+                // Get or create tracker for this item
+                if (!itemTrackers.ContainsKey(item))
+                {
+                    var tracker = new DatraPropertyTracker();
+                    tracker.StartTracking(item, false);
+                    tracker.OnAnyPropertyModified += OnTrackerModified;
+                    itemTrackers[item] = tracker;
+                }
+                
+                // Create field using DatraPropertyField in table mode
+                var field = new DatraPropertyField(item, property, itemTrackers[item], DatraFieldLayoutMode.Table);
+                field.OnValueChanged += (propName, newValue) => {
+                    OnCellValueChanged?.Invoke(item, propName, newValue);
                     MarkAsModified();
                     
                     // Track modified cell
-                    modifiedCells.Add((item, property.Name));
+                    modifiedCells.Add((item, propName));
                     
                     // Update cell visual state
-                    if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(property.Name, out var cell))
+                    if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
                     {
-                        cell.AddToClassList("modified-cell");
+                        modCell.AddToClassList("modified-cell");
                     }
-                });
-                if (field != null)
-                {
-                    field.style.flexGrow = 1;
-                    cell.Add(field);
-                }
+                };
+                field.style.flexGrow = 1;
+                cell.Add(field);
             }
             
             return cell;
         }
         
-        private VisualElement CreateFieldForType(Type type, object value, Action<object> onValueChanged)
+        private string GetDisplayValue(Type type, object value)
         {
-            if (type == typeof(string))
+            if (value == null) return "";
+            
+            // Handle arrays
+            if (type.IsArray)
             {
-                var field = new TextField();
-                field.value = value as string ?? "";
-                field.style.minHeight = 20;
-                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
-                return field;
-            }
-            else if (type == typeof(int))
-            {
-                var field = new IntegerField();
-                field.value = (int)(value ?? 0);
-                field.style.minHeight = 20;
-                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
-                return field;
-            }
-            else if (type == typeof(float))
-            {
-                var field = new FloatField();
-                field.value = (float)(value ?? 0f);
-                field.style.minHeight = 20;
-                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
-                return field;
-            }
-            else if (type == typeof(bool))
-            {
-                var field = new Toggle();
-                field.value = (bool)(value ?? false);
-                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
-                return field;
-            }
-            else if (type.IsEnum)
-            {
-                var field = new EnumField((Enum)(value ?? Activator.CreateInstance(type)));
-                field.style.minHeight = 20;
-                field.RegisterValueChangedCallback(evt => onValueChanged(evt.newValue));
-                return field;
+                var array = value as Array;
+                return $"[{array?.Length ?? 0} items]";
             }
             
-            return null;
+            // Handle DataRef types
+            if (type.IsGenericType && 
+                (type.GetGenericTypeDefinition() == typeof(StringDataRef<>) ||
+                 type.GetGenericTypeDefinition() == typeof(IntDataRef<>)))
+            {
+                var keyValue = type.GetProperty("Value")?.GetValue(value);
+                return keyValue != null ? $"→ {keyValue}" : "(None)";
+            }
+            
+            return value.ToString();
         }
         
         private bool IsSupportedType(Type type)
         {
-            return type == typeof(string) || 
-                   type == typeof(int) || 
-                   type == typeof(float) || 
-                   type == typeof(bool) || 
-                   type.IsEnum;
+            // Basic types
+            if (type == typeof(string) || 
+                type == typeof(int) || 
+                type == typeof(float) || 
+                type == typeof(bool) || 
+                type.IsEnum)
+            {
+                return true;
+            }
+            
+            // Array types
+            if (type.IsArray)
+            {
+                var elementType = type.GetElementType();
+                return elementType == typeof(int) || 
+                       elementType == typeof(string) || 
+                       elementType == typeof(float) ||
+                       elementType.IsEnum;
+            }
+            
+            // DataRef types
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                return genericDef == typeof(StringDataRef<>) || 
+                       genericDef == typeof(IntDataRef<>);
+            }
+            
+            return false;
         }
         
         protected override void FilterItems(string searchTerm)
@@ -623,8 +660,92 @@ namespace Datra.Unity.Editor.Views
         
         private void StartResize(MouseDownEvent evt, VisualElement cell)
         {
-            // Column resize implementation
             evt.StopPropagation();
+            evt.PreventDefault();
+            
+            isResizing = true;
+            resizingColumn = cell;
+            resizeStartX = evt.mousePosition.x;
+            resizeStartWidth = cell.style.width.value.value;
+            
+            // Capture mouse
+            cell.CaptureMouse();
+            
+            // Register mouse move and up handlers
+            cell.RegisterCallback<MouseMoveEvent>(OnResizeMove);
+            cell.RegisterCallback<MouseUpEvent>(OnResizeEnd);
+            
+            // Change cursor on the root element
+            var root = GetRootVisualElement();
+            if (root != null)
+                root.style.cursor = new Cursor() { texture = null };
+        }
+        
+        private void OnResizeMove(MouseMoveEvent evt)
+        {
+            if (!isResizing || resizingColumn == null) return;
+            
+            evt.StopPropagation();
+            evt.PreventDefault();
+            
+            float deltaX = evt.mousePosition.x - resizeStartX;
+            float newWidth = Mathf.Max(50, resizeStartWidth + deltaX); // Min width of 50
+            
+            // Update header column width
+            resizingColumn.style.width = newWidth;
+            resizingColumn.style.minWidth = newWidth;
+            
+            // Find the column index
+            int columnIndex = headerRow.IndexOf(resizingColumn);
+            if (columnIndex >= 0)
+            {
+                // Update all cells in this column
+                foreach (var rowKvp in rowElements)
+                {
+                    var row = rowKvp.Value;
+                    if (row.childCount > columnIndex)
+                    {
+                        var cell = row[columnIndex];
+                        cell.style.width = newWidth;
+                        cell.style.minWidth = newWidth;
+                    }
+                }
+            }
+        }
+        
+        private void OnResizeEnd(MouseUpEvent evt)
+        {
+            if (!isResizing) return;
+            
+            evt.StopPropagation();
+            evt.PreventDefault();
+            
+            isResizing = false;
+            
+            // Release mouse capture
+            if (resizingColumn != null)
+            {
+                resizingColumn.ReleaseMouse();
+                resizingColumn.UnregisterCallback<MouseMoveEvent>(OnResizeMove);
+                resizingColumn.UnregisterCallback<MouseUpEvent>(OnResizeEnd);
+            }
+            
+            // Reset cursor
+            var root = GetRootVisualElement();
+            if (root != null)
+                root.style.cursor = StyleKeyword.Null;
+            
+            resizingColumn = null;
+        }
+        
+        private VisualElement GetRootVisualElement()
+        {
+            var element = this as VisualElement;
+            while (element.parent != null)
+            {
+                element = element.parent;
+            }
+            return element;
         }
         
         public void RefreshCell(object item, string propertyName)
@@ -635,38 +756,36 @@ namespace Datra.Unity.Editor.Views
                 {
                     // Refresh the specific cell
                     var property = columns.FirstOrDefault(c => c.Name == propertyName);
-                    if (property != null)
+                    if (property != null && property.CanWrite && !isReadOnly)
                     {
                         cell.Clear();
-                        var newField = CreateFieldForType(property.PropertyType, property.GetValue(item), (newValue) => {
-                            property.SetValue(item, newValue);
-                            OnCellValueChanged?.Invoke(item, property.Name, newValue);
-                            
-                            // Track changes
-                            if (!itemTrackers.ContainsKey(item))
-                            {
-                                var tracker = new DatraPropertyTracker();
-                                tracker.StartTracking(item, false);
-                                tracker.OnAnyPropertyModified += OnTrackerModified;
-                                itemTrackers[item] = tracker;
-                            }
-                            itemTrackers[item].TrackChange(item, property.Name, newValue);
+                        
+                        // Get or create tracker for this item
+                        if (!itemTrackers.ContainsKey(item))
+                        {
+                            var tracker = new DatraPropertyTracker();
+                            tracker.StartTracking(item, false);
+                            tracker.OnAnyPropertyModified += OnTrackerModified;
+                            itemTrackers[item] = tracker;
+                        }
+                        
+                        // Create field using DatraPropertyField in table mode
+                        var field = new DatraPropertyField(item, property, itemTrackers[item], DatraFieldLayoutMode.Table);
+                        field.OnValueChanged += (propName, newValue) => {
+                            OnCellValueChanged?.Invoke(item, propName, newValue);
                             MarkAsModified();
                             
                             // Track modified cell
-                            modifiedCells.Add((item, property.Name));
+                            modifiedCells.Add((item, propName));
                             
                             // Update cell visual state
-                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(property.Name, out var cell))
+                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
                             {
-                                cell.AddToClassList("modified-cell");
+                                modCell.AddToClassList("modified-cell");
                             }
-                        });
-                        if (newField != null)
-                        {
-                            newField.style.flexGrow = 1;
-                            cell.Add(newField);
-                        }
+                        };
+                        field.style.flexGrow = 1;
+                        cell.Add(field);
                     }
                 }
             }

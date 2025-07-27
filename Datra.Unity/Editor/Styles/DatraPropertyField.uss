@@ -350,3 +350,69 @@
 .dataref-clear-button:active {
     background-color: #c44a4a;
 }
+
+/* Table layout mode styles */
+.datra-property-field.layout-table {
+    margin: 0;
+    padding: 0;
+}
+
+.datra-property-field.layout-table .property-field-container {
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.datra-property-field.layout-table .property-field-input {
+    margin: 0;
+    background-color: transparent;
+}
+
+.datra-property-field.layout-table .property-modified-indicator.table-mode {
+    width: 6px;
+    height: 6px;
+    margin: 0 2px;
+}
+
+.datra-property-field.layout-table .property-revert-button.table-mode {
+    width: 16px;
+    height: 16px;
+    margin: 0 2px;
+    padding: 0;
+    font-size: 10px;
+}
+
+/* Compact array/dataref fields in table mode */
+.datra-property-field.layout-table .array-field-container,
+.datra-property-field.layout-table .dataref-field-container {
+    padding: 2px;
+    min-height: 20px;
+}
+
+.datra-property-field.layout-table .array-header {
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+}
+
+.datra-property-field.layout-table .array-size-label {
+    font-size: 10px;
+}
+
+.datra-property-field.layout-table .array-add-button {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+}
+
+.datra-property-field.layout-table .dataref-select-button {
+    width: 40px;
+    font-size: 10px;
+    padding: 1px 4px;
+}
+
+.datra-property-field.layout-table .dataref-clear-button {
+    width: 16px;
+    height: 16px;
+    font-size: 12px;
+}

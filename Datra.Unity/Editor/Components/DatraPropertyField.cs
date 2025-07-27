@@ -11,6 +11,16 @@ using Datra.Unity.Editor.Utilities;
 namespace Datra.Unity.Editor.Components
 {
     /// <summary>
+    /// Layout mode for DatraPropertyField
+    /// </summary>
+    public enum DatraFieldLayoutMode
+    {
+        Form,     // Full layout with label on top
+        Table,    // Compact layout for table cells
+        Inline    // Inline layout with label on left
+    }
+    
+    /// <summary>
     /// A custom property field component with change tracking and revert functionality
     /// </summary>
     public class DatraPropertyField : VisualElement
@@ -18,6 +28,7 @@ namespace Datra.Unity.Editor.Components
         private PropertyInfo property;
         private object target;
         private DatraPropertyTracker tracker;
+        private DatraFieldLayoutMode layoutMode;
         
         private VisualElement fieldContainer;
         private Label propertyLabel;
@@ -27,13 +38,15 @@ namespace Datra.Unity.Editor.Components
         
         public event Action<string, object> OnValueChanged;
         
-        public DatraPropertyField(object target, PropertyInfo property, DatraPropertyTracker tracker)
+        public DatraPropertyField(object target, PropertyInfo property, DatraPropertyTracker tracker, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
         {
             this.target = target;
             this.property = property;
             this.tracker = tracker;
+            this.layoutMode = layoutMode;
             
             AddToClassList("datra-property-field");
+            AddToClassList($"layout-{layoutMode.ToString().ToLower()}");
             
             Initialize();
             CreateField();
@@ -48,48 +61,113 @@ namespace Datra.Unity.Editor.Components
             // Main container
             fieldContainer = new VisualElement();
             fieldContainer.AddToClassList("property-field-container");
-            Add(fieldContainer);
             
-            // Header with label and indicators
-            var headerContainer = new VisualElement();
-            headerContainer.AddToClassList("property-field-header");
-            fieldContainer.Add(headerContainer);
-            
-            // Property label
-            propertyLabel = new Label(ObjectNames.NicifyVariableName(property.Name));
-            propertyLabel.AddToClassList("property-field-label");
-            headerContainer.Add(propertyLabel);
-            
-            // Modified indicator
-            modifiedIndicator = new VisualElement();
-            modifiedIndicator.AddToClassList("property-modified-indicator");
-            modifiedIndicator.tooltip = "This field has been modified";
-            headerContainer.Add(modifiedIndicator);
-            
-            // Revert button
-            revertButton = new Button(() => RevertValue());
-            revertButton.text = "↺";
-            revertButton.tooltip = "Revert to original value";
-            revertButton.AddToClassList("property-revert-button");
-            headerContainer.Add(revertButton);
-            
-            // Input container
-            var inputContainer = new VisualElement();
-            inputContainer.AddToClassList("property-field-input-container");
-            fieldContainer.Add(inputContainer);
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                // Table layout: minimal, no label, inline indicators
+                fieldContainer.style.flexDirection = FlexDirection.Row;
+                fieldContainer.style.alignItems = Align.Center;
+                Add(fieldContainer);
+                
+                // No header in table mode - indicators will be inline
+                modifiedIndicator = new VisualElement();
+                modifiedIndicator.AddToClassList("property-modified-indicator");
+                modifiedIndicator.AddToClassList("table-mode");
+                modifiedIndicator.tooltip = "Modified";
+                modifiedIndicator.style.display = DisplayStyle.None;
+                fieldContainer.Add(modifiedIndicator);
+                
+                // Revert button inline
+                revertButton = new Button(() => RevertValue());
+                revertButton.text = "↺";
+                revertButton.tooltip = "Revert";
+                revertButton.AddToClassList("property-revert-button");
+                revertButton.AddToClassList("table-mode");
+                revertButton.style.display = DisplayStyle.None;
+                fieldContainer.Add(revertButton);
+            }
+            else
+            {
+                // Form/Inline layout: full header with label
+                Add(fieldContainer);
+                
+                // Header with label and indicators
+                var headerContainer = new VisualElement();
+                headerContainer.AddToClassList("property-field-header");
+                
+                if (layoutMode == DatraFieldLayoutMode.Inline)
+                {
+                    headerContainer.style.flexDirection = FlexDirection.Row;
+                    headerContainer.style.alignItems = Align.Center;
+                }
+                
+                fieldContainer.Add(headerContainer);
+                
+                // Property label
+                propertyLabel = new Label(ObjectNames.NicifyVariableName(property.Name));
+                propertyLabel.AddToClassList("property-field-label");
+                headerContainer.Add(propertyLabel);
+                
+                // Modified indicator
+                modifiedIndicator = new VisualElement();
+                modifiedIndicator.AddToClassList("property-modified-indicator");
+                modifiedIndicator.tooltip = "This field has been modified";
+                headerContainer.Add(modifiedIndicator);
+                
+                // Revert button
+                revertButton = new Button(() => RevertValue());
+                revertButton.text = "↺";
+                revertButton.tooltip = "Revert to original value";
+                revertButton.AddToClassList("property-revert-button");
+                headerContainer.Add(revertButton);
+                
+                // Input container (separate for form mode)
+                if (layoutMode == DatraFieldLayoutMode.Form)
+                {
+                    var inputContainer = new VisualElement();
+                    inputContainer.AddToClassList("property-field-input-container");
+                    fieldContainer.Add(inputContainer);
+                }
+            }
         }
         
         private void CreateField()
         {
             var value = property.GetValue(target);
             var propertyType = property.PropertyType;
-            var inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-input-container");
+            
+            // Find or create input container based on layout mode
+            VisualElement inputContainer;
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                // In table mode, input goes directly in the field container
+                inputContainer = fieldContainer;
+            }
+            else
+            {
+                inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-input-container");
+                if (inputContainer == null && layoutMode == DatraFieldLayoutMode.Inline)
+                {
+                    // For inline mode, input goes in the header container
+                    inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-header");
+                }
+            }
             
             inputField = CreateInputField(propertyType, value);
             if (inputField != null)
             {
                 inputField.AddToClassList("property-field-input");
-                inputContainer.Add(inputField);
+                if (layoutMode == DatraFieldLayoutMode.Table)
+                {
+                    inputField.style.flexGrow = 1;
+                    inputField.style.minHeight = 20;
+                    // Insert before indicators
+                    inputContainer.Insert(0, inputField);
+                }
+                else
+                {
+                    inputContainer.Add(inputField);
+                }
             }
         }
         
