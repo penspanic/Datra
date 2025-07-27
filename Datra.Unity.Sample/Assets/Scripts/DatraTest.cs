@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
+using Datra.SampleData.Models;
 using Datra.Serializers;
 using Datra.Unity.Runtime.Providers;
-using Datra.Unity.Sample.Models;
 using UnityEngine;
 
 namespace Datra.Unity.Sample
@@ -13,11 +13,19 @@ namespace Datra.Unity.Sample
         [Datra.Unity.Editor.Attributes.DatraEditorInit]
         public static GameDataContext Init()
         {
-            var rawDataProvider = new ResourcesRawDataProvider();
+            //var provider = new ResourcesRawDataProvider();
+            var provider = new Editor.Providers.AssetDatabaseRawDataProvider(basePath: "Packages/com.penspanic.datra.sampledata/Resources");
             var serializerFactory = new DataSerializerFactory();
 
             // Create GameDataContext
-            return new GameDataContext(rawDataProvider, serializerFactory);
+            var context = new GameDataContext(provider, serializerFactory);
+            
+            // Load all data synchronously for editor
+            var loadTask = context.LoadAllAsync();
+            loadTask.Wait();
+            
+            Debug.Log("[DatraEditorInit] GameDataContext initialized successfully");
+            return context;
         }
         #endif
     }
@@ -92,8 +100,8 @@ namespace Datra.Unity.Sample
             {
                 Debug.Log($"Max Level: {config.MaxLevel}");
                 Debug.Log($"Exp Multiplier: {config.ExpMultiplier}");
-                Debug.Log($"Starting Gold: {config.StartingGold}");
-                Debug.Log($"Inventory Size: {config.InventorySize}");
+                Debug.Log($"DefaultCharacter: {config.DefaultCharacter.Evaluate(context)}");
+                Debug.Log($"AvailableModes: {string.Join(",", config.AvailableModes)}");
             }
 
             Debug.Log("");

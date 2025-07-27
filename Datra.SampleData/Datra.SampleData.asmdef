@@ -1,0 +1,19 @@
+{
+    "name": "Datra Sample Data",
+    "rootNamespace": "Datra.SampleData",
+    "references": [
+        "Datra"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll",
+        "YamlDotNet.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

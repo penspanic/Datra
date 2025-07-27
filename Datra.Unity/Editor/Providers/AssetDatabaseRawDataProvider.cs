@@ -69,6 +69,7 @@ namespace Datra.Unity.Editor.Providers
         {
 #if UNITY_EDITOR
             // Check if it exists as an asset
+            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
             var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
             if (asset != null)
             {

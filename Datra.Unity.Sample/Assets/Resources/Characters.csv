@@ -1,6 +1,0 @@
-Id,Name,Level,Health,Mana,Strength,Intelligence,Agility,ClassName
-hero_001,Arthur,10,1000,500,25,15,20,Warrior
-hero_002,Marin,8,600,800,10,30,15,Mage
-hero_003,Lena,12,800,600,20,20,30,Archer
-hero_004,Thor,15,1500,300,35,10,25,Warrior
-hero_005,Luna,9,500,1000,8,35,18,Mage
