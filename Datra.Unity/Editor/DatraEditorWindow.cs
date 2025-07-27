@@ -9,6 +9,7 @@ using UnityEditor.UIElements;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Utilities;
+using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor
 {
@@ -39,7 +40,7 @@ namespace Datra.Unity.Editor
         // Data Management
         private IDataContext dataContext;
         private Dictionary<Type, object> repositories = new Dictionary<Type, object>();
-        private HashSet<Type> modifiedTypes = new HashSet<Type>();
+        private DatraDataManager dataManager;
         
         // Window State
         private string currentProjectName;
@@ -153,6 +154,19 @@ namespace Datra.Unity.Editor
                 dataContext = DatraBootstrapper.AutoInitialize();
                 if (dataContext != null)
                 {
+                    // Initialize data manager
+                    dataManager = new DatraDataManager(dataContext);
+                    dataManager.OnDataModified += OnDataModified;
+                    dataManager.OnModifiedStateChanged += (hasModified) => {
+                        toolbar.SetModifiedState(hasModified);
+                    };
+                    dataManager.OnOperationCompleted += (message) => {
+                        EditorUtility.DisplayDialog("Success", message, "OK");
+                    };
+                    dataManager.OnOperationFailed += (message) => {
+                        EditorUtility.DisplayDialog("Error", message, "OK");
+                    };
+                    
                     LoadDataTypes();
                     isInitialized = true;
                     
@@ -283,7 +297,7 @@ namespace Datra.Unity.Editor
         
         private void CloseTab(DataTab tab)
         {
-            if (tab.IsModified)
+            if (dataManager != null && dataManager.ModifiedTypes.Contains(tab.DataType))
             {
                 if (!EditorUtility.DisplayDialog("Unsaved Changes", 
                     $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?", 
@@ -311,63 +325,30 @@ namespace Datra.Unity.Editor
         
         private void OnDataModified(Type dataType)
         {
-            modifiedTypes.Add(dataType);
+            dataManager.MarkAsModified(dataType);
             navigationPanel.MarkTypeAsModified(dataType, true);
-            toolbar.SetModifiedState(modifiedTypes.Count > 0);
         }
         
         private async void SaveAllData()
         {
-            if (dataContext == null) return;
+            if (dataManager == null) return;
             
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
+                var success = await dataManager.SaveAllAsync(repositories);
                 
-                // Save only modified types
-                var savedTypes = new List<Type>();
-                foreach (var type in modifiedTypes)
+                // Update navigation panel modified states
+                if (success)
                 {
-                    if (repositories.TryGetValue(type, out var repository))
+                    foreach (var type in repositories.Keys)
                     {
-                        try
+                        if (!dataManager.ModifiedTypes.Contains(type))
                         {
-                            // Try to find SaveAsync method on the repository
-                            var saveMethod = repository.GetType().GetMethod("SaveAsync");
-                            if (saveMethod != null)
-                            {
-                                var task = saveMethod.Invoke(repository, null) as System.Threading.Tasks.Task;
-                                if (task != null)
-                                {
-                                    await task;
-                                    savedTypes.Add(type);
-                                }
-                            }
-                        }
-                        catch (Exception repoEx)
-                        {
-                            Debug.LogError($"Failed to save {type.Name}: {repoEx.Message}");
+                            navigationPanel.MarkTypeAsModified(type, false);
                         }
                     }
                 }
-                
-                // Clear modified states for successfully saved types
-                foreach (var type in savedTypes)
-                {
-                    modifiedTypes.Remove(type);
-                    navigationPanel.MarkTypeAsModified(type, false);
-                }
-                toolbar.SetModifiedState(modifiedTypes.Count > 0);
-                
-                var message = savedTypes.Count > 0 
-                    ? $"Saved {savedTypes.Count} data file(s) successfully!" 
-                    : "No modified data to save.";
-                EditorUtility.DisplayDialog("Save Complete", message, "OK");
-            }
-            catch (Exception e)
-            {
-                EditorUtility.DisplayDialog("Error", $"Failed to save data: {e.Message}", "OK");
-                Debug.LogError($"Failed to save data: {e}");
             }
             finally
             {
@@ -377,89 +358,44 @@ namespace Datra.Unity.Editor
         
         private async void SaveCurrentData(Type dataType, object repository)
         {
-            if (dataContext == null || repository == null) return;
+            if (dataManager == null || repository == null) return;
             
-            try
+            var success = await dataManager.SaveAsync(dataType, repository);
+            if (success)
             {
-                // Try to find SaveAsync method on the repository
-                var saveMethod = repository.GetType().GetMethod("SaveAsync");
-                if (saveMethod != null)
-                {
-                    var task = saveMethod.Invoke(repository, null) as System.Threading.Tasks.Task;
-                    if (task != null)
-                    {
-                        await task;
-                    }
-                }
-                else
-                {
-                    // Fallback: Save only this specific data type through context
-                    var saveSpecificMethod = dataContext.GetType().GetMethod("SaveAsync");
-                    if (saveSpecificMethod != null)
-                    {
-                        var task = saveSpecificMethod.MakeGenericMethod(dataType).Invoke(dataContext, null) as System.Threading.Tasks.Task;
-                        if (task != null)
-                        {
-                            await task;
-                        }
-                    }
-                    else
-                    {
-                        // Last resort: save all
-                        await dataContext.SaveAllAsync();
-                    }
-                }
-                
-                EditorUtility.DisplayDialog("Success", $"{dataType.Name} saved successfully!", "OK");
-                
-                // Clear modified state for this type
-                modifiedTypes.Remove(dataType);
                 navigationPanel.MarkTypeAsModified(dataType, false);
-                toolbar.SetModifiedState(modifiedTypes.Count > 0);
-            }
-            catch (Exception e)
-            {
-                EditorUtility.DisplayDialog("Error", $"Failed to save {dataType.Name}: {e.Message}", "OK");
-                Debug.LogError($"Failed to save {dataType.Name}: {e}");
             }
         }
         
         private async void ReloadData()
         {
-            if (dataContext == null) return;
+            if (dataManager == null) return;
             
-            if (modifiedTypes.Count > 0)
+            // Handle unsaved changes
+            if (dataManager.HasModifiedData)
             {
-                var result = EditorUtility.DisplayDialogComplex(
-                    "Unsaved Changes",
-                    "You have unsaved changes. What would you like to do?",
-                    "Save and Reload",
-                    "Cancel",
-                    "Discard and Reload"
-                );
-                
-                if (result == 1) return; // Cancel
-                if (result == 0) await dataContext.SaveAllAsync(); // Save first
+                var result = await dataManager.CheckUnsavedChangesAsync("reloading");
+                if (!result) // User wants to save first
+                {
+                    await dataManager.SaveAllAsync(repositories);
+                }
             }
             
             try
             {
                 toolbar.SetReloadButtonEnabled(false);
-                await dataContext.LoadAllAsync();
                 
-                // Clear modified states
-                modifiedTypes.Clear();
-                toolbar.SetModifiedState(false);
-                
-                // Refresh current view
-                inspectorPanel.SetDataContext(dataContext, inspectorPanel.CurrentRepository, inspectorPanel.CurrentType);
-                
-                EditorUtility.DisplayDialog("Success", "Data reloaded successfully!", "OK");
-            }
-            catch (Exception e)
-            {
-                EditorUtility.DisplayDialog("Error", $"Failed to reload data: {e.Message}", "OK");
-                Debug.LogError($"Failed to reload data: {e}");
+                if (await dataManager.ReloadAllAsync(false))
+                {
+                    // Clear all modified states in navigation panel
+                    foreach (var type in repositories.Keys)
+                    {
+                        navigationPanel.MarkTypeAsModified(type, false);
+                    }
+                    
+                    // Refresh current view
+                    inspectorPanel.SetDataContext(dataContext, inspectorPanel.CurrentRepository, inspectorPanel.CurrentType);
+                }
             }
             finally
             {
@@ -497,6 +433,11 @@ namespace Datra.Unity.Editor
         {
             // Clean up if needed
             isInitialized = false;
+            
+            if (inspectorPanel != null)
+            {
+                inspectorPanel.Cleanup();
+            }
         }
         
         private void OnFocus()

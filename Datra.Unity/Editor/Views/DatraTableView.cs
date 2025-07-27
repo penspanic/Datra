@@ -179,7 +179,7 @@ namespace Datra.Unity.Editor.Views
             
             // Get columns (properties) BEFORE calling RefreshContent
             columns = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && IsSupportedType(p.PropertyType))
+                .Where(p => p.CanRead)
                 .ToList();
                 
             
@@ -571,39 +571,6 @@ namespace Datra.Unity.Editor.Views
             return value.ToString();
         }
         
-        private bool IsSupportedType(Type type)
-        {
-            // Basic types
-            if (type == typeof(string) || 
-                type == typeof(int) || 
-                type == typeof(float) || 
-                type == typeof(bool) || 
-                type.IsEnum)
-            {
-                return true;
-            }
-            
-            // Array types
-            if (type.IsArray)
-            {
-                var elementType = type.GetElementType();
-                return elementType == typeof(int) || 
-                       elementType == typeof(string) || 
-                       elementType == typeof(float) ||
-                       elementType.IsEnum;
-            }
-            
-            // DataRef types
-            if (type.IsGenericType)
-            {
-                var genericDef = type.GetGenericTypeDefinition();
-                return genericDef == typeof(StringDataRef<>) || 
-                       genericDef == typeof(IntDataRef<>);
-            }
-            
-            return false;
-        }
-        
         protected override void FilterItems(string searchTerm)
         {
             if (items == null) return;
@@ -661,7 +628,6 @@ namespace Datra.Unity.Editor.Views
         private void StartResize(MouseDownEvent evt, VisualElement cell)
         {
             evt.StopPropagation();
-            evt.PreventDefault();
             
             isResizing = true;
             resizingColumn = cell;
@@ -686,7 +652,6 @@ namespace Datra.Unity.Editor.Views
             if (!isResizing || resizingColumn == null) return;
             
             evt.StopPropagation();
-            evt.PreventDefault();
             
             float deltaX = evt.mousePosition.x - resizeStartX;
             float newWidth = Mathf.Max(50, resizeStartWidth + deltaX); // Min width of 50
@@ -718,7 +683,6 @@ namespace Datra.Unity.Editor.Views
             if (!isResizing) return;
             
             evt.StopPropagation();
-            evt.PreventDefault();
             
             isResizing = false;
             

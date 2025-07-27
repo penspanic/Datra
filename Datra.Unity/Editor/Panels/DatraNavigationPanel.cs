@@ -468,7 +468,7 @@ namespace Datra.Unity.Editor.Panels
                 {
                     var dataWindow = Windows.DatraDataWindow.CreateWindow(dataType, repository, 
                         GetDataContext(window), dataType.Name + " - Table View");
-                    dataWindow.SetViewMode(Windows.DatraDataWindow.ViewMode.Table);
+                    dataWindow.SetInitialViewMode(Controllers.DatraViewModeController.ViewMode.Table);
                 }
             }
         }

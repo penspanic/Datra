@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -7,6 +8,7 @@ using UnityEditor.UIElements;
 using Datra.DataTypes;
 using Datra.Unity.Editor.UI;
 using Datra.Unity.Editor.Utilities;
+using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components
 {
@@ -169,6 +171,11 @@ namespace Datra.Unity.Editor.Components
                     inputContainer.Add(inputField);
                 }
             }
+            else
+            {
+                // Log error if field creation failed
+                Debug.LogError($"[DatraPropertyField] Failed to create field for property '{property.Name}' of type {propertyType.FullName}");
+            }
         }
         
         private VisualElement CreateInputField(Type propertyType, object value)
@@ -272,6 +279,10 @@ namespace Datra.Unity.Editor.Components
             {
                 return CreateArrayField<float>(value as float[], CreateFloatElement);
             }
+            else if (IsDataRefArrayType(propertyType))
+            {
+                return CreateDataRefArrayField(propertyType, value as Array);
+            }
             else if (IsEnumArrayType(propertyType))
             {
                 return CreateEnumArrayField(propertyType, value as Array);
@@ -280,12 +291,12 @@ namespace Datra.Unity.Editor.Components
             {
                 return CreateDataRefField(propertyType, value);
             }
-            else if (IsDataRefArrayType(propertyType))
-            {
-                return CreateDataRefArrayField(propertyType, value as Array);
-            }
             else
             {
+                // Log warning for unsupported type
+                Debug.LogWarning($"[DatraPropertyField] Unsupported property type: {propertyType.FullName} for property '{property.Name}'. " +
+                                $"Consider adding support for this type or using a custom editor.");
+                
                 // For unsupported types, create a read-only field with type info
                 var container = new VisualElement();
                 container.AddToClassList("unsupported-field-container");
@@ -349,10 +360,31 @@ namespace Datra.Unity.Editor.Components
         
         public void RefreshField()
         {
-            var inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-input-container");
-            inputContainer.Clear();
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                // In table mode, update the compact display
+                UpdateCompactArrayDisplay();
+            }
+            else
+            {
+                // In other modes, recreate the field
+                var inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-input-container");
+                if (inputContainer != null)
+                {
+                    inputContainer.Clear();
+                }
+                else if (layoutMode == DatraFieldLayoutMode.Inline)
+                {
+                    // For inline mode, clear the input field directly
+                    if (inputField != null && inputField.parent != null)
+                    {
+                        inputField.parent.Remove(inputField);
+                    }
+                }
+                
+                CreateField();
+            }
             
-            CreateField();
             UpdateModifiedState();
         }
         
@@ -369,6 +401,47 @@ namespace Datra.Unity.Editor.Components
         {
             var container = new VisualElement();
             container.AddToClassList("array-field-container");
+            
+            // Table mode: compact horizontal layout
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+                
+                // Edit button to open full editor (placed first)
+                var editButton = new Button(() => OpenPropertyEditor());
+                editButton.text = "✏";
+                editButton.tooltip = $"Edit array ({array?.Length ?? 0} items)";
+                editButton.AddToClassList("array-edit-button");
+                editButton.style.marginRight = 4;
+                container.Add(editButton);
+                
+                // Compact array display - show as comma-separated values
+                var arrayDisplay = new TextField();
+                arrayDisplay.isReadOnly = true;
+                arrayDisplay.style.flexGrow = 1;
+                arrayDisplay.AddToClassList("array-compact-display");
+                
+                if (array != null && array.Length > 0)
+                {
+                    var displayText = string.Join(", ", array);
+                    if (displayText.Length > 50)
+                    {
+                        displayText = displayText.Substring(0, 47) + "...";
+                    }
+                    arrayDisplay.value = $"[{displayText}]";
+                }
+                else
+                {
+                    arrayDisplay.value = "[]";
+                }
+                
+                container.Add(arrayDisplay);
+                
+                return container;
+            }
+            
+            // Form/Inline mode: full vertical layout
             container.style.flexDirection = FlexDirection.Column;
             
             // Header with array info and add button
@@ -472,6 +545,53 @@ namespace Datra.Unity.Editor.Components
         
         private VisualElement CreateEnumArrayField(Type arrayType, Array array)
         {
+            // Table mode: compact display
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                var container = new VisualElement();
+                container.AddToClassList("array-field-container");
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+                
+                // Edit button to open full editor (placed first)
+                var editButton = new Button(() => OpenPropertyEditor());
+                editButton.text = "✏";
+                editButton.tooltip = $"Edit array ({array?.Length ?? 0} items)";
+                editButton.AddToClassList("array-edit-button");
+                editButton.style.marginRight = 4;
+                container.Add(editButton);
+                
+                // Compact array display - show as comma-separated values
+                var arrayDisplay = new TextField();
+                arrayDisplay.isReadOnly = true;
+                arrayDisplay.style.flexGrow = 1;
+                arrayDisplay.AddToClassList("array-compact-display");
+                
+                if (array != null && array.Length > 0)
+                {
+                    var values = new string[array.Length];
+                    for (int i = 0; i < array.Length; i++)
+                    {
+                        values[i] = array.GetValue(i)?.ToString() ?? "";
+                    }
+                    var displayText = string.Join(", ", values);
+                    if (displayText.Length > 50)
+                    {
+                        displayText = displayText.Substring(0, 47) + "...";
+                    }
+                    arrayDisplay.value = $"[{displayText}]";
+                }
+                else
+                {
+                    arrayDisplay.value = "[]";
+                }
+                
+                container.Add(arrayDisplay);
+                
+                return container;
+            }
+            
+            // Form/Inline mode: use full layout
             var elementType = arrayType.GetElementType();
             // Convert Array to object[] for CreateArrayField
             object[] objectArray = null;
@@ -542,6 +662,14 @@ namespace Datra.Unity.Editor.Components
             }
         }
         
+        private void OpenPropertyEditor()
+        {
+            DatraPropertyEditorPopup.ShowEditor(property, target, tracker, () => {
+                RefreshField();
+                OnValueChanged?.Invoke(property.Name, property.GetValue(target));
+            });
+        }
+
         private void UpdateArrayValue()
         {
             if (inputField == null) return;
@@ -639,13 +767,13 @@ namespace Datra.Unity.Editor.Components
             var referencedType = genericArgs[0];
             var keyType = dataRefType.GetGenericTypeDefinition() == typeof(IntDataRef<>) ? typeof(int) : typeof(string);
             
-            // Display field
+            // Display field (declare first)
             var displayField = new TextField();
             displayField.isReadOnly = true;
             displayField.style.flexGrow = 1;
             displayField.AddToClassList("dataref-display-field");
             
-            // Update display value
+            // Update display value function
             void UpdateDisplayValue()
             {
                 if (value != null)
@@ -692,8 +820,6 @@ namespace Datra.Unity.Editor.Components
                 }
             }
             
-            UpdateDisplayValue();
-            
             // Select button
             var selectButton = new Button(() =>
             {
@@ -723,9 +849,13 @@ namespace Datra.Unity.Editor.Components
                     });
                 }
             });
-            selectButton.text = "Select";
+            selectButton.text = " 🔍";
             selectButton.AddToClassList("dataref-select-button");
-            selectButton.style.width = 60;
+            selectButton.style.width = 20;
+            selectButton.style.minWidth = 20;
+            selectButton.style.paddingLeft = 2;
+            selectButton.style.paddingRight = 2;
+            selectButton.style.marginRight = 2;
             
             // Clear button
             var clearButton = new Button(() =>
@@ -741,10 +871,17 @@ namespace Datra.Unity.Editor.Components
             clearButton.tooltip = "Clear";
             clearButton.AddToClassList("dataref-clear-button");
             clearButton.style.width = 20;
+            clearButton.style.minWidth = 20;
+            clearButton.style.paddingLeft = 2;
+            clearButton.style.paddingRight = 2;
+            clearButton.style.marginRight = 4;
             
-            container.Add(displayField);
+            UpdateDisplayValue();
+            
+            // Add elements in order: buttons first, then display field
             container.Add(selectButton);
             container.Add(clearButton);
+            container.Add(displayField);
             
             // Store initial value in userData
             container.userData = value;
@@ -754,6 +891,63 @@ namespace Datra.Unity.Editor.Components
         
         private VisualElement CreateDataRefArrayField(Type arrayType, Array array)
         {
+            // Table mode: compact display
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                var container = new VisualElement();
+                container.AddToClassList("array-field-container");
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+                
+                // Edit button to open full editor (placed first)
+                var editButton = new Button(() => OpenPropertyEditor());
+                editButton.text = "✏";
+                editButton.tooltip = $"Edit array ({array?.Length ?? 0} items)";
+                editButton.AddToClassList("array-edit-button");
+                editButton.style.marginRight = 4;
+                container.Add(editButton);
+                
+                // Compact array display - show as comma-separated values
+                var arrayDisplay = new TextField();
+                arrayDisplay.isReadOnly = true;
+                arrayDisplay.style.flexGrow = 1;
+                arrayDisplay.AddToClassList("array-compact-display");
+                
+                if (array != null && array.Length > 0)
+                {
+                    var values = new string[array.Length];
+                    var elementType2 = arrayType.GetElementType();
+                    for (int i = 0; i < array.Length; i++)
+                    {
+                        var item = array.GetValue(i);
+                        if (item != null)
+                        {
+                            var keyValue = elementType2.GetProperty("Value")?.GetValue(item);
+                            values[i] = keyValue != null ? $"→{keyValue}" : "(None)";
+                        }
+                        else
+                        {
+                            values[i] = "(None)";
+                        }
+                    }
+                    var displayText = string.Join(", ", values);
+                    if (displayText.Length > 50)
+                    {
+                        displayText = displayText.Substring(0, 47) + "...";
+                    }
+                    arrayDisplay.value = $"[{displayText}]";
+                }
+                else
+                {
+                    arrayDisplay.value = "[]";
+                }
+                
+                container.Add(arrayDisplay);
+                
+                return container;
+            }
+            
+            // Form/Inline mode: use full layout
             var elementType = arrayType.GetElementType();
             // Convert Array to object[] for CreateArrayField
             object[] objectArray = null;
@@ -942,6 +1136,86 @@ namespace Datra.Unity.Editor.Components
             
             property.SetValue(target, newArray);
             OnFieldValueChanged(newArray);
+        }
+        
+        private void UpdateCompactArrayDisplay()
+        {
+            if (layoutMode != DatraFieldLayoutMode.Table || inputField == null) return;
+            
+            var arrayDisplay = inputField.Q<TextField>(className: "array-compact-display");
+            if (arrayDisplay == null) return;
+            
+            var value = property.GetValue(target);
+            var propertyType = property.PropertyType;
+            
+            if (propertyType.IsArray)
+            {
+                var array = value as Array;
+                if (array != null && array.Length > 0)
+                {
+                    if (IsDataRefArrayType(propertyType))
+                    {
+                        // DataRef array
+                        var values = new string[array.Length];
+                        var elementType = propertyType.GetElementType();
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            var item = array.GetValue(i);
+                            if (item != null)
+                            {
+                                var keyValue = elementType.GetProperty("Value")?.GetValue(item);
+                                values[i] = keyValue != null ? $"→{keyValue}" : "(None)";
+                            }
+                            else
+                            {
+                                values[i] = "(None)";
+                            }
+                        }
+                        var displayText = string.Join(", ", values);
+                        if (displayText.Length > 50)
+                        {
+                            displayText = displayText.Substring(0, 47) + "...";
+                        }
+                        arrayDisplay.value = $"[{displayText}]";
+                    }
+                    else if (IsEnumArrayType(propertyType))
+                    {
+                        // Enum array
+                        var values = new string[array.Length];
+                        for (int i = 0; i < array.Length; i++)
+                        {
+                            values[i] = array.GetValue(i)?.ToString() ?? "";
+                        }
+                        var displayText = string.Join(", ", values);
+                        if (displayText.Length > 50)
+                        {
+                            displayText = displayText.Substring(0, 47) + "...";
+                        }
+                        arrayDisplay.value = $"[{displayText}]";
+                    }
+                    else
+                    {
+                        // Regular array
+                        var displayText = string.Join(", ", array.Cast<object>());
+                        if (displayText.Length > 50)
+                        {
+                            displayText = displayText.Substring(0, 47) + "...";
+                        }
+                        arrayDisplay.value = $"[{displayText}]";
+                    }
+                }
+                else
+                {
+                    arrayDisplay.value = "[]";
+                }
+                
+                // Update button tooltip
+                var editButton = inputField.Q<Button>(className: "array-edit-button");
+                if (editButton != null)
+                {
+                    editButton.tooltip = $"Edit array ({array?.Length ?? 0} items)";
+                }
+            }
         }
         
     }

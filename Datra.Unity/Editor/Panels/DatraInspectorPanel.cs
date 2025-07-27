@@ -8,6 +8,7 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Views;
+using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
@@ -24,12 +25,8 @@ namespace Datra.Unity.Editor.Panels
         private object currentRepository;
         private object currentDataContext;
         
-        // Current view
-        private DatraDataView currentView;
-        
-        // View mode
-        public enum ViewMode { Form, Table }
-        private ViewMode currentViewMode = ViewMode.Form;
+        // View mode controller
+        private DatraViewModeController viewModeController;
         
         // Properties
         public Type CurrentType => currentType;
@@ -82,16 +79,16 @@ namespace Datra.Unity.Editor.Panels
             viewModeContainer.style.flexDirection = FlexDirection.Row;
             viewModeContainer.style.marginRight = 12;
             
-            var formViewButton = new Button(() => SetViewMode(ViewMode.Form));
+            var formViewButton = new Button();
             formViewButton.text = "📝";
-            formViewButton.tooltip = "Form View";
+            formViewButton.tooltip = "Form View (1)";
             formViewButton.AddToClassList("view-mode-button");
             formViewButton.name = "form-view-button";
             viewModeContainer.Add(formViewButton);
             
-            var tableViewButton = new Button(() => SetViewMode(ViewMode.Table));
+            var tableViewButton = new Button();
             tableViewButton.text = "📊";
-            tableViewButton.tooltip = "Table View";
+            tableViewButton.tooltip = "Table View (2)";
             tableViewButton.AddToClassList("view-mode-button");
             tableViewButton.name = "table-view-button";
             viewModeContainer.Add(tableViewButton);
@@ -114,6 +111,30 @@ namespace Datra.Unity.Editor.Panels
             contentContainer.style.flexGrow = 1;
             Add(contentContainer);
             
+            // Initialize view mode controller
+            viewModeController = new DatraViewModeController(contentContainer, headerContainer);
+            viewModeController.OnViewModeChanged += OnViewModeChanged;
+            viewModeController.OnSaveRequested += (type, repo) => OnSaveRequested?.Invoke(type, repo);
+            viewModeController.OnDataModified += (type) => OnDataModified?.Invoke(type);
+            
+            // Update view mode toggle buttons to use controller
+            var formButton = headerContainer.Q<Button>("form-view-button");
+            var tableButton = headerContainer.Q<Button>("table-view-button");
+            
+            if (formButton != null)
+            {
+                // Clear existing click handlers
+                formButton.clickable = new Clickable(() => viewModeController.SetViewMode(DatraViewModeController.ViewMode.Form));
+                formButton.tooltip = "Form View (1)";
+            }
+            
+            if (tableButton != null)
+            {
+                // Clear existing click handlers
+                tableButton.clickable = new Clickable(() => viewModeController.SetViewMode(DatraViewModeController.ViewMode.Table));
+                tableButton.tooltip = "Table View (2)";
+            }
+            
             // Show empty state initially
             ShowEmptyState();
         }
@@ -128,22 +149,31 @@ namespace Datra.Unity.Editor.Panels
             if (dataType != null)
             {
                 var isTableData = IsTableData(dataType);
-                var defaultMode = isTableData ? ViewMode.Table : ViewMode.Form;
+                var defaultMode = isTableData ? DatraViewModeController.ViewMode.Table : DatraViewModeController.ViewMode.Form;
                 
                 // Get user's preferred view mode for this type
                 var savedMode = DatraUserPreferences.GetViewMode(dataType);
-                if (!string.IsNullOrEmpty(savedMode) && Enum.TryParse<ViewMode>(savedMode, out var mode))
+                if (!string.IsNullOrEmpty(savedMode))
                 {
-                    currentViewMode = mode;
+                    if (Enum.TryParse<DatraViewModeController.ViewMode>(savedMode, out var mode))
+                    {
+                        viewModeController.SetViewMode(mode);
+                    }
+                    else
+                    {
+                        viewModeController.SetViewMode(defaultMode);
+                    }
                 }
                 else
                 {
-                    currentViewMode = defaultMode;
+                    viewModeController.SetViewMode(defaultMode);
                 }
             }
             
             UpdateHeader();
-            RefreshContent();
+            
+            // Set data in controller
+            viewModeController.SetData(dataType, repository, dataContext);
         }
         
         private void UpdateHeader()
@@ -190,12 +220,17 @@ namespace Datra.Unity.Editor.Panels
         
         private void UpdateViewModeButtons()
         {
+            // Buttons are now updated by OnViewModeChanged callback
+        }
+        
+        private void OnViewModeChanged(DatraViewModeController.ViewMode mode)
+        {
             var formButton = headerContainer.Q<Button>("form-view-button");
             var tableButton = headerContainer.Q<Button>("table-view-button");
             
             if (formButton != null)
             {
-                if (currentViewMode == ViewMode.Form)
+                if (mode == DatraViewModeController.ViewMode.Form)
                     formButton.AddToClassList("active");
                 else
                     formButton.RemoveFromClassList("active");
@@ -203,84 +238,32 @@ namespace Datra.Unity.Editor.Panels
             
             if (tableButton != null)
             {
-                if (currentViewMode == ViewMode.Table)
+                if (mode == DatraViewModeController.ViewMode.Table)
                     tableButton.AddToClassList("active");
                 else
                     tableButton.RemoveFromClassList("active");
+            }
+            
+            // Save user preference
+            if (currentType != null)
+            {
+                DatraUserPreferences.SetViewMode(currentType, mode.ToString());
             }
         }
         
         public void RefreshContent()
         {
-            // Clean up current view
-            if (currentView != null)
-            {
-                currentView.OnDataModified -= HandleDataModified;
-                currentView.OnSaveRequested -= HandleSaveRequested;
-                currentView.OnAddNewItem -= HandleAddNewItem;
-                currentView.OnItemDeleted -= HandleItemDeleted;
-                currentView.Cleanup();
-                contentContainer.Remove(currentView);
-                currentView = null;
-            }
-            
             if (currentRepository == null || currentType == null)
             {
                 ShowEmptyState();
                 return;
             }
             
-            // Clear content container before adding new view
-            contentContainer.Clear();
-            
-            // Create appropriate view
-            if (currentViewMode == ViewMode.Table)
-            {
-                currentView = new DatraTableView();
-            }
-            else
-            {
-                currentView = new DatraFormView();
-            }
-            
-            // Wire up events
-            currentView.OnDataModified += HandleDataModified;
-            currentView.OnSaveRequested += HandleSaveRequested;
-            currentView.OnAddNewItem += HandleAddNewItem;
-            currentView.OnItemDeleted += HandleItemDeleted;
-            
-            // Set data and add to content
-            currentView.SetData(currentType, currentRepository, currentDataContext);
-            contentContainer.Add(currentView);
-            
-            // Force style update
-            currentView.style.flexGrow = 1;
+            // Let the controller handle the view refresh
+            viewModeController.SetData(currentType, currentRepository, currentDataContext);
         }
         
-        private void SetViewMode(ViewMode mode)
-        {
-            currentViewMode = mode;
-            
-            // Save user preference for this data type
-            if (currentType != null)
-            {
-                DatraUserPreferences.SetViewMode(currentType, mode.ToString());
-            }
-            
-            // Update button states
-            var viewButtons = headerContainer.Query<Button>(className: "view-mode-button").ToList();
-            foreach (var button in viewButtons)
-            {
-                button.RemoveFromClassList("active");
-            }
-            
-            if (mode == ViewMode.Form)
-                viewButtons[0]?.AddToClassList("active");
-            else
-                viewButtons[1]?.AddToClassList("active");
-            
-            RefreshContent();
-        }
+        // SetViewMode method removed - now handled by viewModeController
         
         private void ShowEmptyState()
         {
@@ -312,10 +295,10 @@ namespace Datra.Unity.Editor.Panels
         
         public void MarkTypeAsModified(Type type, bool isModified)
         {
-            // Forward to current view if available
-            if (currentView != null && !isModified)
+            // Refresh content when modifications are saved
+            if (!isModified && currentType == type)
             {
-                currentView.RefreshContent();
+                RefreshContent();
             }
         }
         
@@ -347,6 +330,17 @@ namespace Datra.Unity.Editor.Panels
             
             // The view will refresh itself after deletion,
             // but we need to ensure the tree shows the modified state
+        }
+        public void Cleanup()
+        {
+            // Cleanup view controller
+            if (viewModeController != null)
+            {
+                viewModeController.OnViewModeChanged -= OnViewModeChanged;
+                viewModeController.OnSaveRequested -= ((type, repo) => OnSaveRequested?.Invoke(type, repo));
+                viewModeController.OnDataModified -= ((type) => OnDataModified?.Invoke(type));
+                viewModeController.Cleanup();
+            }
         }
     }
 }

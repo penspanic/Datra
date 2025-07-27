@@ -102,9 +102,53 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public static void ClearAll()
         {
-            // Note: Unity doesn't provide a way to clear only specific keys,
-            // so this is more of a placeholder for future implementation
-            Debug.LogWarning("ClearAll is not fully implemented. Preferences must be cleared manually.");
+            // Get all EditorPrefs keys (Unity doesn't provide this directly)
+            // So we'll clear known preference patterns
+            var typesToClear = new List<Type>();
+            
+            // Clear view mode preferences for all known types
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    foreach (var type in assembly.GetTypes())
+                    {
+                        if (type.IsClass && !type.IsAbstract)
+                        {
+                            var key = $"{PrefsKeyPrefix}{ViewModePrefix}{type.FullName}";
+                            if (EditorPrefs.HasKey(key))
+                            {
+                                EditorPrefs.DeleteKey(key);
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Skip assemblies that can't be accessed
+                }
+            }
+            
+            // Clear known preference keys
+            var knownKeys = new[]
+            {
+                "LastSelectedTreePath",
+                "Window_DatraEditor_x",
+                "Window_DatraEditor_y",
+                "Window_DatraEditor_width",
+                "Window_DatraEditor_height"
+            };
+            
+            foreach (var key in knownKeys)
+            {
+                var fullKey = $"{PrefsKeyPrefix}{key}";
+                if (EditorPrefs.HasKey(fullKey))
+                {
+                    EditorPrefs.DeleteKey(fullKey);
+                }
+            }
+            
+            Debug.Log("Datra preferences cleared.");
         }
         
         /// <summary>
