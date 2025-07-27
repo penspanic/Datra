@@ -1,8 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Datra.DataTypes;
-using Datra.Tests.Models;
+using Datra.SampleData.Models;
 using Xunit;
 
 namespace Datra.Tests

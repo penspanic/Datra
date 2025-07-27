@@ -10,6 +10,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Analyzers", "Datra.An
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.Analyzers.Tests", "Datra.Analyzers.Tests\Datra.Analyzers.Tests.csproj", "{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Datra.SampleData", "Datra.SampleData\Datra.SampleData.csproj", "{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -80,6 +82,18 @@ Global
 		{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}.Release|x64.Build.0 = Release|Any CPU
 		{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}.Release|x86.ActiveCfg = Release|Any CPU
 		{5E19D5DA-4229-4605-A4A8-A43C0EAB29E8}.Release|x86.Build.0 = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|x64.Build.0 = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Debug|x86.Build.0 = Debug|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|x64.ActiveCfg = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|x64.Build.0 = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|x86.ActiveCfg = Release|Any CPU
+		{BAB349B6-8DA2-4641-8F49-649C7D2E3EE4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

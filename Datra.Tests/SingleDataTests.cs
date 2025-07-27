@@ -2,8 +2,8 @@ using System.IO;
 using System.Linq;
 using Datra.Attributes;
 using Datra.DataTypes;
+using Datra.SampleData.Models;
 using Datra.Serializers;
-using Datra.Tests.Models;
 using Xunit;
 
 namespace Datra.Tests

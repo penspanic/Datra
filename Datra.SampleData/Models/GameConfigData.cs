@@ -1,7 +1,7 @@
 using Datra.Attributes;
 using Datra.DataTypes;
 
-namespace Datra.Tests.Models
+namespace Datra.SampleData.Models
 {
     public enum GameMode
     {

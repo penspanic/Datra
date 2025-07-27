@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using Datra.Configuration;
+using Datra.SampleData.Models;
 using Datra.Serializers;
-using Datra.Tests.Models;
 
 namespace Datra.Tests
 {
@@ -23,8 +23,8 @@ namespace Datra.Tests
                     return resourcesPath;
                 }
                 
-                // Find Resources folder in Datra.Tests project directory
-                var testProjectPath = Path.Combine(currentDir, "Datra.Tests", "Resources");
+                // Find Resources folder in Datra.SampleData project directory
+                var testProjectPath = Path.Combine(currentDir, "Datra.SampleData", "Resources");
                 if (Directory.Exists(testProjectPath))
                 {
                     return testProjectPath;

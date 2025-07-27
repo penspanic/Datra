@@ -1,7 +1,7 @@
 using Datra.Attributes;
 using Datra.Interfaces;
 
-namespace Datra.Tests.Models
+namespace Datra.SampleData.Models
 {
     public enum CharacterGrade
     {

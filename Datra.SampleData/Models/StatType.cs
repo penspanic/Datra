@@ -1,4 +1,4 @@
-namespace Datra.Tests.Models
+namespace Datra.SampleData.Models
 {
     public enum StatType
     {

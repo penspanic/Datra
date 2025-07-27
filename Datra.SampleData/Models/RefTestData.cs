@@ -2,7 +2,7 @@ using Datra.Attributes;
 using Datra.DataTypes;
 using Datra.Interfaces;
 
-namespace Datra.Tests.Models
+namespace Datra.SampleData.Models
 {
     [TableData("RefTestDataList.csv", Format = DataFormat.Csv)]
     public partial class RefTestData : ITableData<string>
