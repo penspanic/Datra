@@ -113,29 +113,66 @@ namespace Datra.Unity.Editor.UI
             
             // Find the repository that contains the referenced type
             var contextType = _dataContext.GetType();
-            var repositories = contextType.GetField("Repositories", BindingFlags.NonPublic | BindingFlags.Instance);
             
-            if (repositories != null)
+            // First try to find repository through properties
+            var properties = contextType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            object repository = null;
+            
+            foreach (var prop in properties)
             {
-                var repositoryDict = repositories.GetValue(_dataContext) as Dictionary<string, object>;
-                if (repositoryDict != null)
+                var propType = prop.PropertyType;
+                if (propType.IsGenericType)
                 {
-                    // Look for repository by type name
-                    var typeName = _referencedType.FullName;
-                    if (repositoryDict.TryGetValue(typeName, out var repository))
+                    var genericDef = propType.GetGenericTypeDefinition();
+                    if (genericDef == typeof(IDataRepository<,>))
                     {
-                        // Get all items from repository
-                        var getAllMethod = repository.GetType().GetMethod("GetAll");
-                        if (getAllMethod != null)
+                        var genericArgs = propType.GetGenericArguments();
+                        if (genericArgs[1] == _referencedType)
                         {
-                            var items = getAllMethod.Invoke(repository, null) as System.Collections.IEnumerable;
-                            if (items != null)
-                            {
-                                foreach (var item in items)
-                                {
-                                    _availableItems.Add(item);
-                                }
-                            }
+                            repository = prop.GetValue(_dataContext);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // If not found through properties, try the internal Repositories field
+            if (repository == null)
+            {
+                var repositories = contextType.GetField("Repositories", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (repositories != null)
+                {
+                    var repositoryDict = repositories.GetValue(_dataContext) as Dictionary<string, object>;
+                    if (repositoryDict != null)
+                    {
+                        // Look for repository by type name
+                        var typeName = _referencedType.FullName;
+                        repositoryDict.TryGetValue(typeName, out repository);
+                    }
+                }
+            }
+            
+            // Get all items from repository
+            if (repository != null)
+            {
+                var getAllMethod = repository.GetType().GetMethod("GetAll");
+                if (getAllMethod != null)
+                {
+                    var result = getAllMethod.Invoke(repository, null);
+                    
+                    // Handle both dictionary and enumerable results
+                    if (result is System.Collections.IDictionary dict)
+                    {
+                        foreach (var value in dict.Values)
+                        {
+                            _availableItems.Add(value);
+                        }
+                    }
+                    else if (result is System.Collections.IEnumerable items)
+                    {
+                        foreach (var item in items)
+                        {
+                            _availableItems.Add(item);
                         }
                     }
                 }

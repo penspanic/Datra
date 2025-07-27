@@ -14,6 +14,7 @@ namespace Datra.Unity.Editor.Utilities
     public static class DatraBootstrapper
     {
         private static List<InitializerInfo> _cachedInitializers;
+        private static IDataContext _currentDataContext;
         
         public class InitializerInfo
         {
@@ -92,6 +93,7 @@ namespace Datra.Unity.Editor.Utilities
                 if (result is IDataContext dataContext)
                 {
                     Debug.Log($"[Datra] Successfully initialized DataContext using {initializer.DisplayName}");
+                    _currentDataContext = dataContext;
                     return dataContext;
                 }
                 else
@@ -135,6 +137,26 @@ namespace Datra.Unity.Editor.Utilities
             }
             
             return null;
+        }
+        
+        /// <summary>
+        /// Get the currently initialized DataContext
+        /// </summary>
+        public static IDataContext GetCurrentDataContext()
+        {
+            if (_currentDataContext == null)
+            {
+                _currentDataContext = AutoInitialize();
+            }
+            return _currentDataContext;
+        }
+        
+        /// <summary>
+        /// Clear the current DataContext
+        /// </summary>
+        public static void ClearCurrentDataContext()
+        {
+            _currentDataContext = null;
         }
         
         private static bool ValidateInitializerMethod(MethodInfo method)

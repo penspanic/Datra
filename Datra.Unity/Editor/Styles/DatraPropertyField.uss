@@ -193,3 +193,160 @@
     border-color: #ffb74d;
     background-color: #332a1a;
 }
+
+/* Array field styles */
+.array-field-container {
+    background-color: #1e1e1e;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+    padding: 8px;
+}
+
+.array-header {
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: #2a2a2a;
+    margin-bottom: 4px;
+}
+
+.array-size-label {
+    font-size: 11px;
+    color: #969696;
+}
+
+.array-add-button {
+    background-color: #5a9fd4;
+    border-radius: 3px;
+    border-width: 0;
+    color: white;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.array-add-button:hover {
+    background-color: #6eb5e5;
+}
+
+.array-add-button:active {
+    background-color: #4a8fc4;
+}
+
+.array-elements {
+    padding-top: 4px;
+}
+
+.array-element {
+    margin-bottom: 4px;
+    padding: 2px;
+    background-color: #2a2a2a;
+    border-radius: 3px;
+}
+
+.array-element:hover {
+    background-color: #323232;
+}
+
+.array-index {
+    font-size: 11px;
+    color: #808080;
+    -unity-text-align: middle-right;
+}
+
+.array-element IntegerField,
+.array-element TextField,
+.array-element FloatField,
+.array-element EnumField {
+    margin: 0;
+    background-color: #1e1e1e;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+}
+
+.array-element IntegerField:focus,
+.array-element TextField:focus,
+.array-element FloatField:focus,
+.array-element EnumField:focus {
+    border-color: #5a9fd4;
+}
+
+.array-remove-button {
+    background-color: #d45a5a;
+    border-radius: 3px;
+    border-width: 0;
+    color: white;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.array-remove-button:hover {
+    background-color: #e56e6e;
+}
+
+.array-remove-button:active {
+    background-color: #c44a4a;
+}
+
+/* DataRef field styles */
+.dataref-field-container {
+    background-color: #1e1e1e;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+    padding: 4px;
+}
+
+.dataref-display-field {
+    background-color: #2a2a2a;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: #151515;
+    padding-left: 6px;
+    padding-right: 6px;
+    min-height: 22px;
+    color: #d4d4d4;
+}
+
+.dataref-display-field:focus {
+    border-color: #5a9fd4;
+}
+
+.dataref-select-button {
+    background-color: #5a9fd4;
+    border-radius: 3px;
+    border-width: 0;
+    color: white;
+    font-size: 12px;
+    margin-left: 4px;
+    padding: 2px 8px;
+}
+
+.dataref-select-button:hover {
+    background-color: #6eb5e5;
+}
+
+.dataref-select-button:active {
+    background-color: #4a8fc4;
+}
+
+.dataref-clear-button {
+    background-color: #d45a5a;
+    border-radius: 3px;
+    border-width: 0;
+    color: white;
+    font-size: 14px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    margin-left: 4px;
+}
+
+.dataref-clear-button:hover {
+    background-color: #e56e6e;
+}
+
+.dataref-clear-button:active {
+    background-color: #c44a4a;
+}
