@@ -51,11 +51,9 @@ namespace Datra.Generators
                 return;
             }
 
-            // Extract namespace from first class
-            var firstClass = receiver.CandidateClasses.First();
-            var namespaceDeclaration = firstClass.Parent as NamespaceDeclarationSyntax ??
-                                       firstClass.Parent?.Parent as NamespaceDeclarationSyntax;
-            var namespaceName = namespaceDeclaration?.Name.ToString() ?? "Generated";
+            // Use a dedicated namespace for the generated DataContext
+            // This avoids issues when model classes are spread across multiple namespaces
+            var namespaceName = "Datra.Generated";
             GeneratorLogger.Log($"Using namespace: {namespaceName}");
 
             // Generate DataContext

@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using Datra.Generated;
 using Datra.SampleData.Models;
 using Datra.Serializers;
 using Datra.Unity.Runtime.Providers;

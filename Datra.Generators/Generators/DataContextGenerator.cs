@@ -26,10 +26,12 @@ namespace Datra.Generators.Generators
             });
             
             // Add namespaces for data models
+            // Since we're using a dedicated namespace (Datra.Generated), 
+            // we need to include all model namespaces
             var modelNamespaces = dataModels
                 .Select(m => CodeBuilder.GetNamespace(m.TypeName))
                 .Distinct()
-                .Where(ns => ns != namespaceName);
+                .Where(ns => !string.IsNullOrEmpty(ns));
             
             builder.AddUsings(modelNamespaces);
             builder.AddBlankLine();

@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using Datra.Attributes;
 using Datra.DataTypes;
+using Datra.Generated;
 using Datra.SampleData.Models;
 using Datra.Serializers;
 using Xunit;

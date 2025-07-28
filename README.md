@@ -94,27 +94,32 @@ public partial class GameConfig
 
 ### 2. Create Your Data Context
 
-The Source Generator will automatically create a DataContext class based on your models:
+The Source Generator will automatically create a DataContext class based on your models. The generated `GameDataContext` class is placed in the `Datra.Generated` namespace to avoid conflicts when model classes are spread across multiple namespaces:
 
 ```csharp
-// This class is auto-generated
-public partial class GameDataContext : IDataContext
+// This class is auto-generated in Datra.Generated namespace
+namespace Datra.Generated
 {
-    public IDataRepository<string, CharacterData> Character { get; }
-    public ISingleDataRepository<GameConfig> GameConfig { get; }
-    
-    public async Task LoadAllAsync() { /* ... */ }
+    public partial class GameDataContext : IDataContext
+    {
+        public IDataRepository<string, CharacterData> Character { get; }
+        public ISingleDataRepository<GameConfig> GameConfig { get; }
+        
+        public async Task LoadAllAsync() { /* ... */ }
+    }
 }
 ```
 
 ### 3. Load and Use Your Data
 
 ```csharp
+using Datra.Generated;
+
 // Create data provider and loader factory
 var rawDataProvider = new FileRawDataProvider("path/to/data");
 var loaderFactory = new DataLoaderFactory();
 
-// Create context
+// Create context (GameDataContext is in Datra.Generated namespace)
 var context = new GameDataContext(rawDataProvider, loaderFactory);
 
 // Load all data

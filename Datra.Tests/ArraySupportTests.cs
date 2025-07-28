@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Datra.DataTypes;
+using Datra.Generated;
 using Datra.SampleData.Models;
 using Xunit;
 
