@@ -112,7 +112,7 @@ namespace Datra.Generators.Generators
             foreach (var prop in model.Properties)
             {
                 var paramName = CodeBuilder.ToCamelCase(prop.Name);
-                codeBuilder.AppendLine($"{prop.Name} = {paramName};");
+                codeBuilder.AppendLine($"this.{prop.Name} = {paramName};");
             }
             
             codeBuilder.EndMethod();

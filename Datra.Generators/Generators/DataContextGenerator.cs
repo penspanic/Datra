@@ -11,6 +11,12 @@ namespace Datra.Generators.Generators
         {
             GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models");
             
+            // Log all models for debugging
+            foreach (var model in dataModels)
+            {
+                GeneratorLogger.Log($"  - Model: {model.TypeName}, Property: {model.PropertyName}, IsTable: {model.IsTableData}");
+            }
+            
             var builder = new CodeBuilder();
             
             // Add using statements
@@ -31,7 +37,14 @@ namespace Datra.Generators.Generators
             var modelNamespaces = dataModels
                 .Select(m => CodeBuilder.GetNamespace(m.TypeName))
                 .Distinct()
-                .Where(ns => !string.IsNullOrEmpty(ns));
+                .Where(ns => !string.IsNullOrEmpty(ns))
+                .ToList(); // Force evaluation
+            
+            GeneratorLogger.Log($"Adding {modelNamespaces.Count} model namespaces:");
+            foreach (var ns in modelNamespaces)
+            {
+                GeneratorLogger.Log($"  - {ns}");
+            }
             
             builder.AddUsings(modelNamespaces);
             builder.AddBlankLine();

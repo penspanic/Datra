@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -23,33 +24,50 @@ namespace Datra.Generators
             GeneratorLogger.StartLogging();
             GeneratorLogger.Log("Starting source generation");
             
-            if (!(context.SyntaxReceiver is DataAttributeSyntaxReceiver receiver))
+            try
             {
-                GeneratorLogger.LogError("SyntaxReceiver is not DataAttributeSyntaxReceiver");
-                GeneratorLogger.AddDebugOutput(context);
-                return;
-            }
+                if (!(context.SyntaxReceiver is DataAttributeSyntaxReceiver receiver))
+                {
+                    GeneratorLogger.LogError("SyntaxReceiver is not DataAttributeSyntaxReceiver");
+                    GeneratorLogger.AddDebugOutput(context);
+                    return;
+                }
 
-            var compilation = context.Compilation;
-            var analyzer = new DataModelAnalyzer(compilation);
-            
-            if (!analyzer.IsInitialized)
-            {
-                GeneratorLogger.LogError("Required attributes not found in compilation");
-                GeneratorLogger.AddDebugOutput(context);
-                return;
-            }
+                var compilation = context.Compilation;
+                var analyzer = new DataModelAnalyzer(compilation);
+                
+                if (!analyzer.IsInitialized)
+                {
+                    GeneratorLogger.LogError("Required attributes not found in compilation");
+                    GeneratorLogger.AddDebugOutput(context);
+                    return;
+                }
 
-            // Analyze candidate classes
-            GeneratorLogger.Log($"Found {receiver.CandidateClasses.Count} candidate classes");
-            var dataModels = analyzer.AnalyzeClasses(receiver.CandidateClasses);
+                // Analyze candidate classes
+                GeneratorLogger.Log($"Found {receiver.CandidateClasses.Count} candidate classes");
+                
+                // Log all candidate classes for debugging
+                foreach (var candidateClass in receiver.CandidateClasses)
+                {
+                    var classNamespace = (candidateClass.Parent as NamespaceDeclarationSyntax)?.Name.ToString() ?? "Unknown";
+                    GeneratorLogger.Log($"  - Class: {candidateClass.Identifier.Text} in namespace: {classNamespace}");
+                }
+                
+                var dataModels = analyzer.AnalyzeClasses(receiver.CandidateClasses);
 
             if (dataModels.Count == 0)
             {
                 GeneratorLogger.Log("No data models found");
+                GeneratorLogger.Log("Candidate classes were:");
+                foreach (var candidateClass in receiver.CandidateClasses)
+                {
+                    GeneratorLogger.Log($"  - {candidateClass.Identifier.Text}");
+                }
                 GeneratorLogger.AddDebugOutput(context);
                 return;
             }
+            
+            GeneratorLogger.Log($"Successfully analyzed {dataModels.Count} data models");
 
             // Use a dedicated namespace for the generated DataContext
             // This avoids issues when model classes are spread across multiple namespaces
@@ -72,8 +90,17 @@ namespace Datra.Generators
                 GeneratorLogger.Log($"Generated {fileName}");
             }
             
-            GeneratorLogger.Log("DataContextSourceGenerator execution completed");
-            GeneratorLogger.AddDebugOutput(context);
+                GeneratorLogger.Log("DataContextSourceGenerator execution completed");
+            }
+            catch (Exception ex)
+            {
+                GeneratorLogger.LogError($"Unexpected error in source generator: {ex.Message}", ex);
+                GeneratorLogger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+            finally
+            {
+                GeneratorLogger.AddDebugOutput(context);
+            }
         }
     }
 }
