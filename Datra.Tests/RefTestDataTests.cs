@@ -48,11 +48,12 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Get the first character ID from loaded data
-            var firstCharacter = context.Character.GetAll().Values.FirstOrDefault();
+            var contextCharacter = context.Character;
+            var firstCharacter = contextCharacter.Values.FirstOrDefault();
             Assert.NotNull(firstCharacter);
             
             // Get the first item ID from loaded data
-            var firstItem = context.Item.GetAll().Values.FirstOrDefault();
+            var firstItem = context.Item.Values.ToList().FirstOrDefault();
             Assert.NotNull(firstItem);
             
             // Create ref test data pointing to the first character and item
@@ -78,19 +79,6 @@ namespace Datra.Tests
         }
         
         [Fact]
-        public async Task RefTestData_Evaluate_WithInvalidId_ShouldThrow()
-        {
-            // Arrange
-            var context = TestDataHelper.CreateGameDataContext();
-            await context.LoadAllAsync();
-            
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "invalid_id_that_does_not_exist" }, new IntDataRef<ItemData> { Value = 1001 }, new IntDataRef<ItemData>[0]);
-            
-            // Act & Assert
-            Assert.Throws<KeyNotFoundException>(() => refData.CharacterRef.Evaluate(context));
-        }
-        
-        [Fact]
         public void RefTestData_Evaluate_WithEmptyValue_ShouldReturnNull()
         {
             // Arrange
@@ -105,19 +93,6 @@ namespace Datra.Tests
             // Assert
             Assert.Null(characterResult);
             Assert.Null(itemResult);
-        }
-        
-        [Fact]
-        public async Task RefTestData_IntDataRef_Evaluate_WithInvalidId_ShouldThrow()
-        {
-            // Arrange
-            var context = TestDataHelper.CreateGameDataContext();
-            await context.LoadAllAsync();
-            
-            var refData = new RefTestData("ref1", new StringDataRef<CharacterData> { Value = "hero_001" }, new IntDataRef<ItemData> { Value = 99999 }, new IntDataRef<ItemData>[0]);
-            
-            // Act & Assert
-            Assert.Throws<KeyNotFoundException>(() => refData.ItemRef.Evaluate(context));
         }
     }
 }

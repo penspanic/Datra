@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Datra.Interfaces;
 
 namespace Datra.DataTypes
@@ -29,7 +30,7 @@ namespace Datra.DataTypes
             if (repositoryObj is not IDataRepository<int, T> repository)
                 throw new InvalidCastException($"Repository for type {typeof(T).FullName} is not of the expected type IRepository<int, T>.");
 
-            return repository.GetById(Value);
+            return repository.GetValueOrDefault(Value);
         }
     }
 }

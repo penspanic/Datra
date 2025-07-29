@@ -22,7 +22,12 @@ namespace Datra.Tests
         public void Should_ParseIntArray_FromCsv()
         {
             // Act
-            var character = _context.Character.GetById("hero_001");
+            if (!_context.Character.TryGetValue("hero_001", out var character))
+            {
+                Assert.Fail("Character data not found");
+                return;
+            }
+            
             
             // Assert
             Assert.NotNull(character);
@@ -39,7 +44,11 @@ namespace Datra.Tests
         public void Should_ParseIntDataRefArray_FromCsv()
         {
             // Act
-            var refData = _context.RefTest.GetById("test_01");
+            if (!_context.RefTest.TryGetValue("test_01", out var refData))
+            {
+                Assert.Fail("RefTest data not found");
+                return;
+            }
             
             // Assert
             Assert.NotNull(refData);
@@ -54,7 +63,11 @@ namespace Datra.Tests
         public void Should_HandleEmptyArray_FromCsv()
         {
             // Act
-            var refData = _context.RefTest.GetById("test_05");
+            if (!_context.RefTest.TryGetValue("test_05", out var refData))
+            {
+                Assert.Fail("RefTest data not found");
+                return;
+            }
             
             // Assert
             Assert.NotNull(refData);
@@ -121,7 +134,11 @@ namespace Datra.Tests
         public void Should_ParseEnumValue_FromCsv()
         {
             // Act
-            var character = _context.Character.GetById("hero_001");
+            if (!_context.Character.TryGetValue("hero_001", out var character))
+            {
+                Assert.Fail("Character data not found");
+                return;
+            }
             
             // Assert
             Assert.NotNull(character);
@@ -182,7 +199,11 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
         public void Should_ParseEnumArray_FromCsv()
         {
             // Act
-            var character = _context.Character.GetById("hero_001");
+            if (!_context.Character.TryGetValue("hero_001", out var character))
+            {
+                Assert.Fail("Character data not found");
+                return;
+            }
             
             // Assert
             Assert.NotNull(character);
@@ -197,9 +218,24 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
         public void Should_ParseDifferentEnumArrays_FromCsv()
         {
             // Act
-            var arthur = _context.Character.GetById("hero_001");
-            var lena = _context.Character.GetById("hero_003");
-            var thor = _context.Character.GetById("hero_004");
+            
+            if (!_context.Character.TryGetValue("hero_001", out var arthur))
+            {
+                Assert.Fail("Character data not found for hero_001");
+                return;
+            }
+
+            if (!_context.Character.TryGetValue("hero_003", out var lena))
+            {
+                Assert.Fail("Character data not found for hero_003");
+                return;
+            }
+
+            if (!_context.Character.TryGetValue("hero_004", out var thor))
+            {
+                Assert.Fail("Character data not found for hero_004");
+                return;
+            }
             
             // Assert
             Assert.NotNull(arthur.Stats);

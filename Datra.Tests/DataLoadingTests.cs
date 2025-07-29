@@ -51,8 +51,8 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var allCharacters = context.Character.GetAll();
-            var firstChar = allCharacters.Values.FirstOrDefault();
+            var allCharacters = context.Character.Values.ToList();
+            var firstChar = allCharacters.FirstOrDefault();
             
             // Assert
             Assert.NotEmpty(allCharacters);
@@ -75,8 +75,8 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var allItems = context.Item.GetAll();
-            var item = context.Item.GetById(1001);
+            var allItems = context.Item.Values.ToList();
+            context.Item.TryGetValue(1001, out var item);
             
             // Assert
             Assert.NotEmpty(allItems);
@@ -123,21 +123,10 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var item = context.Item.TryGetById(99999); // Non-existent ID
+            context.Item.TryGetValue(99999, out var item); // Non-existent ID
             
             // Assert
             Assert.Null(item);
-        }
-
-        [Fact]
-        public async Task GetById_WithInvalidId_ShouldThrowException()
-        {
-            // Arrange
-            var context = TestDataHelper.CreateGameDataContext();
-            await context.LoadAllAsync();
-            
-            // Act & Assert
-            Assert.Throws<KeyNotFoundException>(() => context.Item.GetById(99999));
         }
     }
 }

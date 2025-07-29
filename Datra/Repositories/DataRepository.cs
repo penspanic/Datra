@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -189,6 +190,31 @@ namespace Datra.Repositories
             
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
+
+        public IEnumerator<KeyValuePair<TKey, TData>> GetEnumerator()
+        {
+            return _data.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        public bool ContainsKey(TKey key)
+        {
+            return _data.ContainsKey(key);
+        }
+
+        public bool TryGetValue(TKey key, out TData value)
+        {
+            return _data.TryGetValue(key, out value);
+        }
+
+        public TData this[TKey key] => GetById(key);
+
+        public IEnumerable<TKey> Keys => _data.Keys;
+        public IEnumerable<TData> Values => _data.Values;
     }
     
     /// <summary>
