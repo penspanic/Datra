@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Datra.Generated;
 using Datra.SampleData.Models;
@@ -56,11 +57,11 @@ namespace Datra.Unity.Sample
         {
             Debug.Log("=== Character Data ===");
 
-            var allCharacters = context.Character.GetAll();
+            var allCharacters = context.Character.Values.ToList();
             Debug.Log($"Total characters: {allCharacters.Count}");
 
             // Output first character info
-            var firstChar = allCharacters.Values.FirstOrDefault();
+            var firstChar = allCharacters.FirstOrDefault();
             if (firstChar != null)
             {
                 Debug.Log($"First character: {firstChar.Name} (Lv.{firstChar.Level} {firstChar.ClassName})");
@@ -75,11 +76,11 @@ namespace Datra.Unity.Sample
         {
             Debug.Log("=== Item Data ===");
 
-            var allItems = context.Item.GetAll();
+            var allItems = context.Item.Values.ToList();
             Debug.Log($"Total items: {allItems.Count}");
 
             // Get specific item by GetById
-            var item = context.Item.GetById(1001);
+            var item = context.Item.GetValueOrDefault(1001);
             if (item != null)
             {
                 Debug.Log($"Item #1001: {item.Name}");

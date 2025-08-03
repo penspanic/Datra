@@ -38,6 +38,7 @@ namespace Datra.Unity.Editor.UI
             // Search field
             _searchField = new TextField();
             _searchField.style.marginBottom = 10;
+            _searchField.style.flexShrink = 0;
             _searchField.RegisterValueChangedCallback(OnSearchChanged);
             root.Add(_searchField);
             
@@ -80,6 +81,7 @@ namespace Datra.Unity.Editor.UI
             
             _listView.selectionType = SelectionType.Single;
             _listView.style.flexGrow = 1;
+            _listView.style.flexShrink = 1;
             _listView.selectionChanged += OnSelectionChanged;
             
             root.Add(_listView);
@@ -89,6 +91,7 @@ namespace Datra.Unity.Editor.UI
             buttonContainer.style.flexDirection = FlexDirection.Row;
             buttonContainer.style.justifyContent = Justify.FlexEnd;
             buttonContainer.style.marginTop = 10;
+            buttonContainer.style.flexShrink = 0;
             
             var selectButton = new Button(OnSelectClicked) { text = "Select" };
             selectButton.style.width = 80;
