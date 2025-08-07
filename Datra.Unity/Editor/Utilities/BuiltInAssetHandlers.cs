@@ -88,7 +88,9 @@ namespace Datra.Unity.Editor.Utilities
                 "Rigidbody"
             );
             
+#if DATRA_DEBUG
             Debug.Log("[Datra] Built-in component asset handlers registered");
+#endif
         }
     }
 }

@@ -23,7 +23,10 @@ namespace Datra.Unity.Editor.Utilities
                 throw new ArgumentException("Asset type string cannot be null or empty", nameof(handler));
             
             handlers[handler.AssetTypeString] = handler;
+            
+#if DATRA_DEBUG
             Debug.Log($"[AssetTypeHandlerRegistry] Registered handler for type: {handler.AssetTypeString}");
+#endif
         }
         
         /// <summary>
@@ -33,7 +36,9 @@ namespace Datra.Unity.Editor.Utilities
         {
             if (handlers.Remove(assetTypeString))
             {
+#if DATRA_DEBUG
                 Debug.Log($"[AssetTypeHandlerRegistry] Unregistered handler for type: {assetTypeString}");
+#endif
             }
         }
         
@@ -71,7 +76,9 @@ namespace Datra.Unity.Editor.Utilities
         public static void Clear()
         {
             handlers.Clear();
+#if DATRA_DEBUG
             Debug.Log("[AssetTypeHandlerRegistry] Cleared all handlers");
+#endif
         }
     }
     
