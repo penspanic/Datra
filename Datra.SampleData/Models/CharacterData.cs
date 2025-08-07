@@ -26,5 +26,25 @@ namespace Datra.SampleData.Models
         public CharacterGrade Grade { get; set; }
         public StatType[] Stats { get; set; } // Array of stat types
         public int[] UpgradeCosts { get; set; } // Array of upgrade costs for each level
+        
+        // Character model prefab
+        [AssetType(UnityAssetTypes.GameObject)]
+        [FolderPath("Assets/Prefabs/Characters/Models/")]
+        public string ModelPrefabPath { get; set; }
+        
+        // Character portrait
+        [AssetType(UnityAssetTypes.Sprite)]
+        [FolderPath("Assets/UI/Portraits/")]
+        public string PortraitPath { get; set; }
+        
+        // Character icon for UI
+        [AssetType(UnityAssetTypes.Texture2D)]
+        [FolderPath("Assets/UI/Icons/Characters/", SearchPattern = "Icon_*.png")]
+        public string IconPath { get; set; }
+        
+        // Attack sound effect
+        [AssetType(UnityAssetTypes.AudioClip)]
+        [FolderPath("Assets/Audio/Characters/", IncludeSubfolders = true)]
+        public string AttackSoundPath { get; set; }
     }
 }

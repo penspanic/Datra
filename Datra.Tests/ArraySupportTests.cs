@@ -91,7 +91,11 @@ namespace Datra.Tests
                 "Warrior",
                 CharacterGrade.Epic,
                 new[] { StatType.Attack, StatType.Defense },
-                new[] { 50, 100, 200, 400 }
+                new[] { 50, 100, 200, 400 },
+                null,  // ModelPrefabPath
+                null,  // PortraitPath
+                null,  // IconPath
+                null   // AttackSoundPath
             );
             
             // Act
@@ -161,7 +165,11 @@ namespace Datra.Tests
                 "Paladin",
                 CharacterGrade.Legendary,
                 new[] { StatType.Attack, StatType.Defense, StatType.HealthRegen },
-                new[] { 100, 200, 400, 800, 1600 }
+                new[] { 100, 200, 400, 800, 1600 },
+                null,  // ModelPrefabPath
+                null,  // PortraitPath
+                null,  // IconPath
+                null   // AttackSoundPath
             );
             
             // Act
@@ -274,7 +282,11 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
                 "Warrior",
                 CharacterGrade.Epic,
                 new[] { StatType.Attack, StatType.Defense, StatType.CriticalRate, StatType.Evasion },
-                new[] { 500, 1000, 2000, 4000 }
+                new[] { 500, 1000, 2000, 4000 },
+                null,  // ModelPrefabPath
+                null,  // PortraitPath
+                null,  // IconPath
+                null   // AttackSoundPath
             );
             
             // Act
