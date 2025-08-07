@@ -270,8 +270,8 @@ namespace Datra.Unity.Editor.Views
                 columnIndex++;
             }
             
-            // ID column
-            if (ShowIdColumn)
+            // ID column (only for table data, not single data)
+            if (ShowIdColumn && IsTableData(dataType))
             {
                 var idHeader = CreateHeaderCell("ID", 80);
                 // Hide left resize handle for first column if no actions column
@@ -413,8 +413,8 @@ namespace Datra.Unity.Editor.Views
                 row.Add(deleteCell);
             }
             
-            // ID field
-            if (ShowIdColumn)
+            // ID field (only for table data, not single data)
+            if (ShowIdColumn && IsTableData(dataType))
             {
                 var idProperty = dataType.GetProperty("Id");
                 if (idProperty != null)

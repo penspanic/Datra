@@ -1,0 +1,59 @@
+.asset-field-element {
+    margin-bottom: 4px;
+}
+
+.asset-field-element.table-mode {
+    margin: 0;
+    padding: 0;
+    border-radius: 3px;
+    border-width: 2px;
+    border-color: transparent;
+}
+
+.asset-field-element.table-mode.invalid {
+    border-color: #FF4444;
+}
+
+.asset-field-element.table-mode .asset-field-object {
+    margin: 0;
+}
+
+.asset-field-input-row {
+    flex-direction: row;
+    align-items: center;
+}
+
+.asset-field-path {
+    flex-grow: 1;
+    margin-right: 4px;
+}
+
+.asset-field-path.field-invalid {
+    border-color: #FF4444;
+}
+
+.asset-field-browse-button {
+    padding: 2px 8px;
+    margin-right: 2px;
+}
+
+.asset-field-clear-button {
+    padding: 2px 6px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.asset-field-validation {
+    font-size: 10px;
+    margin-top: 2px;
+    color: #FF4444;
+}
+
+.asset-field-info-row {
+    opacity: 0.7;
+}
+
+.asset-field-info {
+    font-size: 10px;
+    margin-right: 8px;
+}

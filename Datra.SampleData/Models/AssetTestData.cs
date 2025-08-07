@@ -7,10 +7,9 @@ namespace Datra.SampleData.Models
     /// <summary>
     /// Test data class demonstrating AssetType and FolderPath attributes
     /// </summary>
-    [TableData("AssetTestData")]
-    public partial class AssetTestData : ITableData<string>
+    [SingleData("AssetTestData.json")]
+    public partial class AssetTestData
     {
-        public string Id { get; set; }
         public string Name { get; set; }
         
         // Prefab with folder constraint

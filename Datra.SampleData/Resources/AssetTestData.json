@@ -1,0 +1,20 @@
+{
+  "Name": "Asset Test Configuration",
+  "CharacterPrefabPath": "Assets/Prefabs/Characters/Hero_Character.prefab",
+  "PlayerPrefabPath": "Assets/Prefabs/Player/PlayerController.prefab",
+  "WeaponPrefabPath": "Assets/Prefabs/Weapons/Weapon_Sword.prefab",
+  "UIPrefabPath": "Assets/Prefabs/UI/MainMenu.prefab",
+  "IconTexturePath": "Assets/Textures/Icons/icon_health.png",
+  "SpriteIconPath": "Assets/Sprites/UI/button_play.png",
+  "SoundEffectPath": "Assets/Audio/SFX/hit_impact.wav",
+  "CharacterAnimationPath": "Assets/Animations/Characters/idle.anim",
+  "MaterialPath": "Assets/Materials/character_skin.mat",
+  "ItemDataPath": "Assets/Data/Items/sword_data.asset",
+  "WeaponConfigPath": "Assets/Configs/Weapons/sword_config.asset",
+  "EffectPrefabPaths": [
+    "Assets/Prefabs/Effects/VFX_Fire.prefab",
+    "Assets/Prefabs/Effects/VFX_Ice.prefab",
+    "Assets/Prefabs/Effects/VFX_Lightning.prefab"
+  ],
+  "LevelScenePath": "Assets/Scenes/Levels/Level_01.unity"
+}

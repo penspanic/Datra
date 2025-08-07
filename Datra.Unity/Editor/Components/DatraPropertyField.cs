@@ -182,14 +182,31 @@ namespace Datra.Unity.Editor.Components
         {
             if (propertyType == typeof(string))
             {
-                var textField = new TextField();
-                textField.value = value as string ?? "";
-                textField.RegisterValueChangedCallback(evt =>
+                // Check for asset attributes
+                if (AttributeFieldHandler.HasAssetAttributes(property))
                 {
-                    property.SetValue(target, evt.newValue);
-                    OnFieldValueChanged(evt.newValue);
-                });
-                return textField;
+                    var assetType = AttributeFieldHandler.GetAssetTypeAttribute(property);
+                    var folderPath = AttributeFieldHandler.GetFolderPathAttribute(property);
+                    
+                    var assetField = new AssetFieldElement(assetType, folderPath, value as string ?? "", (newValue) =>
+                    {
+                        property.SetValue(target, newValue);
+                        OnFieldValueChanged(newValue);
+                    }, layoutMode == DatraFieldLayoutMode.Table);
+                    
+                    return assetField;
+                }
+                else
+                {
+                    var textField = new TextField();
+                    textField.value = value as string ?? "";
+                    textField.RegisterValueChangedCallback(evt =>
+                    {
+                        property.SetValue(target, evt.newValue);
+                        OnFieldValueChanged(evt.newValue);
+                    });
+                    return textField;
+                }
             }
             else if (propertyType == typeof(int))
             {
