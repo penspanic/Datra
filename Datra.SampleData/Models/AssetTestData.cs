@@ -18,7 +18,7 @@ namespace Datra.SampleData.Models
         public string CharacterPrefabPath { get; set; }
         
         // Prefab with component requirements
-        [AssetType(UnityAssetTypes.GameObject, RequiredComponents = new[] { "PlayerController", "Health" })]
+        [AssetType(UnityAssetTypes.GameObject)]
         public string PlayerPrefabPath { get; set; }
         
         // Weapon prefab in specific folder
