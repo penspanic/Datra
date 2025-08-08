@@ -17,6 +17,30 @@ namespace Datra.Generators.Generators
             _context = context;
         }
         
+        private static bool IsPrimitiveType(string typeName)
+        {
+            // Primitive types should not have global:: prefix
+            return typeName switch
+            {
+                "string" => true,
+                "int" => true,
+                "float" => true,
+                "double" => true,
+                "bool" => true,
+                "byte" => true,
+                "sbyte" => true,
+                "short" => true,
+                "ushort" => true,
+                "uint" => true,
+                "long" => true,
+                "ulong" => true,
+                "char" => true,
+                "decimal" => true,
+                "object" => true,
+                _ => false
+            };
+        }
+        
         public string GenerateSerializerFile(DataModelInfo model)
         {
             var codeBuilder = new CodeBuilder();
@@ -32,7 +56,7 @@ namespace Datra.Generators.Generators
                 "System.IO",
                 "System.Text",
                 "Newtonsoft.Json",
-                "Newtonsoft.Json.Linq",
+                "Newtonsoft.Json.Linq", 
                 "System.Globalization",
                 "Datra.Interfaces"
             });
@@ -95,7 +119,7 @@ namespace Datra.Generators.Generators
                 else if (prop.Type.Contains(".") && !prop.Type.StartsWith("System."))
                 {
                     // Nested classes or other types
-                    codeBuilder.AppendLine($"{prop.Name} = new {prop.Type.Split('.').Last()}();");
+                    codeBuilder.AppendLine($"{prop.Name} = new {prop.Type}();");
                 }
             }
             
@@ -121,10 +145,17 @@ namespace Datra.Generators.Generators
         private void GenerateTableSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)
         {
             var format = CodeBuilder.GetDataFormat(model.Format);
-            GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', format='{format}'");
+            GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', format='{format}', KeyType='{model.KeyType}'");
+            
+            // Validate KeyType
+            if (string.IsNullOrEmpty(model.KeyType))
+            {
+                GeneratorLogger.LogError($"KeyType is null or empty for table data type {simpleTypeName}");
+                model.KeyType = "string"; // Default fallback
+            }
             
             // Deserialize method
-            codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeTable(string data, Datra.Serializers.IDataSerializer serializer)");
+            codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeTable(string data, global::Datra.Serializers.IDataSerializer serializer)");
             
             // Always use serializer for DeserializeTable method
             codeBuilder.AppendLine($"return serializer.DeserializeTable<{model.KeyType}, {simpleTypeName}>(data);");
@@ -133,7 +164,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AddBlankLine();
             
             // Serialize method
-            codeBuilder.BeginMethod($"public static string SerializeTable(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Serializers.IDataSerializer serializer)");
+            codeBuilder.BeginMethod($"public static string SerializeTable(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Serializers.IDataSerializer serializer)");
             
             // Always use serializer for SerializeTable method
             codeBuilder.AppendLine($"return serializer.SerializeTable<{model.KeyType}, {simpleTypeName}>(table);");
@@ -146,7 +177,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Deserialize method without serializer
-                codeBuilder.BeginMethod($"public static Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, Datra.Configuration.DatraConfiguration config = null)");
+                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfiguration config = null)");
                 var csvBuilder2 = new CsvSerializerBuilder();
                 csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();
@@ -154,7 +185,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Serialize method without serializer
-                codeBuilder.BeginMethod($"public static string SerializeCsv(Dictionary<{model.KeyType}, {simpleTypeName}> table, Datra.Configuration.DatraConfiguration config = null)");
+                codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfiguration config = null)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();
@@ -166,7 +197,7 @@ namespace Datra.Generators.Generators
             var format = CodeBuilder.GetDataFormat(model.Format);
             
             // Deserialize method
-            codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingle(string data, Datra.Serializers.IDataSerializer serializer)");
+            codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingle(string data, global::Datra.Serializers.IDataSerializer serializer)");
             
             switch (format)
             {
@@ -187,7 +218,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AddBlankLine();
             
             // Serialize method
-            codeBuilder.BeginMethod($"public static string SerializeSingle({simpleTypeName} data, Datra.Serializers.IDataSerializer serializer)");
+            codeBuilder.BeginMethod($"public static string SerializeSingle({simpleTypeName} data, global::Datra.Serializers.IDataSerializer serializer)");
             
             switch (format)
             {

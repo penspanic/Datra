@@ -10,9 +10,9 @@ namespace Datra.Generators.Generators
         public void GenerateTableDeserializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
             codeBuilder.AppendLine("// Custom CSV deserializer for immutable types");
-            codeBuilder.AppendLine("config ??= Datra.Configuration.DatraConfiguration.CreateDefault();");
-            codeBuilder.AppendLine($"var result = new Dictionary<{model.KeyType}, {typeName}>();");
-            codeBuilder.AppendLine("using (var reader = new StringReader(data))");
+            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfiguration.CreateDefault();");
+            codeBuilder.AppendLine($"var result = new global::System.Collections.Generic.Dictionary<{model.KeyType}, {typeName}>();");
+            codeBuilder.AppendLine("using (var reader = new global::System.IO.StringReader(data))");
             codeBuilder.BeginBlock();
             
             codeBuilder.AppendLine("var headerLine = reader.ReadLine();");
@@ -22,7 +22,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("var headers = headerLine.Split(config.CsvFieldDelimiter);");
             
             // Generate header index mapping
-            codeBuilder.AppendLine("var headerIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);");
+            codeBuilder.AppendLine("var headerIndex = new global::System.Collections.Generic.Dictionary<string, int>(global::System.StringComparer.OrdinalIgnoreCase);");
             codeBuilder.AppendLine("for (int i = 0; i < headers.Length; i++)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("headerIndex[headers[i]] = i;");
@@ -61,8 +61,8 @@ namespace Datra.Generators.Generators
         
         public void GenerateTableSerializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("config ??= Datra.Configuration.DatraConfiguration.CreateDefault();");
-            codeBuilder.AppendLine("var csv = new StringBuilder();");
+            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfiguration.CreateDefault();");
+            codeBuilder.AppendLine("var csv = new global::System.Text.StringBuilder();");
             codeBuilder.AppendLine("// CSV header");
             
             var headers = model.Properties.Select(p => p.Name);
@@ -122,10 +122,10 @@ namespace Datra.Generators.Generators
                     return $"int.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : 0";
                 case "float":
                 case "System.Single":
-                    return $"float.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
+                    return $"float.TryParse({getValueCode}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
                 case "double":
                 case "System.Double":
-                    return $"double.TryParse({getValueCode}, NumberStyles.Float, CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
+                    return $"double.TryParse({getValueCode}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
                 case "bool":
                 case "System.Boolean":
                     return $"bool.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : false";
@@ -133,7 +133,7 @@ namespace Datra.Generators.Generators
                     // Enum handling
                     if (prop.Type.Contains("."))
                     {
-                        return $"Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
+                        return $"global::System.Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
                     }
                     return $"default({prop.Type})";
             }
@@ -149,11 +149,11 @@ namespace Datra.Generators.Generators
             {
                 if (prop.DataRefKeyType == "string")
                 {
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = x }}).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = x }}).ToArray()";
                 }
                 else if (prop.DataRefKeyType == "int")
                 {
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = int.TryParse(x, out var val) ? val : 0 }}).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = int.TryParse(x, out var val) ? val : 0 }}).ToArray()";
                 }
             }
             
@@ -162,24 +162,24 @@ namespace Datra.Generators.Generators
             {
                 case "string":
                 case "System.String":
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries)";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries)";
                 case "int":
                 case "System.Int32":
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => int.TryParse(x, out var val) ? val : 0).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => int.TryParse(x, out var val) ? val : 0).ToArray()";
                 case "float":
                 case "System.Single":
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => float.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out var val) ? val : 0f).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => float.TryParse(x, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var val) ? val : 0f).ToArray()";
                 case "double":
                 case "System.Double":
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => double.TryParse(x, NumberStyles.Float, CultureInfo.InvariantCulture, out var val) ? val : 0.0).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => double.TryParse(x, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var val) ? val : 0.0).ToArray()";
                 case "bool":
                 case "System.Boolean":
-                    return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
                 default:
                     // Handle enum arrays
                     if (elementType.Contains("."))
                     {
-                        return $"({getValueCode}).Split({arrayDelimiter}, StringSplitOptions.RemoveEmptyEntries).Select(x => Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
+                        return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
                     }
                     return $"new {prop.Type}[0]"; // Empty array for unsupported types
             }
@@ -216,7 +216,7 @@ namespace Datra.Generators.Generators
                 case "System.Single":
                 case "double":
                 case "System.Double":
-                    return $"{itemVar}.{prop.Name}.ToString(CultureInfo.InvariantCulture)";
+                    return $"{itemVar}.{prop.Name}.ToString(global::System.Globalization.CultureInfo.InvariantCulture)";
                 case "bool":
                 case "System.Boolean":
                     return $"{itemVar}.{prop.Name}.ToString()";
@@ -260,7 +260,7 @@ namespace Datra.Generators.Generators
                 case "System.Single":
                 case "double":
                 case "System.Double":
-                    return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString(CultureInfo.InvariantCulture)))";
+                    return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString(global::System.Globalization.CultureInfo.InvariantCulture)))";
                 case "bool":
                 case "System.Boolean":
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";

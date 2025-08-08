@@ -4,6 +4,7 @@ using Datra.Attributes;
 using Datra.DataTypes;
 using Datra.Generated;
 using Datra.SampleData.Models;
+using Datra.SampleData.OtherNamespace;
 using Datra.Serializers;
 using Xunit;
 
@@ -107,6 +108,7 @@ namespace Datra.Tests
                 GameMode.Hard,
                 new[] { GameMode.Normal, GameMode.Hard },
                 new[] { RewardType.Gold, RewardType.Skill, RewardType.Achievement },
+                LanguageCode.English,
                 new StringDataRef<CharacterData> { Value = "hero_005" },
                 new IntDataRef<ItemData> { Value = 3001 },
                 new[]

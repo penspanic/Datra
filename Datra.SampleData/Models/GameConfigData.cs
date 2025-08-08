@@ -1,5 +1,6 @@
 using Datra.Attributes;
 using Datra.DataTypes;
+using Datra.SampleData.OtherNamespace;
 
 namespace Datra.SampleData.Models
 {
@@ -29,6 +30,7 @@ namespace Datra.SampleData.Models
         public GameMode DefaultMode { get; set; }
         public GameMode[] AvailableModes { get; set; }
         public RewardType[] EnabledRewards { get; set; }
+        public LanguageCode DefaultLanguage { get; set; }
         public StringDataRef<CharacterData> DefaultCharacter { get; set; }
         public IntDataRef<ItemData> StartingItem { get; set; }
         public StringDataRef<CharacterData>[] UnlockableCharacters { get; set; }

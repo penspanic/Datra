@@ -69,9 +69,9 @@ namespace Datra.Generators.Generators
                     if (prop.Type.Contains(".") && !prop.Type.StartsWith("System."))
                     {
                         // Enum handling
-                        var simpleType = prop.Type.Split('.').Last();
+                        // Use full type name
                         codeBuilder.AppendLine($"var {varName}Str = {elementVar}[\"{prop.Name}\"]?.ToString() ?? {elementVar}[\"{propNameLower}\"]?.ToString();");
-                        codeBuilder.AppendLine($"var {varName} = Enum.TryParse<{simpleType}>({varName}Str, true, out var {varName}Parsed) ? {varName}Parsed : default({simpleType});");
+                        codeBuilder.AppendLine($"var {varName} = global::System.Enum.TryParse<{prop.Type}>({varName}Str, true, out var {varName}Parsed) ? {varName}Parsed : default({prop.Type});");
                     }
                     break;
             }

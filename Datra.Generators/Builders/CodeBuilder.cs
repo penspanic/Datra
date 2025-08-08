@@ -116,14 +116,18 @@ namespace Datra.Generators.Builders
 
         public static string GetSimpleTypeName(string fullTypeName)
         {
-            var lastDot = fullTypeName.LastIndexOf('.');
-            return lastDot >= 0 ? fullTypeName.Substring(lastDot + 1) : fullTypeName;
+            // Remove global:: prefix if present
+            var typeName = fullTypeName.StartsWith("global::") ? fullTypeName.Substring(8) : fullTypeName;
+            var lastDot = typeName.LastIndexOf('.');
+            return lastDot >= 0 ? typeName.Substring(lastDot + 1) : typeName;
         }
 
         public static string GetNamespace(string fullTypeName)
         {
-            var lastDot = fullTypeName.LastIndexOf('.');
-            return lastDot >= 0 ? fullTypeName.Substring(0, lastDot) : "Generated";
+            // Remove global:: prefix if present
+            var typeName = fullTypeName.StartsWith("global::") ? fullTypeName.Substring(8) : fullTypeName;
+            var lastDot = typeName.LastIndexOf('.');
+            return lastDot >= 0 ? typeName.Substring(0, lastDot) : "Generated";
         }
 
         public static string ToCamelCase(string pascalCase)

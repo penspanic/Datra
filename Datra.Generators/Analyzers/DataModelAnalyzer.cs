@@ -12,6 +12,15 @@ namespace Datra.Generators.Analyzers
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _tableDataAttrSymbol;
         private readonly INamedTypeSymbol _singleDataAttrSymbol;
+        
+        // Define a SymbolDisplayFormat that includes global:: prefix
+        private static readonly SymbolDisplayFormat FullyQualifiedFormat = new SymbolDisplayFormat(
+            globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+            typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+            genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+            memberOptions: SymbolDisplayMemberOptions.None,
+            miscellaneousOptions: SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+        );
 
         public DataModelAnalyzer(Compilation compilation)
         {
@@ -116,7 +125,7 @@ namespace Datra.Generators.Analyzers
 
             var modelInfo = new DataModelInfo
             {
-                TypeName = classSymbol.ToDisplayString(),
+                TypeName = classSymbol.ToDisplayString(FullyQualifiedFormat),
                 PropertyName = classSymbol.Name.Replace("Data", ""),
                 IsTableData = isTableData,
                 FilePath = filePath,
@@ -141,9 +150,9 @@ namespace Datra.Generators.Analyzers
             foreach (var iface in classSymbol.AllInterfaces)
             {
                 if (iface.IsGenericType && 
-                    iface.ConstructedFrom.ToDisplayString() == "Datra.Interfaces.ITableData<TKey>")
+                    iface.ConstructedFrom.ToDisplayString(FullyQualifiedFormat) == "global::Datra.Interfaces.ITableData<TKey>")
                 {
-                    return iface.TypeArguments[0].ToDisplayString();
+                    return iface.TypeArguments[0].ToDisplayString(FullyQualifiedFormat);
                 }
             }
             return null;
@@ -169,15 +178,15 @@ namespace Datra.Generators.Analyzers
                     {
                         isArray = true;
                         var elementTypeSymbol = arrayType.ElementType;
-                        elementType = elementTypeSymbol.ToDisplayString();
+                        elementType = elementTypeSymbol.ToDisplayString(FullyQualifiedFormat);
                         
                         // Check if array element is DataRef
                         if (elementTypeSymbol is INamedTypeSymbol namedElementType && 
                             namedElementType.IsGenericType)
                         {
-                            var constructedFrom = namedElementType.ConstructedFrom.ToDisplayString();
-                            if (constructedFrom == "Datra.DataTypes.StringDataRef<T>" ||
-                                constructedFrom == "Datra.DataTypes.IntDataRef<T>")
+                            var constructedFrom = namedElementType.ConstructedFrom.ToDisplayString(FullyQualifiedFormat);
+                            if (constructedFrom == "global::Datra.DataTypes.StringDataRef<T>" ||
+                                constructedFrom == "global::Datra.DataTypes.IntDataRef<T>")
                             {
                                 isDataRef = true;
                                 dataRefKeyType = constructedFrom.Contains("StringDataRef") ? "string" : "int";
@@ -189,9 +198,9 @@ namespace Datra.Generators.Analyzers
                     else if (propertyType is INamedTypeSymbol namedType && 
                         namedType.IsGenericType)
                     {
-                        var constructedFrom = namedType.ConstructedFrom.ToDisplayString();
-                        if (constructedFrom == "Datra.DataTypes.StringDataRef<T>" ||
-                            constructedFrom == "Datra.DataTypes.IntDataRef<T>")
+                        var constructedFrom = namedType.ConstructedFrom.ToDisplayString(FullyQualifiedFormat);
+                        if (constructedFrom == "global::Datra.DataTypes.StringDataRef<T>" ||
+                            constructedFrom == "global::Datra.DataTypes.IntDataRef<T>")
                         {
                             isDataRef = true;
                             dataRefKeyType = constructedFrom.Contains("StringDataRef") ? "string" : "int";
@@ -202,7 +211,7 @@ namespace Datra.Generators.Analyzers
                     properties.Add(new PropertyInfo
                     {
                         Name = property.Name,
-                        Type = property.Type.ToDisplayString(),
+                        Type = property.Type.ToDisplayString(FullyQualifiedFormat),
                         IsNullable = property.Type.NullableAnnotation == NullableAnnotation.Annotated,
                         IsDataRef = isDataRef,
                         DataRefKeyType = dataRefKeyType,
