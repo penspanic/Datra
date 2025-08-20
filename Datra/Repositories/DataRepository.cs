@@ -22,6 +22,7 @@ namespace Datra.Repositories
         private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string> _serializeFunc = null!;
         private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc = null!;
         private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc = null!;
+        private string _loadedFilePath = null!;
         
         public DataRepository(Dictionary<TKey, TData> data)
         {
@@ -89,12 +90,15 @@ namespace Datra.Repositories
         
         public int Count => _data.Count;
         
+        public string GetLoadedFilePath() => _loadedFilePath;
+        
         public async Task LoadAsync()
         {
             if (_rawDataProvider == null)
                 throw new InvalidOperationException("Repository was not initialized with load functionality.");
                 
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
+            _loadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
             
             // Use CSV-specific deserializer if available
             if (_csvDeserializeFunc != null)
@@ -229,6 +233,7 @@ namespace Datra.Repositories
         private readonly DataSerializerFactory _serializerFactory = null!;
         private readonly Func<string, IDataSerializer, TData> _deserializeFunc = null!;
         private readonly Func<TData, IDataSerializer, string> _serializeFunc = null!;
+        private string _loadedFilePath = null!;
         
         public SingleDataRepository(TData data)
         {
@@ -261,6 +266,8 @@ namespace Datra.Repositories
         
         public bool IsLoaded => _data != null;
         
+        public string GetLoadedFilePath() => _loadedFilePath;
+        
         internal void SetData(TData data)
         {
             _data = data;
@@ -277,6 +284,7 @@ namespace Datra.Repositories
                 throw new InvalidOperationException("Repository was not initialized with load functionality.");
                 
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
+            _loadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
             var serializer = _serializerFactory.GetSerializer(_filePath);
             _data = _deserializeFunc(rawData, serializer);
         }

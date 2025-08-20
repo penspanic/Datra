@@ -22,5 +22,10 @@ namespace Datra.Interfaces
         /// Check if data exists at the specified path
         /// </summary>
         bool Exists(string path);
+        
+        /// <summary>
+        /// Resolve the relative path to an absolute path
+        /// </summary>
+        string ResolveFilePath(string path);
     }
 }

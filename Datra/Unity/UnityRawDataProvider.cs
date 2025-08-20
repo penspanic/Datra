@@ -63,6 +63,17 @@ namespace Datra.Unity
             var resourcePath = Path.Combine(_dataPath, Path.GetFileNameWithoutExtension(filePath));
             return Resources.Load<TextAsset>(resourcePath) != null;
         }
+        
+        public string ResolveFilePath(string filePath)
+        {
+#if UNITY_EDITOR
+            // In editor, return the actual file system path
+            return Path.GetFullPath(Path.Combine(Application.dataPath, "Resources", _dataPath, filePath));
+#else
+            // At runtime, return a virtual Resources path
+            return $"Resources/{Path.Combine(_dataPath, filePath)}";
+#endif
+        }
     }
 }
 #endif

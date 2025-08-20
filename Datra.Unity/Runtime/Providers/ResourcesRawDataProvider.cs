@@ -29,5 +29,11 @@ namespace Datra.Unity.Runtime.Providers
             var textAsset = Resources.Load<TextAsset>(path);
             return textAsset != null;
         }
+        
+        public string ResolveFilePath(string path)
+        {
+            // In Resources, we return a virtual path since there's no real file system path at runtime
+            return $"Resources/{path}";
+        }
     }
 }

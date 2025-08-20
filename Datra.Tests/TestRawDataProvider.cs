@@ -43,5 +43,10 @@ namespace Datra.Tests
             var fullPath = Path.Combine(_basePath, path);
             return File.Exists(fullPath);
         }
+        
+        public string ResolveFilePath(string path)
+        {
+            return Path.GetFullPath(Path.Combine(_basePath, path));
+        }
     }
 }

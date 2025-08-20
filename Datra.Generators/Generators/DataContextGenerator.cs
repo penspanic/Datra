@@ -65,6 +65,10 @@ namespace Datra.Generators.Generators
             GenerateInitializeRepositories(builder, dataModels);
             builder.AddBlankLine();
             
+            // InitializeDataTypeInfos method
+            GenerateInitializeDataTypeInfos(builder, dataModels);
+            builder.AddBlankLine();
+            
             // LoadAllAsync method
             GenerateLoadAllAsync(builder, dataModels);
             builder.AddBlankLine();
@@ -152,24 +156,67 @@ namespace Datra.Generators.Generators
             builder.AppendLine($"RegisterSingleRepository(\"{model.PropertyName}\", {model.PropertyName});");
         }
 
-        private void GenerateLoadAllAsync(CodeBuilder builder, List<DataModelInfo> dataModels)
+        private void GenerateInitializeDataTypeInfos(CodeBuilder builder, List<DataModelInfo> dataModels)
         {
-            builder.BeginMethod("public override async Task LoadAllAsync()");
-            builder.AppendLine("var tasks = new List<Task>();");
+            builder.BeginMethod("protected override void InitializeDataTypeInfos()");
             
             foreach (var model in dataModels)
             {
-                if (model.IsTableData)
-                {
-                    builder.AppendLine($"if ({model.PropertyName} != null) tasks.Add(((DataRepository<{model.KeyType}, {model.TypeName}>){model.PropertyName}).LoadAsync());");
-                }
-                else
-                {
-                    builder.AppendLine($"if ({model.PropertyName} != null) tasks.Add(((SingleDataRepository<{model.TypeName}>){model.PropertyName}).LoadAsync());");
-                }
+                builder.AppendLine($"RegisterDataTypeInfo(new DataTypeInfo(");
+                builder.AppendLine($"    typeName: \"{model.TypeName}\",");
+                builder.AppendLine($"    dataType: typeof({model.TypeName}),");
+                builder.AppendLine($"    filePath: \"{model.FilePath}\",");
+                builder.AppendLine($"    propertyName: \"{model.PropertyName}\",");
+                builder.AppendLine($"    isSingleData: {(model.IsTableData ? "false" : "true")}");
+                builder.AppendLine("));");
             }
             
+            builder.EndMethod();
+        }
+
+        private void GenerateLoadAllAsync(CodeBuilder builder, List<DataModelInfo> dataModels)
+        {
+            builder.BeginMethod("public override async Task LoadAllAsync()");
+            
+            // Define local generic function to load and update
+            builder.AppendLine("// Local function to load repository and update DataTypeInfo");
+            builder.AppendLine("async Task LoadAndUpdateAsync<TRepo>(TRepo repo, string propertyName) where TRepo : class");
+            builder.BeginBlock();
+            builder.AppendLine("if (repo == null) return;");
+            builder.AddBlankLine();
+            builder.AppendLine("// Try to call LoadAsync if it exists");
+            builder.AppendLine("var loadMethod = repo.GetType().GetMethod(\"LoadAsync\");");
+            builder.AppendLine("if (loadMethod != null)");
+            builder.BeginBlock();
+            builder.AppendLine("await (Task)loadMethod.Invoke(repo, null);");
+            builder.EndBlock();
+            builder.AddBlankLine();
+            builder.AppendLine("// Get loaded file path and update DataTypeInfo");
+            builder.AppendLine("var getPathMethod = repo.GetType().GetMethod(\"GetLoadedFilePath\");");
+            builder.AppendLine("if (getPathMethod != null)");
+            builder.BeginBlock();
+            builder.AppendLine("var loadedPath = (string)getPathMethod.Invoke(repo, null);");
+            builder.AppendLine("if (!string.IsNullOrEmpty(loadedPath))");
+            builder.BeginBlock();
+            builder.AppendLine("UpdateDataTypeInfoAfterLoad(propertyName, loadedPath);");
+            builder.EndBlock();
+            builder.EndBlock();
+            builder.EndBlock();
+            builder.AddBlankLine();
+            
+            // Create tasks for loading all repositories
+            builder.AppendLine("// Load all repositories in parallel");
+            builder.AppendLine("var tasks = new List<Task>();");
+            builder.AddBlankLine();
+            
+            foreach (var model in dataModels)
+            {
+                builder.AppendLine($"tasks.Add(LoadAndUpdateAsync({model.PropertyName}, \"{model.PropertyName}\"));");
+            }
+            
+            builder.AddBlankLine();
             builder.AppendLine("await Task.WhenAll(tasks);");
+            
             builder.EndMethod();
         }
 

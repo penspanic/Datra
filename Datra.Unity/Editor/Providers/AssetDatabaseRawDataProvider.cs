@@ -82,5 +82,20 @@ namespace Datra.Unity.Editor.Providers
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
 #endif
         }
+        
+        public string ResolveFilePath(string path)
+        {
+#if UNITY_EDITOR
+            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            // Convert to absolute path if it starts with Assets/
+            if (path.StartsWith("Assets/"))
+            {
+                return Path.GetFullPath(path);
+            }
+            return path;
+#else
+            throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
+#endif
+        }
     }
 }

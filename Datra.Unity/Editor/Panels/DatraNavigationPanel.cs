@@ -421,6 +421,16 @@ namespace Datra.Unity.Editor.Panels
                 
             evt.menu.AppendSeparator();
             
+            evt.menu.AppendAction("Open with System Default", 
+                _ => OpenWithSystemDefault(itemData.DataType),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendAction("Show in Explorer", 
+                _ => ShowInExplorer(itemData.DataType),
+                DropdownMenuAction.AlwaysEnabled);
+                
+            evt.menu.AppendSeparator();
+            
             evt.menu.AppendAction("Export.../JSON", 
                 _ => ExportData(itemData.DataType, "json"),
                 DropdownMenuAction.AlwaysEnabled);
@@ -476,6 +486,77 @@ namespace Datra.Unity.Editor.Panels
         private void ExportData(Type dataType, string format)
         {
             Debug.Log($"Export {dataType.Name} as {format} - Not implemented yet");
+        }
+        
+        private void OpenWithSystemDefault(Type dataType)
+        {
+            var filePath = GetFilePathForDataType(dataType);
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = filePath,
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                Debug.LogWarning($"Could not find file path for {dataType.Name}");
+            }
+        }
+        
+        private void ShowInExplorer(Type dataType)
+        {
+            var filePath = GetFilePathForDataType(dataType);
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                EditorUtility.RevealInFinder(filePath);
+            }
+            else
+            {
+                Debug.LogWarning($"Could not find file path for {dataType.Name}");
+            }
+        }
+        
+        private string GetFilePathForDataType(Type dataType)
+        {
+            // Try to find the corresponding data file
+            // First, check if it's a ScriptableObject asset
+            var guids = AssetDatabase.FindAssets($"t:{dataType.Name}");
+            if (guids.Length > 0)
+            {
+                return AssetDatabase.GUIDToAssetPath(guids[0]);
+            }
+            
+            // Try to find JSON or other data files
+            var dataTypeName = dataType.Name;
+            guids = AssetDatabase.FindAssets(dataTypeName);
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (path.EndsWith(".json") || path.EndsWith(".yaml") || path.EndsWith(".xml") || path.EndsWith(".asset"))
+                {
+                    return path;
+                }
+            }
+            
+            // Check in Resources folder
+            var resourcePaths = new[] {
+                $"Assets/Resources/{dataTypeName}.json",
+                $"Assets/Resources/{dataTypeName}.yaml",
+                $"Assets/Resources/{dataTypeName}.xml",
+                $"Packages/com.penspanic.datra.sampledata/Resources/{dataTypeName}.json"
+            };
+            
+            foreach (var path in resourcePaths)
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    return path;
+                }
+            }
+            
+            return null;
         }
         
         private object GetRepositoryForType(DatraEditorWindow window, Type dataType)

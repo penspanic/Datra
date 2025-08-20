@@ -83,6 +83,12 @@ namespace Datra.Generators.Builders
             _indentLevel--;
             AppendLine("}");
         }
+        
+        public void EndBlock(string suffix)
+        {
+            _indentLevel--;
+            AppendLine("}" + suffix);
+        }
 
         public void AppendLine(string line = "")
         {

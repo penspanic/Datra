@@ -17,6 +17,7 @@ namespace Datra
     public abstract class BaseDataContext : IDataContext
     {
         internal readonly Dictionary<string, object> Repositories = new();
+        private readonly List<DataTypeInfo> _dataTypeInfos = new();
 
         private readonly IRawDataProvider _rawDataProvider;
         private readonly DataSerializerFactory _serializerFactory;
@@ -28,15 +29,12 @@ namespace Datra
         {
             _rawDataProvider = rawDataProvider ?? throw new ArgumentNullException(nameof(rawDataProvider));
             _serializerFactory = serializerFactory ?? throw new ArgumentNullException(nameof(serializerFactory));
+            InitializeDataTypeInfos();
         }
-        
-        /// <summary>
-        /// Initialize repositories - implemented by derived classes
-        /// </summary>
-        protected virtual void InitializeRepositories()
-        {
-            // Default implementation is empty - overridden by Source Generator
-        }
+
+        protected abstract void InitializeRepositories();
+
+        protected abstract void InitializeDataTypeInfos();
         
         /// <summary>
         /// Register a repository for a specific data type
@@ -46,6 +44,23 @@ namespace Datra
         {
             Repositories[propertyName] = repository;
             Repositories[typeof(TData).FullName] = repository;
+        }
+        
+        /// <summary>
+        /// Register data type information
+        /// </summary>
+        protected void RegisterDataTypeInfo(DataTypeInfo info)
+        {
+            _dataTypeInfos.Add(info);
+        }
+        
+        /// <summary>
+        /// Update data type info after loading data
+        /// </summary>
+        protected void UpdateDataTypeInfoAfterLoad(string propertyName, string loadedFilePath)
+        {
+            var info = _dataTypeInfos.FirstOrDefault(i => i.PropertyName == propertyName);
+            info?.UpdateLoadedState(loadedFilePath);
         }
         
         /// <summary>
@@ -101,6 +116,11 @@ namespace Datra
             await LoadRepositoryAsync(property);
         }
         
+        public IReadOnlyList<DataTypeInfo> GetDataTypeInfos()
+        {
+            return _dataTypeInfos.AsReadOnly();
+        }
+        
         private bool IsRepositoryProperty(PropertyInfo property)
         {
             var type = property.PropertyType;
@@ -140,6 +160,9 @@ namespace Datra
             property.SetValue(this, repository);
             Repositories[property.Name] = repository;
             Repositories[dataType.FullName] = repository;
+            
+            // Update DataTypeInfo loaded status
+            UpdateDataTypeInfoAfterLoad(property.Name, filePath);
         }
         
         private async Task SaveRepositoryAsync(PropertyInfo property)
