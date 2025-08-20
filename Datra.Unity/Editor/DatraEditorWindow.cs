@@ -40,7 +40,13 @@ namespace Datra.Unity.Editor
         // Data Management
         private IDataContext dataContext;
         private Dictionary<Type, object> repositories = new Dictionary<Type, object>();
+        private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new Dictionary<Type, DataTypeInfo>();
         private DatraDataManager dataManager;
+        
+        // Public accessors for navigation panel
+        public IDataContext DataContext => dataContext;
+        public IReadOnlyDictionary<Type, object> Repositories => repositories;
+        public IReadOnlyDictionary<Type, DataTypeInfo> DataTypeInfoMap => dataTypeInfoMap;
         
         // Window State
         private string currentProjectName;
@@ -189,41 +195,31 @@ namespace Datra.Unity.Editor
         private void LoadDataTypes()
         {
             repositories.Clear();
+            dataTypeInfoMap.Clear();
             
-            var dataTypes = new List<Type>();
+            // Get data type infos from context
+            var dataTypeInfos = dataContext.GetDataTypeInfos();
+            
+            // Get properties to access repositories
             var properties = dataContext.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
             
-            foreach (var property in properties)
+            foreach (var dataTypeInfo in dataTypeInfos)
             {
-                var propertyType = property.PropertyType;
-                if (propertyType.IsGenericType)
+                // Find matching property by name
+                var property = properties.FirstOrDefault(p => p.Name == dataTypeInfo.PropertyName);
+                if (property != null)
                 {
-                    var genericDef = propertyType.GetGenericTypeDefinition();
-                    if (genericDef == typeof(IDataRepository<,>))
+                    var repository = property.GetValue(dataContext);
+                    if (repository != null)
                     {
-                        var repository = property.GetValue(dataContext);
-                        if (repository != null)
-                        {
-                            var dataType = propertyType.GetGenericArguments()[1];
-                            repositories[dataType] = repository;
-                            dataTypes.Add(dataType);
-                        }
-                    }
-                    else if (genericDef == typeof(ISingleDataRepository<>))
-                    {
-                        var repository = property.GetValue(dataContext);
-                        if (repository != null)
-                        {
-                            var dataType = propertyType.GetGenericArguments()[0];
-                            repositories[dataType] = repository;
-                            dataTypes.Add(dataType);
-                        }
+                        repositories[dataTypeInfo.DataType] = repository;
+                        dataTypeInfoMap[dataTypeInfo.DataType] = dataTypeInfo;
                     }
                 }
             }
             
-            // Update navigation panel with data types
-            navigationPanel.SetDataTypes(dataTypes, OnDataTypeSelected);
+            // Update navigation panel with data type infos
+            navigationPanel.SetDataTypeInfos(dataTypeInfos, OnDataTypeSelected);
         }
         
         private void OnDataTypeSelected(Type dataType)

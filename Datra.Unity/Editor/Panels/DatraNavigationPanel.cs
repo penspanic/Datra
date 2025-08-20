@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Interfaces;
-using Datra.Attributes;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
@@ -28,6 +26,7 @@ namespace Datra.Unity.Editor.Panels
         {
             public string Name { get; set; }
             public Type DataType { get; set; }
+            public DataTypeInfo DataTypeInfo { get; set; }
             public bool IsCategory { get; set; }
             public string Icon { get; set; }
             public bool IsModified { get; set; }
@@ -201,45 +200,46 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        public void SetDataTypes(IEnumerable<Type> dataTypes, Action<Type> selectionCallback)
+        public void SetDataTypeInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos, Action<Type> selectionCallback)
         {
             onTypeSelected = selectionCallback;
-            BuildTreeData(dataTypes);
+            BuildTreeDataFromInfos(dataTypeInfos);
             UpdateStatusLabel();
             
             // Restore last selected item
             RestoreLastSelection();
         }
         
-        private void BuildTreeData(IEnumerable<Type> dataTypes)
+        private void BuildTreeDataFromInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos)
         {
             var rootItems = new List<TreeViewItemData<DataTypeItem>>();
             
             // Group data types by category
-            var singleDataTypes = new List<Type>();
-            var tableDataTypes = new List<Type>();
+            var singleDataInfos = new List<DataTypeInfo>();
+            var tableDataInfos = new List<DataTypeInfo>();
             
-            foreach (var type in dataTypes)
+            foreach (var info in dataTypeInfos)
             {
-                if (IsTableData(type))
-                    tableDataTypes.Add(type);
+                if (info.IsSingleData)
+                    singleDataInfos.Add(info);
                 else
-                    singleDataTypes.Add(type);
+                    tableDataInfos.Add(info);
             }
             
             // Create categories with their items
-            if (singleDataTypes.Any())
+            if (singleDataInfos.Any())
             {
-                var singleDataItems = singleDataTypes
-                    .OrderBy(t => t.Name)
-                    .Select(t => new TreeViewItemData<DataTypeItem>(
-                        t.GetHashCode(),
+                var singleDataItems = singleDataInfos
+                    .OrderBy(info => info.DataType.Name)
+                    .Select(info => new TreeViewItemData<DataTypeItem>(
+                        info.DataType.GetHashCode(),
                         new DataTypeItem 
                         { 
-                            Name = t.Name, 
-                            DataType = t,
+                            Name = info.DataType.Name, 
+                            DataType = info.DataType,
+                            DataTypeInfo = info,
                             IsCategory = false,
-                            IsModified = modifiedTypes.Contains(t)
+                            IsModified = modifiedTypes.Contains(info.DataType)
                         }))
                     .ToList();
                 
@@ -247,7 +247,7 @@ namespace Datra.Unity.Editor.Panels
                     "SingleData".GetHashCode(),
                     new DataTypeItem 
                     { 
-                        Name = $"Single Data ({singleDataTypes.Count})",
+                        Name = $"Single Data ({singleDataInfos.Count})",
                         IsCategory = true,
                         Icon = "single-data"
                     },
@@ -256,18 +256,19 @@ namespace Datra.Unity.Editor.Panels
                 rootItems.Add(singleDataCategory);
             }
             
-            if (tableDataTypes.Any())
+            if (tableDataInfos.Any())
             {
-                var tableDataItems = tableDataTypes
-                    .OrderBy(t => t.Name)
-                    .Select(t => new TreeViewItemData<DataTypeItem>(
-                        t.GetHashCode(),
+                var tableDataItems = tableDataInfos
+                    .OrderBy(info => info.DataType.Name)
+                    .Select(info => new TreeViewItemData<DataTypeItem>(
+                        info.DataType.GetHashCode(),
                         new DataTypeItem 
                         { 
-                            Name = t.Name, 
-                            DataType = t,
+                            Name = info.DataType.Name, 
+                            DataType = info.DataType,
+                            DataTypeInfo = info,
                             IsCategory = false,
-                            IsModified = modifiedTypes.Contains(t)
+                            IsModified = modifiedTypes.Contains(info.DataType)
                         }))
                     .ToList();
                 
@@ -275,7 +276,7 @@ namespace Datra.Unity.Editor.Panels
                     "TableData".GetHashCode(),
                     new DataTypeItem 
                     { 
-                        Name = $"Table Data ({tableDataTypes.Count})",
+                        Name = $"Table Data ({tableDataInfos.Count})",
                         IsCategory = true,
                         Icon = "table-data"
                     },
@@ -294,11 +295,6 @@ namespace Datra.Unity.Editor.Panels
             treeView.ExpandAll();
         }
         
-        private bool IsTableData(Type type)
-        {
-            var interfaces = type.GetInterfaces();
-            return interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableData<>));
-        }
         
         private void OnSearchChanged(ChangeEvent<string> evt)
         {
@@ -493,9 +489,11 @@ namespace Datra.Unity.Editor.Panels
             var filePath = GetFilePathForDataType(dataType);
             if (!string.IsNullOrEmpty(filePath))
             {
+                // Convert to absolute path if needed
+                var absolutePath = System.IO.Path.GetFullPath(filePath);
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = filePath,
+                    FileName = absolutePath,
                     UseShellExecute = true
                 });
             }
@@ -520,64 +518,47 @@ namespace Datra.Unity.Editor.Panels
         
         private string GetFilePathForDataType(Type dataType)
         {
-            // Try to find the corresponding data file
-            // First, check if it's a ScriptableObject asset
-            var guids = AssetDatabase.FindAssets($"t:{dataType.Name}");
-            if (guids.Length > 0)
+            // Try to find DataTypeItem with DataTypeInfo from tree data
+            if (treeData != null)
             {
-                return AssetDatabase.GUIDToAssetPath(guids[0]);
-            }
-            
-            // Try to find JSON or other data files
-            var dataTypeName = dataType.Name;
-            guids = AssetDatabase.FindAssets(dataTypeName);
-            foreach (var guid in guids)
-            {
-                var path = AssetDatabase.GUIDToAssetPath(guid);
-                if (path.EndsWith(".json") || path.EndsWith(".yaml") || path.EndsWith(".xml") || path.EndsWith(".asset"))
+                foreach (var category in treeData)
                 {
-                    return path;
+                    if (category.children == null) continue;
+                    foreach (var child in category.children)
+                    {
+                        if (child.data == null || child.data.DataType != dataType)
+                            continue;
+
+                        var dataTypeInfo = child.data.DataTypeInfo;
+                        if (dataTypeInfo != null)
+                        {
+                            // Prefer LoadedFilePath if available, otherwise use configured FilePath
+                            var filePath = dataTypeInfo.LoadedFilePath ?? dataTypeInfo.FilePath;
+                            if (!string.IsNullOrEmpty(filePath))
+                            {
+                                return filePath;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
-            
-            // Check in Resources folder
-            var resourcePaths = new[] {
-                $"Assets/Resources/{dataTypeName}.json",
-                $"Assets/Resources/{dataTypeName}.yaml",
-                $"Assets/Resources/{dataTypeName}.xml",
-                $"Packages/com.penspanic.datra.sampledata/Resources/{dataTypeName}.json"
-            };
-            
-            foreach (var path in resourcePaths)
-            {
-                if (System.IO.File.Exists(path))
-                {
-                    return path;
-                }
-            }
-            
+
             return null;
         }
         
         private object GetRepositoryForType(DatraEditorWindow window, Type dataType)
         {
-            // Access repositories through reflection since it's private
-            var repoField = window.GetType().GetField("repositories", BindingFlags.NonPublic | BindingFlags.Instance);
-            if (repoField != null)
+            if (window.Repositories != null && window.Repositories.TryGetValue(dataType, out var repository))
             {
-                var repositories = repoField.GetValue(window) as Dictionary<Type, object>;
-                if (repositories != null && repositories.TryGetValue(dataType, out var repository))
-                {
-                    return repository;
-                }
+                return repository;
             }
             return null;
         }
         
         private object GetDataContext(DatraEditorWindow window)
         {
-            var contextField = window.GetType().GetField("dataContext", BindingFlags.NonPublic | BindingFlags.Instance);
-            return contextField?.GetValue(window);
+            return window.DataContext;
         }
         
         private void RestoreLastSelection()
