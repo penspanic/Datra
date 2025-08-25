@@ -8,12 +8,20 @@ namespace Datra.Generators.Generators
     internal class DataContextGenerator
     {
         private string _localizationKeysPath = "Localizations/LocalizationKeys.csv";
+        private string _localizationDataPath = "Localizations/";
+        private string _defaultLanguage = "English";
         private bool _enableLocalization = false;
+        private bool _enableDebugLogging = false;
         
-        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels, string localizationKeysPath = null, bool enableLocalization = false)
+        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels, 
+            string localizationKeysPath = null, string localizationDataPath = null, string defaultLanguage = null,
+            bool enableLocalization = false, bool enableDebugLogging = false)
         {
             _localizationKeysPath = localizationKeysPath ?? "Localizations/LocalizationKeys.csv";
+            _localizationDataPath = localizationDataPath ?? "Localizations/";
+            _defaultLanguage = defaultLanguage ?? "English";
             _enableLocalization = enableLocalization;
+            _enableDebugLogging = enableDebugLogging;
             GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models, LocalizationKeysPath: {_localizationKeysPath}, EnableLocalization: {_enableLocalization}");
             
             // Log all models for debugging
@@ -31,6 +39,7 @@ namespace Datra.Generators.Generators
                 "System.Collections.Generic",
                 "System.Threading.Tasks",
                 "Datra",
+                "Datra.Configuration",
                 "Datra.Interfaces",
                 "Datra.Serializers",
                 "Datra.Repositories"
@@ -59,7 +68,7 @@ namespace Datra.Generators.Generators
             builder.BeginClass(contextName, "public partial", "BaseDataContext");
             
             // Add field for configuration
-            builder.AppendLine("private readonly Datra.Configuration.DatraConfiguration _config;");
+            builder.AppendLine("private readonly DatraConfigurationValue _config;");
             
             // Add LocalizationContext property only if enabled
             if (_enableLocalization)
@@ -69,7 +78,7 @@ namespace Datra.Generators.Generators
             builder.AddBlankLine();
             
             // Constructor
-            GenerateConstructor(builder, contextName);
+            GenerateConstructor(builder, contextName, namespaceName);
             builder.AddBlankLine();
             
             // InitializeRepositories method
@@ -96,15 +105,26 @@ namespace Datra.Generators.Generators
             return result;
         }
 
-        private void GenerateConstructor(CodeBuilder builder, string contextName)
+        private void GenerateConstructor(CodeBuilder builder, string contextName, string namespaceName)
         {
-            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null, Datra.Configuration.DatraConfiguration config = null)");
+            builder.AppendLine($"public {contextName}(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null, DatraConfigurationValue config = null)");
             builder.AppendLine("    : base(rawDataProvider, serializerFactory ?? new DataSerializerFactory())");
             builder.BeginBlock();
-            builder.AppendLine("_config = config ?? Datra.Configuration.DatraConfiguration.CreateDefault();");
+            
+            // Create default config if not provided
+            builder.AppendLine($"_config = config ?? new DatraConfigurationValue(");
+            builder.AppendLine($"    enableLocalization: {(_enableLocalization ? "true" : "false")},");
+            builder.AppendLine($"    localizationKeyDataPath: \"{_localizationKeysPath}\",");
+            builder.AppendLine($"    localizationDataPath: \"{_localizationDataPath}\",");
+            builder.AppendLine($"    defaultLanguage: \"{_defaultLanguage}\",");
+            builder.AppendLine($"    dataContextName: \"{contextName}\",");
+            builder.AppendLine($"    generatedNamespace: \"{namespaceName}\",");
+            builder.AppendLine($"    enableDebugLogging: {(_enableDebugLogging ? "true" : "false")}");
+            builder.AppendLine(");");
+            
             if (_enableLocalization)
             {
-                builder.AppendLine("Localization = new Datra.Services.LocalizationContext(rawDataProvider, serializerFactory ?? new DataSerializerFactory());");
+                builder.AppendLine("Localization = new Datra.Services.LocalizationContext(rawDataProvider, serializerFactory ?? new DataSerializerFactory(), _config);");
             }
             builder.AppendLine("InitializeRepositories();");
             builder.EndBlock();
@@ -198,7 +218,7 @@ namespace Datra.Generators.Generators
             {
                 builder.AppendLine("// Initialize LocalizationContext");
                 builder.AppendLine("var keyRepository = new DataRepository<string, Datra.Models.LocalizationKeyData>(");
-                builder.AppendLine($"    \"{_localizationKeysPath}\",");
+                builder.AppendLine("    _config.LocalizationKeyDataPath,");
                 builder.AppendLine("    RawDataProvider,");
                 builder.AppendLine("    (data) => LocalizationKeyDataSerializer.DeserializeCsv(data, _config),");
                 builder.AppendLine("    (table) => LocalizationKeyDataSerializer.SerializeCsv(table, _config)");

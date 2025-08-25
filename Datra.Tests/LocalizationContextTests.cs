@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
+using Datra.Localization;
 using Datra.Models;
 using Datra.Services;
 using Datra.Interfaces;
@@ -30,7 +31,7 @@ Character_Hero_Name,Hero character name,Character
 Character_Hero_Desc,Hero character description,Character";
 
                 // Add test language files
-                _files["Localizations/English.csv"] = @"Id,Text,Context
+                _files["Localizations/en.csv"] = @"Id,Text,Context
 Button_Start,Start,Main Menu
 Button_Exit,Exit,Main Menu
 Button_Settings,Settings,Main Menu
@@ -39,7 +40,7 @@ Message_Error,An error occurred,Error Dialog
 Character_Hero_Name,Hero,Character Info
 Character_Hero_Desc,A brave warrior,Character Info";
 
-                _files["Localizations/Korean.csv"] = @"Id,Text,Context
+                _files["Localizations/ko.csv"] = @"Id,Text,Context
 Button_Start,시작,메인 메뉴
 Button_Exit,종료,메인 메뉴
 Button_Settings,설정,메인 메뉴
@@ -48,7 +49,7 @@ Message_Error,오류가 발생했습니다,오류 대화상자
 Character_Hero_Name,용사,캐릭터 정보
 Character_Hero_Desc,용감한 전사,캐릭터 정보";
 
-                _files["Localizations/Japanese.csv"] = @"Id,Text,Context
+                _files["Localizations/ja.csv"] = @"Id,Text,Context
 Button_Start,スタート,メインメニュー
 Button_Exit,終了,メインメニュー
 Button_Settings,設定,メインメニュー
@@ -257,10 +258,10 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             await context.InitializeAsync();
             
             // Act
-            await context.LoadLanguageAsync("Korean");
+            await context.LoadLanguageAsync(LanguageCode.Ko);
             
             // Assert
-            Assert.Equal("Korean", context.CurrentLanguage);
+            Assert.Equal("ko", context.CurrentLanguage);
             Assert.Equal("시작", context.GetText("Button_Start"));
             Assert.Equal("종료", context.GetText("Button_Exit"));
             Assert.Equal("환영합니다!", context.GetText("Message_Welcome"));
@@ -284,20 +285,20 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             await context.InitializeAsync();
             
             // Act & Assert - English
-            await context.LoadLanguageAsync("English");
-            Assert.Equal("English", context.CurrentLanguage);
+            await context.LoadLanguageAsync(LanguageCode.En);
+            Assert.Equal("en", context.CurrentLanguage);
             Assert.Equal("Start", context.GetText("Button_Start"));
             Assert.Equal("Welcome!", context.GetText("Message_Welcome"));
             
             // Act & Assert - Korean
-            await context.LoadLanguageAsync("Korean");
-            Assert.Equal("Korean", context.CurrentLanguage);
+            await context.LoadLanguageAsync(LanguageCode.Ko);
+            Assert.Equal("ko", context.CurrentLanguage);
             Assert.Equal("시작", context.GetText("Button_Start"));
             Assert.Equal("환영합니다!", context.GetText("Message_Welcome"));
             
             // Act & Assert - Japanese
-            await context.LoadLanguageAsync("Japanese");
-            Assert.Equal("Japanese", context.CurrentLanguage);
+            await context.LoadLanguageAsync(LanguageCode.Ja);
+            Assert.Equal("ja", context.CurrentLanguage);
             Assert.Equal("スタート", context.GetText("Button_Start"));
             Assert.Equal("ようこそ！", context.GetText("Message_Welcome"));
         }
@@ -318,7 +319,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             
             context.SetKeyRepository(keyRepository);
             await context.InitializeAsync();
-            await context.LoadLanguageAsync("English");
+            await context.LoadLanguageAsync(LanguageCode.En);
             
             // Act
             var text = context.GetText("NonExistentKey");
@@ -362,9 +363,9 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var languages = context.GetAvailableLanguages().ToList();
             
             // Assert
-            Assert.Contains("English", languages);
-            Assert.Contains("Korean", languages);
-            Assert.Contains("Japanese", languages);
+            Assert.Contains(LanguageCode.En, languages);
+            Assert.Contains(LanguageCode.Ko, languages);
+            Assert.Contains(LanguageCode.Ja, languages);
         }
         
         [Fact]
@@ -383,7 +384,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             
             context.SetKeyRepository(keyRepository);
             await context.InitializeAsync();
-            await context.LoadLanguageAsync("English");
+            await context.LoadLanguageAsync(LanguageCode.En);
             
             // Act - Update text values
             context.SetText("Button_Start", "Begin");
@@ -393,7 +394,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             await context.SaveCurrentLanguageAsync();
             
             // Assert - Verify the saved content
-            var savedContent = await rawDataProvider.LoadTextAsync("Localizations/English.csv");
+            var savedContent = await rawDataProvider.LoadTextAsync("Localizations/en.csv");
             Assert.Contains("Id,Text,Context", savedContent);
             Assert.Contains("Button_Start,Begin,Main Menu", savedContent);
             Assert.Contains("Button_Exit,Quit,Main Menu", savedContent);

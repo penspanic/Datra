@@ -10,7 +10,7 @@ namespace Datra.Generators.Generators
         public void GenerateTableDeserializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
             codeBuilder.AppendLine("// Custom CSV deserializer for immutable types");
-            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfiguration.CreateDefault();");
+            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfigurationValue.CreateDefault();");
             codeBuilder.AppendLine($"var result = new global::System.Collections.Generic.Dictionary<{model.KeyType}, {typeName}>();");
             codeBuilder.AppendLine("using (var reader = new global::System.IO.StringReader(data))");
             codeBuilder.BeginBlock();
@@ -61,7 +61,7 @@ namespace Datra.Generators.Generators
         
         public void GenerateTableSerializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
-            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfiguration.CreateDefault();");
+            codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfigurationValue.CreateDefault();");
             codeBuilder.AppendLine("var csv = new global::System.Text.StringBuilder();");
             codeBuilder.AppendLine("// CSV header");
             

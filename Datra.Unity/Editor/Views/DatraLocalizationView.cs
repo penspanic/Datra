@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Datra.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -169,7 +170,7 @@ namespace Datra.Unity.Editor.Views
                 RefreshView();
             }
         }
-        
+
         private List<string> GetAvailableLanguages()
         {
             if (localizationContext == null)
@@ -177,14 +178,7 @@ namespace Datra.Unity.Editor.Views
             
             // Get languages from LocalizationContext
             var languages = localizationContext.GetAvailableLanguages().ToList();
-            
-            // If no languages are detected, return common ones as fallback
-            if (languages.Count == 0)
-            {
-                languages = new List<string> { "Korean", "English", "Japanese" };
-            }
-            
-            return languages;
+            return languages.Select(c => c.ToIsoCode()).ToList();
         }
         
         private async void OnLanguageChanged(ChangeEvent<string> evt)

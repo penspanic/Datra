@@ -1,6 +1,7 @@
 using System;
 using Xunit;
 using Datra.Attributes;
+using Datra.Localization;
 
 namespace Datra.Tests
 {
@@ -15,7 +16,7 @@ namespace Datra.Tests
             // Assert
             Assert.Equal("Localizations/LocalizationKeys.csv", attribute.LocalizationKeyDataPath);
             Assert.Equal("Localizations/", attribute.LocalizationDataPath);
-            Assert.Equal("English", attribute.DefaultLanguage);
+            Assert.Equal("en", attribute.DefaultLanguage);
             Assert.Equal("GameDataContext", attribute.DataContextName);
             Assert.Equal("Datra.Generated", attribute.GeneratedNamespace);
             Assert.False(attribute.EnableDebugLogging);

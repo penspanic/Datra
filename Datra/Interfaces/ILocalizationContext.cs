@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Datra.Localization;
 
 namespace Datra.Interfaces
 {
@@ -22,7 +23,13 @@ namespace Datra.Interfaces
         /// <summary>
         /// Loads localization data for the specified language
         /// </summary>
-        /// <param name="languageCode">The language code to load (e.g., "Korean", "English")</param>
+        /// <param name="languageCode">The language code to load</param>
+        Task LoadLanguageAsync(LanguageCode languageCode);
+        
+        /// <summary>
+        /// Loads localization data for the specified language (string overload)
+        /// </summary>
+        /// <param name="languageCode">The language code string to load (e.g., "en", "ko", "ja")</param>
         Task LoadLanguageAsync(string languageCode);
         
         /// <summary>

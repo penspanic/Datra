@@ -210,7 +210,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Deserialize method without serializer
-                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfiguration config = null)");
+                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfigurationValue config = null)");
                 var csvBuilder2 = new CsvSerializerBuilder();
                 csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();
@@ -218,7 +218,7 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Serialize method without serializer
-                codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfiguration config = null)");
+                codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfigurationValue config = null)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();

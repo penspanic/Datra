@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra.Configuration;
 using Datra.Interfaces;
+using Datra.Localization;
 using Datra.Models;
 using Datra.Serializers;
 using Datra.Repositories;
@@ -22,30 +24,38 @@ namespace Datra.Services
         
         private readonly IRawDataProvider _rawDataProvider;
         private readonly DataSerializerFactory _serializerFactory;
-        private readonly Dictionary<string, Dictionary<string, LocalizationEntry>> _languageData;
+        private readonly DatraConfigurationValue _config;
+        private readonly Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>> _languageData;
         private DataRepository<string, LocalizationKeyData>? _keyRepository;
         private Dictionary<string, object> _languageRepositories; // Will be IDataRepository<string, LocalizationData> at runtime
-        private string _currentLanguage;
-        private List<string> _availableLanguages;
+        private LanguageCode _currentLanguageCode;
+        private List<LanguageCode> _availableLanguages;
         
         /// <summary>
-        /// Gets the current language code
+        /// Gets the current language as ISO code string (implements ILocalizationContext)
         /// </summary>
-        public string CurrentLanguage => _currentLanguage;
+        public string CurrentLanguage => _currentLanguageCode.ToIsoCode();
+        
+        /// <summary>
+        /// Gets the current language code enum
+        /// </summary>
+        public LanguageCode CurrentLanguageCode => _currentLanguageCode;
         
         public DataRepository<string, LocalizationKeyData> KeyRepository => _keyRepository ?? throw new InvalidOperationException("KeyRepository is not set. Make sure to call SetKeyRepository from generated code.");
         
         /// <summary>
         /// Creates a new LocalizationContext
         /// </summary>
-        public LocalizationContext(IRawDataProvider rawDataProvider, DataSerializerFactory serializerFactory = null)
+        public LocalizationContext(IRawDataProvider rawDataProvider, DataSerializerFactory? serializerFactory = null, DatraConfigurationValue? config = null)
         {
             _rawDataProvider = rawDataProvider ?? throw new ArgumentNullException(nameof(rawDataProvider));
             _serializerFactory = serializerFactory ?? new DataSerializerFactory();
-            _languageData = new Dictionary<string, Dictionary<string, LocalizationEntry>>();
+            _config = config ?? DatraConfigurationValue.CreateDefault();
+            _languageData = new Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>>();
             _languageRepositories = new Dictionary<string, object>();
-            _availableLanguages = new List<string>();
-            _currentLanguage = "English"; // Default language
+            _availableLanguages = new List<LanguageCode>();
+            // Parse default language from config
+            _currentLanguageCode = LanguageCodeExtensions.TryParse(_config.DefaultLanguage) ?? LanguageCode.En;
         }
         
         /// <summary>
@@ -100,12 +110,14 @@ namespace Datra.Services
             // Detect available language files
             _availableLanguages.Clear();
             
-            var possibleLanguages = new[] { "Korean", "English", "Japanese", "Chinese", "Spanish", "French", "German" };
-            foreach (var lang in possibleLanguages)
+            // Check for all defined language codes
+            foreach (LanguageCode langCode in Enum.GetValues(typeof(LanguageCode)))
             {
-                if (_rawDataProvider.Exists($"Localizations/{lang}.csv"))
+                // Use LocalizationDataPath from config with ISO code
+                var languageFilePath = System.IO.Path.Combine(_config.LocalizationDataPath, langCode.GetFileName());
+                if (_rawDataProvider.Exists(languageFilePath))
                 {
-                    _availableLanguages.Add(lang);
+                    _availableLanguages.Add(langCode);
                 }
             }
         }
@@ -113,23 +125,22 @@ namespace Datra.Services
         /// <summary>
         /// Loads localization data for the specified language
         /// </summary>
-        public async Task LoadLanguageAsync(string languageCode)
+        public async Task LoadLanguageAsync(LanguageCode languageCode)
         {
-            if (string.IsNullOrEmpty(languageCode))
-                throw new ArgumentNullException(nameof(languageCode));
+            // No null check needed for enum
             
             // Check if already loaded
             if (_languageData.ContainsKey(languageCode))
             {
-                _currentLanguage = languageCode;
+                _currentLanguageCode = languageCode;
                 return;
             }
             
-            // Load language data
-            var dataPath = $"Localizations/{languageCode}.csv";
+            // Load language data using config path with ISO code
+            var dataPath = System.IO.Path.Combine(_config.LocalizationDataPath, languageCode.GetFileName());
             if (!_rawDataProvider.Exists(dataPath))
             {
-                throw new InvalidOperationException($"Localization file for language '{languageCode}' not found at {dataPath}");
+                throw new InvalidOperationException($"Localization file for language '{languageCode.ToIsoCode()}' not found at {dataPath}");
             }
             
             // For now, use a simple CSV parsing approach
@@ -137,7 +148,21 @@ namespace Datra.Services
             var languageDict = ParseCsvData(rawData);
             
             _languageData[languageCode] = languageDict;
-            _currentLanguage = languageCode;
+            _currentLanguageCode = languageCode;
+        }
+        
+        /// <summary>
+        /// Loads localization data for the specified language (string overload for backward compatibility)
+        /// </summary>
+        public async Task LoadLanguageAsync(string languageCodeString)
+        {
+            var languageCode = LanguageCodeExtensions.TryParse(languageCodeString);
+            if (!languageCode.HasValue)
+            {
+                throw new ArgumentException($"Invalid language code: {languageCodeString}");
+            }
+            
+            await LoadLanguageAsync(languageCode.Value);
         }
         
         /// <summary>
@@ -148,10 +173,10 @@ namespace Datra.Services
             if (string.IsNullOrEmpty(key))
                 return string.Empty;
             
-            if (!_languageData.ContainsKey(_currentLanguage))
+            if (!_languageData.ContainsKey(_currentLanguageCode))
                 return $"[{key}]";
             
-            var languageDict = _languageData[_currentLanguage];
+            var languageDict = _languageData[_currentLanguageCode];
             return languageDict.TryGetValue(key, out var entry) ? entry.Text : $"[Missing: {key}]";
         }
         
@@ -163,19 +188,19 @@ namespace Datra.Services
             if (string.IsNullOrEmpty(key))
                 return;
             
-            if (!_languageData.ContainsKey(_currentLanguage))
+            if (!_languageData.ContainsKey(_currentLanguageCode))
             {
-                _languageData[_currentLanguage] = new Dictionary<string, LocalizationEntry>();
+                _languageData[_currentLanguageCode] = new Dictionary<string, LocalizationEntry>();
             }
             
             // Preserve existing context if available
             var context = "";
-            if (_languageData[_currentLanguage].TryGetValue(key, out var existingEntry))
+            if (_languageData[_currentLanguageCode].TryGetValue(key, out var existingEntry))
             {
                 context = existingEntry.Context;
             }
             
-            _languageData[_currentLanguage][key] = new LocalizationEntry { Text = value, Context = context };
+            _languageData[_currentLanguageCode][key] = new LocalizationEntry { Text = value, Context = context };
         }
         
         /// <summary>
@@ -183,11 +208,11 @@ namespace Datra.Services
         /// </summary>
         public async Task SaveCurrentLanguageAsync()
         {
-            if (string.IsNullOrEmpty(_currentLanguage) || !_languageData.ContainsKey(_currentLanguage))
+            if (!_languageData.ContainsKey(_currentLanguageCode))
                 return;
             
-            var dataPath = $"Localizations/{_currentLanguage}.csv";
-            var csvContent = BuildCsvContent(_languageData[_currentLanguage]);
+            var dataPath = System.IO.Path.Combine(_config.LocalizationDataPath, _currentLanguageCode.GetFileName());
+            var csvContent = BuildCsvContent(_languageData[_currentLanguageCode]);
             
             await _rawDataProvider.SaveTextAsync(dataPath, csvContent);
         }
@@ -233,18 +258,26 @@ namespace Datra.Services
             if (string.IsNullOrEmpty(key))
                 return false;
             
-            if (!_languageData.ContainsKey(_currentLanguage))
+            if (!_languageData.ContainsKey(_currentLanguageCode))
                 return false;
             
-            return _languageData[_currentLanguage].ContainsKey(key);
+            return _languageData[_currentLanguageCode].ContainsKey(key);
         }
         
         /// <summary>
         /// Gets all available languages
         /// </summary>
-        public IEnumerable<string> GetAvailableLanguages()
+        public IEnumerable<LanguageCode> GetAvailableLanguages()
         {
             return _availableLanguages;
+        }
+        
+        /// <summary>
+        /// Gets all available languages as ISO codes
+        /// </summary>
+        public IEnumerable<string> GetAvailableLanguageIsoCodes()
+        {
+            return _availableLanguages.Select(l => l.ToIsoCode());
         }
         
         /// <summary>

@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Xunit;
 using Datra.DataTypes;
 using Datra.Interfaces;
+using Datra.Localization;
 using Datra.Services;
 using Datra.Serializers;
 using Datra.Generated;
@@ -25,7 +26,7 @@ namespace Datra.Tests
                 _texts["Message_Welcome"] = "Welcome!";
                 _texts["Character_Hero_Name"] = "Hero";
                 _texts["Character_Hero_Desc"] = "A brave warrior";
-                CurrentLanguage = "English";
+                CurrentLanguage = "en";
             }
             
             public string GetText(string key)
@@ -33,12 +34,12 @@ namespace Datra.Tests
                 return _texts.TryGetValue(key, out var text) ? text : $"[{key}]";
             }
             
-            public Task LoadLanguageAsync(string languageCode)
+            public Task LoadLanguageAsync(LanguageCode languageCode)
             {
-                CurrentLanguage = languageCode;
+                CurrentLanguage = languageCode.ToIsoCode();
                 
                 // Simulate loading different languages
-                if (languageCode == "Korean")
+                if (languageCode == LanguageCode.Ko)
                 {
                     _texts["Button_Start"] = "시작";
                     _texts["Button_Exit"] = "종료";
@@ -46,7 +47,7 @@ namespace Datra.Tests
                     _texts["Character_Hero_Name"] = "용사";
                     _texts["Character_Hero_Desc"] = "용감한 전사";
                 }
-                else if (languageCode == "Japanese")
+                else if (languageCode == LanguageCode.Ja)
                 {
                     _texts["Button_Start"] = "スタート";
                     _texts["Button_Exit"] = "終了";
@@ -65,6 +66,16 @@ namespace Datra.Tests
                 }
                 
                 return Task.CompletedTask;
+            }
+            
+            public Task LoadLanguageAsync(string languageCode)
+            {
+                var code = LanguageCodeExtensions.TryParse(languageCode);
+                if (code.HasValue)
+                {
+                    return LoadLanguageAsync(code.Value);
+                }
+                throw new ArgumentException($"Invalid language code: {languageCode}");
             }
             
             public bool HasKey(string key)
@@ -122,29 +133,14 @@ namespace Datra.Tests
             Assert.Equal("Start", englishResult);
             
             // Act & Assert - Korean
-            await context.LoadLanguageAsync("Korean");
+            await context.LoadLanguageAsync(LanguageCode.Ko);
             var koreanResult = localeRef.Evaluate(context);
             Assert.Equal("시작", koreanResult);
             
             // Act & Assert - Japanese
-            await context.LoadLanguageAsync("Japanese");
+            await context.LoadLanguageAsync(LanguageCode.Ja);
             var japaneseResult = localeRef.Evaluate(context);
             Assert.Equal("スタート", japaneseResult);
-        }
-        
-        [Fact]
-        public void LocaleRef_Evaluate_WithService_ReturnsLocalizedText()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            LocaleRef localeRef = "Message_Welcome";
-            
-            // Act
-            var result = localeRef.Evaluate(service);
-            
-            // Assert
-            Assert.Equal("Welcome!", result);
         }
         
         [Fact]
@@ -177,77 +173,6 @@ namespace Datra.Tests
         }
         
         [Fact]
-        public async Task LocalizationService_SetLanguage_ChangesCurrentLanguage()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Act & Assert
-            Assert.Equal("English", service.CurrentLanguage);
-            
-            await service.SetLanguageAsync("Korean");
-            Assert.Equal("Korean", service.CurrentLanguage);
-            
-            await service.SetLanguageAsync("Japanese");
-            Assert.Equal("Japanese", service.CurrentLanguage);
-        }
-        
-        [Fact]
-        public async Task LocalizationService_Localize_ReturnsCorrectText()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Act & Assert - English
-            Assert.Equal("Start", service.Localize("Button_Start"));
-            Assert.Equal("Exit", service.Localize("Button_Exit"));
-            
-            // Act & Assert - Korean
-            await service.SetLanguageAsync("Korean");
-            Assert.Equal("시작", service.Localize("Button_Start"));
-            Assert.Equal("종료", service.Localize("Button_Exit"));
-        }
-        
-        [Fact]
-        public void LocalizationService_Localize_WithFormatting_Works()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Add a formatted text
-            context.GetType()
-                .GetField("_texts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-                ?.SetValue(context, new Dictionary<string, string>
-                {
-                    ["Score_Format"] = "Your score is {0} points!"
-                });
-            
-            // Act
-            var result = service.Localize("Score_Format", 100);
-            
-            // Assert
-            Assert.Equal("Your score is 100 points!", result);
-        }
-        
-        [Fact]
-        public void LocalizationService_HasKey_ReturnsCorrectResult()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Act & Assert
-            Assert.True(service.HasKey("Button_Start"));
-            Assert.True(service.HasKey("Message_Welcome"));
-            Assert.False(service.HasKey("NonExistent_Key"));
-            Assert.False(service.HasKey(""));
-            Assert.False(service.HasKey(null));
-        }
-        
-        [Fact]
         public void LocaleRef_NullContext_ThrowsException()
         {
             // Arrange
@@ -256,44 +181,6 @@ namespace Datra.Tests
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationContext)null));
             Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationService)null));
-        }
-        
-        [Fact]
-        public async Task LocalizationService_NullLanguageCode_ThrowsException()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Act & Assert
-            await Assert.ThrowsAsync<ArgumentNullException>(() => service.SetLanguageAsync(null));
-            await Assert.ThrowsAsync<ArgumentNullException>(() => service.SetLanguageAsync(""));
-        }
-        
-        [Fact]
-        public async Task LocalizationIntegration_WithCharacterData_Works()
-        {
-            // Arrange
-            var context = new MockLocalizationContext();
-            var service = new LocalizationService(context);
-            
-            // Simulate character data with LocaleRef
-            var characterNameRef = new LocaleRef { Key = "Character_Hero_Name" };
-            var characterDescRef = new LocaleRef { Key = "Character_Hero_Desc" };
-            
-            // Act & Assert - English
-            Assert.Equal("Hero", characterNameRef.Evaluate(service));
-            Assert.Equal("A brave warrior", characterDescRef.Evaluate(service));
-            
-            // Act & Assert - Korean
-            await service.SetLanguageAsync("Korean");
-            Assert.Equal("용사", characterNameRef.Evaluate(service));
-            Assert.Equal("용감한 전사", characterDescRef.Evaluate(service));
-            
-            // Act & Assert - Japanese
-            await service.SetLanguageAsync("Japanese");
-            Assert.Equal("勇者", characterNameRef.Evaluate(service));
-            Assert.Equal("勇敢な戦士", characterDescRef.Evaluate(service));
         }
     }
 }

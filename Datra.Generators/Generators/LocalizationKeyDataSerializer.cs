@@ -25,7 +25,7 @@ namespace Datra.Generators.Generators
             builder.BeginClass("LocalizationKeyDataSerializer", "public static");
             
             // Deserialize CSV method
-            builder.BeginMethod("public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, DatraConfiguration config)");
+            builder.BeginMethod("public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, DatraConfigurationValue config)");
             builder.AppendLine("var result = new Dictionary<string, Datra.Models.LocalizationKeyData>();");
             builder.AppendLine("var lines = csvData.Split(new[] { '\\r', '\\n' }, StringSplitOptions.RemoveEmptyEntries);");
             builder.AppendLine();
@@ -59,7 +59,7 @@ namespace Datra.Generators.Generators
             builder.AddBlankLine();
             
             // Serialize CSV method
-            builder.BeginMethod("public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, DatraConfiguration config)");
+            builder.BeginMethod("public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, DatraConfigurationValue config)");
             builder.AppendLine("var lines = new List<string>();");
             builder.AppendLine("lines.Add(\"Id,Description,Category\");");
             builder.AppendLine();

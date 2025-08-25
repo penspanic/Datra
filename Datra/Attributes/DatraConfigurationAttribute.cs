@@ -22,15 +22,16 @@ namespace Datra.Attributes
         
         /// <summary>
         /// Path to the LocalizationData files directory (language-specific CSV files)
+        /// Files should be named using ISO 639-1 codes (e.g., en.csv, ko.csv, ja.csv)
         /// Default: "Localizations/"
         /// </summary>
         public string LocalizationDataPath { get; set; } = "Localizations/";
         
         /// <summary>
-        /// Default language code to use for localization
-        /// Default: "English"
+        /// Default language code to use for localization (ISO 639-1 code)
+        /// Default: "en" (English)
         /// </summary>
-        public string DefaultLanguage { get; set; } = "English";
+        public string DefaultLanguage { get; set; } = "en";
         
         /// <summary>
         /// Generated DataContext class name
