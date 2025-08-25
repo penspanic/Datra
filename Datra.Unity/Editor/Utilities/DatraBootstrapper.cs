@@ -71,7 +71,7 @@ namespace Datra.Unity.Editor.Utilities
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[Datra] Error scanning assembly {assembly.GetName().Name}: {e.Message}");
+                    Debug.LogError($"[Datra] Error scanning assembly {assembly.GetName().Name}: {e.Message}\nStackTrace: {e.StackTrace}");
                 }
             }
             
@@ -104,10 +104,10 @@ namespace Datra.Unity.Editor.Utilities
             }
             catch (Exception e)
             {
-                Debug.LogError($"[Datra] Failed to execute initializer {initializer.DisplayName}: {e.Message}");
+                Debug.LogError($"[Datra] Failed to execute initializer {initializer.DisplayName}: {e.Message}\nStackTrace: {e.StackTrace}");
                 if (e.InnerException != null)
                 {
-                    Debug.LogError($"[Datra] Inner exception: {e.InnerException.Message}");
+                    Debug.LogError($"[Datra] Inner exception: {e.InnerException.Message}\nInner StackTrace: {e.InnerException.StackTrace}");
                 }
                 return null;
             }

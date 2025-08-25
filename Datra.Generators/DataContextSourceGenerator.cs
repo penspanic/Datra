@@ -78,6 +78,7 @@ namespace Datra.Generators
             string localizationKeysPath = "Localizations/LocalizationKeys.csv"; // default
             string contextName = "GameDataContext"; // default
             string generatedNamespace = namespaceName; // use default
+            bool enableLocalization = false; // default
             
             var attributes = compilation.Assembly.GetAttributes();
             var configAttr = attributes.FirstOrDefault(a => 
@@ -90,6 +91,9 @@ namespace Datra.Generators
                 {
                     switch (arg.Key)
                     {
+                        case "EnableLocalization":
+                            enableLocalization = arg.Value.Value is bool b ? b : false;
+                            break;
                         case "LocalizationKeyDataPath":
                             localizationKeysPath = arg.Value.Value?.ToString() ?? localizationKeysPath;
                             break;
@@ -101,7 +105,7 @@ namespace Datra.Generators
                             break;
                     }
                 }
-                GeneratorLogger.Log($"Found DatraConfigurationAttribute: LocalizationKeyDataPath={localizationKeysPath}, DataContextName={contextName}, GeneratedNamespace={generatedNamespace}");
+                GeneratorLogger.Log($"Found DatraConfigurationAttribute: EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, DataContextName={contextName}, GeneratedNamespace={generatedNamespace}");
             }
 
             // Filter out localization models
@@ -113,7 +117,7 @@ namespace Datra.Generators
 
             // Generate DataContext
             var dataContextGenerator = new DataContextGenerator();
-            var sourceCode = dataContextGenerator.GenerateDataContext(generatedNamespace, contextName, filteredModels, localizationKeysPath);
+            var sourceCode = dataContextGenerator.GenerateDataContext(generatedNamespace, contextName, filteredModels, localizationKeysPath, enableLocalization);
             context.AddSource($"{contextName}.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
             GeneratorLogger.Log($"Generated {contextName}.g.cs");
 
@@ -127,10 +131,13 @@ namespace Datra.Generators
                 GeneratorLogger.Log($"Generated {fileName}");
             }
             
-            // Generate LocalizationKeyDataSerializer
-            var localizationSerializerCode = LocalizationKeyDataSerializer.GenerateSerializer();
-            context.AddSource("LocalizationKeyDataSerializer.g.cs", SourceText.From(localizationSerializerCode, Encoding.UTF8));
-            GeneratorLogger.Log("Generated LocalizationKeyDataSerializer.g.cs");
+            // Generate LocalizationKeyDataSerializer only if localization is enabled
+            if (enableLocalization)
+            {
+                var localizationSerializerCode = LocalizationKeyDataSerializer.GenerateSerializer();
+                context.AddSource("LocalizationKeyDataSerializer.g.cs", SourceText.From(localizationSerializerCode, Encoding.UTF8));
+                GeneratorLogger.Log("Generated LocalizationKeyDataSerializer.g.cs");
+            }
             
                 GeneratorLogger.Log("DataContextSourceGenerator execution completed");
             }

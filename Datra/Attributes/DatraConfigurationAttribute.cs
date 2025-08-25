@@ -9,6 +9,12 @@ namespace Datra.Attributes
     public class DatraConfigurationAttribute : Attribute
     {
         /// <summary>
+        /// Enable localization support
+        /// Default: false
+        /// </summary>
+        public bool EnableLocalization { get; set; } = false;
+        
+        /// <summary>
         /// Path to the LocalizationKeyData file (usually a CSV file with all localization keys)
         /// Default: "Localizations/LocalizationKeys.csv"
         /// </summary>

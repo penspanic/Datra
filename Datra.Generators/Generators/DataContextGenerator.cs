@@ -8,11 +8,13 @@ namespace Datra.Generators.Generators
     internal class DataContextGenerator
     {
         private string _localizationKeysPath = "Localizations/LocalizationKeys.csv";
+        private bool _enableLocalization = false;
         
-        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels, string localizationKeysPath = null)
+        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels, string localizationKeysPath = null, bool enableLocalization = false)
         {
             _localizationKeysPath = localizationKeysPath ?? "Localizations/LocalizationKeys.csv";
-            GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models, LocalizationKeysPath: {_localizationKeysPath}");
+            _enableLocalization = enableLocalization;
+            GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models, LocalizationKeysPath: {_localizationKeysPath}, EnableLocalization: {_enableLocalization}");
             
             // Log all models for debugging
             foreach (var model in dataModels)
@@ -59,8 +61,11 @@ namespace Datra.Generators.Generators
             // Add field for configuration
             builder.AppendLine("private readonly Datra.Configuration.DatraConfiguration _config;");
             
-            // Add LocalizationContext property
-            builder.AppendLine("public Datra.Services.LocalizationContext Localization { get; private set; }");
+            // Add LocalizationContext property only if enabled
+            if (_enableLocalization)
+            {
+                builder.AppendLine("public Datra.Services.LocalizationContext Localization { get; private set; }");
+            }
             builder.AddBlankLine();
             
             // Constructor
@@ -97,7 +102,10 @@ namespace Datra.Generators.Generators
             builder.AppendLine("    : base(rawDataProvider, serializerFactory ?? new DataSerializerFactory())");
             builder.BeginBlock();
             builder.AppendLine("_config = config ?? Datra.Configuration.DatraConfiguration.CreateDefault();");
-            builder.AppendLine("Localization = new Datra.Services.LocalizationContext(rawDataProvider, serializerFactory ?? new DataSerializerFactory());");
+            if (_enableLocalization)
+            {
+                builder.AppendLine("Localization = new Datra.Services.LocalizationContext(rawDataProvider, serializerFactory ?? new DataSerializerFactory());");
+            }
             builder.AppendLine("InitializeRepositories();");
             builder.EndBlock();
         }
@@ -185,17 +193,20 @@ namespace Datra.Generators.Generators
         {
             builder.BeginMethod("public override async Task LoadAllAsync()");
             
-            // Initialize LocalizationContext first
-            builder.AppendLine("// Initialize LocalizationContext");
-            builder.AppendLine("var keyRepository = new DataRepository<string, Datra.Models.LocalizationKeyData>(");
-            builder.AppendLine($"    \"{_localizationKeysPath}\",");
-            builder.AppendLine("    RawDataProvider,");
-            builder.AppendLine("    (data) => LocalizationKeyDataSerializer.DeserializeCsv(data, _config),");
-            builder.AppendLine("    (table) => LocalizationKeyDataSerializer.SerializeCsv(table, _config)");
-            builder.AppendLine(");");
-            builder.AppendLine("Localization.SetKeyRepository(keyRepository);");
-            builder.AppendLine("await Localization.InitializeAsync();");
-            builder.AddBlankLine();
+            // Initialize LocalizationContext first only if enabled
+            if (_enableLocalization)
+            {
+                builder.AppendLine("// Initialize LocalizationContext");
+                builder.AppendLine("var keyRepository = new DataRepository<string, Datra.Models.LocalizationKeyData>(");
+                builder.AppendLine($"    \"{_localizationKeysPath}\",");
+                builder.AppendLine("    RawDataProvider,");
+                builder.AppendLine("    (data) => LocalizationKeyDataSerializer.DeserializeCsv(data, _config),");
+                builder.AppendLine("    (table) => LocalizationKeyDataSerializer.SerializeCsv(table, _config)");
+                builder.AppendLine(");");
+                builder.AppendLine("Localization.SetKeyRepository(keyRepository);");
+                builder.AppendLine("await Localization.InitializeAsync();");
+                builder.AddBlankLine();
+            }
             
             // Define local generic function to load and update
             builder.AppendLine("// Local function to load repository and update DataTypeInfo");
