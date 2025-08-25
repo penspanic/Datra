@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
+using Datra.Services;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
@@ -18,10 +19,13 @@ namespace Datra.Unity.Editor
         // UI Components
         private DatraToolbarPanel toolbar;
         private DatraNavigationPanel navigationPanel;
-        private DatraInspectorPanel inspectorPanel;
+        private DataInspectorPanel dataInspectorPanel;
+        private LocalizationInspectorPanel localizationInspectorPanel;
+        private BaseInspectorPanel currentInspectorPanel;
         private TwoPaneSplitView splitView;
         private VisualElement tabContainer;
         private VisualElement contentArea;
+        private VisualElement inspectorContainer;
         
         // Tab Management
         private class DataTab
@@ -42,6 +46,7 @@ namespace Datra.Unity.Editor
         private Dictionary<Type, object> repositories = new Dictionary<Type, object>();
         private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new Dictionary<Type, DataTypeInfo>();
         private DatraDataManager dataManager;
+        private LocalizationContext localizationContext;
         
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
@@ -114,12 +119,20 @@ namespace Datra.Unity.Editor
             navigationPanel.style.maxWidth = 500;
             splitView.Add(navigationPanel);
             
-            // Create inspector panel (right)
-            inspectorPanel = new DatraInspectorPanel();
-            inspectorPanel.style.minWidth = 400;
-            inspectorPanel.OnDataModified += OnDataModified;
-            inspectorPanel.OnSaveRequested += SaveCurrentData;
-            splitView.Add(inspectorPanel);
+            // Create inspector container (right)
+            inspectorContainer = new VisualElement();
+            inspectorContainer.style.minWidth = 400;
+            inspectorContainer.style.flexGrow = 1;
+            splitView.Add(inspectorContainer);
+            
+            // Create both inspector panels
+            dataInspectorPanel = new DataInspectorPanel();
+            dataInspectorPanel.OnDataModified += OnDataModified;
+            dataInspectorPanel.OnSaveRequested += SaveCurrentData;
+            
+            localizationInspectorPanel = new LocalizationInspectorPanel();
+            localizationInspectorPanel.OnDataModified += OnDataModified;
+            localizationInspectorPanel.OnSaveRequested += SaveCurrentData;
             
             // Initialize data
             EditorApplication.delayCall += InitializeData;
@@ -203,6 +216,13 @@ namespace Datra.Unity.Editor
             // Get properties to access repositories
             var properties = dataContext.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
             
+            // Check for LocalizationContext property
+            var localizationProperty = properties.FirstOrDefault(p => p.PropertyType == typeof(LocalizationContext));
+            if (localizationProperty != null)
+            {
+                localizationContext = localizationProperty.GetValue(dataContext) as LocalizationContext;
+            }
+            
             foreach (var dataTypeInfo in dataTypeInfos)
             {
                 // Find matching property by name
@@ -218,15 +238,46 @@ namespace Datra.Unity.Editor
                 }
             }
             
-            // Update navigation panel with data type infos
-            navigationPanel.SetDataTypeInfos(dataTypeInfos, OnDataTypeSelected);
+            // Update navigation panel with data type infos and localization context
+            navigationPanel.SetDataTypeInfos(dataTypeInfos, OnDataTypeSelected, localizationContext);
+            navigationPanel.SetLocalizationCallback(OnLocalizationSelected);
+        }
+        
+        private void OnLocalizationSelected()
+        {
+            if (localizationContext != null)
+            {
+                ShowLocalizationInspector();
+                localizationInspectorPanel.SetLocalizationContext(localizationContext);
+            }
+        }
+        
+        private void ShowDataInspector()
+        {
+            if (currentInspectorPanel != dataInspectorPanel)
+            {
+                inspectorContainer.Clear();
+                inspectorContainer.Add(dataInspectorPanel);
+                currentInspectorPanel = dataInspectorPanel;
+            }
+        }
+        
+        private void ShowLocalizationInspector()
+        {
+            if (currentInspectorPanel != localizationInspectorPanel)
+            {
+                inspectorContainer.Clear();
+                inspectorContainer.Add(localizationInspectorPanel);
+                currentInspectorPanel = localizationInspectorPanel;
+            }
         }
         
         private void OnDataTypeSelected(Type dataType)
         {
             if (repositories.TryGetValue(dataType, out var repository))
             {
-                inspectorPanel.SetDataContext(dataContext, repository, dataType);
+                ShowDataInspector();
+                dataInspectorPanel.SetDataContext(dataContext, repository, dataType);
             }
         }
         
@@ -288,7 +339,8 @@ namespace Datra.Unity.Editor
             tab.TabButton.AddToClassList("active");
             
             // Update inspector with tab data
-            inspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType);
+            ShowDataInspector();
+            dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType);
         }
         
         private void CloseTab(DataTab tab)
@@ -389,8 +441,11 @@ namespace Datra.Unity.Editor
                         navigationPanel.MarkTypeAsModified(type, false);
                     }
                     
-                    // Refresh current view
-                    inspectorPanel.SetDataContext(dataContext, inspectorPanel.CurrentRepository, inspectorPanel.CurrentType);
+                    // Refresh current view if data inspector is active
+                    if (currentInspectorPanel == dataInspectorPanel)
+                    {
+                        dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType);
+                    }
                 }
             }
             finally
@@ -430,9 +485,14 @@ namespace Datra.Unity.Editor
             // Clean up if needed
             isInitialized = false;
             
-            if (inspectorPanel != null)
+            if (dataInspectorPanel != null)
             {
-                inspectorPanel.Cleanup();
+                dataInspectorPanel.Cleanup();
+            }
+            
+            if (localizationInspectorPanel != null)
+            {
+                localizationInspectorPanel.Cleanup();
             }
         }
         

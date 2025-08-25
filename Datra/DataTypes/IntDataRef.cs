@@ -6,6 +6,8 @@ namespace Datra.DataTypes
 {
     public struct IntDataRef<T> : IDataRef<int, T> where T : class, ITableData<int>
     {
+        public IntDataRef(int value) => Value = value;
+
         public int Value { get; set; }
         
         public Type DataType => typeof(T);

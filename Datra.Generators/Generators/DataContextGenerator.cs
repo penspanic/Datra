@@ -7,9 +7,12 @@ namespace Datra.Generators.Generators
 {
     internal class DataContextGenerator
     {
-        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels)
+        private string _localizationKeysPath = "Localizations/LocalizationKeys.csv";
+        
+        public string GenerateDataContext(string namespaceName, string contextName, List<DataModelInfo> dataModels, string localizationKeysPath = null)
         {
-            GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models");
+            _localizationKeysPath = localizationKeysPath ?? "Localizations/LocalizationKeys.csv";
+            GeneratorLogger.Log($"Generating DataContext: {contextName} with {dataModels.Count} models, LocalizationKeysPath: {_localizationKeysPath}");
             
             // Log all models for debugging
             foreach (var model in dataModels)
@@ -55,6 +58,9 @@ namespace Datra.Generators.Generators
             
             // Add field for configuration
             builder.AppendLine("private readonly Datra.Configuration.DatraConfiguration _config;");
+            
+            // Add LocalizationContext property
+            builder.AppendLine("public Datra.Services.LocalizationContext Localization { get; private set; }");
             builder.AddBlankLine();
             
             // Constructor
@@ -91,6 +97,7 @@ namespace Datra.Generators.Generators
             builder.AppendLine("    : base(rawDataProvider, serializerFactory ?? new DataSerializerFactory())");
             builder.BeginBlock();
             builder.AppendLine("_config = config ?? Datra.Configuration.DatraConfiguration.CreateDefault();");
+            builder.AppendLine("Localization = new Datra.Services.LocalizationContext(rawDataProvider, serializerFactory ?? new DataSerializerFactory());");
             builder.AppendLine("InitializeRepositories();");
             builder.EndBlock();
         }
@@ -177,6 +184,18 @@ namespace Datra.Generators.Generators
         private void GenerateLoadAllAsync(CodeBuilder builder, List<DataModelInfo> dataModels)
         {
             builder.BeginMethod("public override async Task LoadAllAsync()");
+            
+            // Initialize LocalizationContext first
+            builder.AppendLine("// Initialize LocalizationContext");
+            builder.AppendLine("var keyRepository = new DataRepository<string, Datra.Models.LocalizationKeyData>(");
+            builder.AppendLine($"    \"{_localizationKeysPath}\",");
+            builder.AppendLine("    RawDataProvider,");
+            builder.AppendLine("    (data) => LocalizationKeyDataSerializer.DeserializeCsv(data, _config),");
+            builder.AppendLine("    (table) => LocalizationKeyDataSerializer.SerializeCsv(table, _config)");
+            builder.AppendLine(");");
+            builder.AppendLine("Localization.SetKeyRepository(keyRepository);");
+            builder.AppendLine("await Localization.InitializeAsync();");
+            builder.AddBlankLine();
             
             // Define local generic function to load and update
             builder.AppendLine("// Local function to load repository and update DataTypeInfo");

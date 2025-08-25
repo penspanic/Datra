@@ -1,0 +1,21 @@
+Id,Text,Context
+Button_Start,Start,Main menu
+Button_Exit,Exit,Main menu
+Button_Settings,Settings,Main menu
+Button_Cancel,Cancel,Dialog
+Button_OK,OK,Dialog
+Message_Welcome,Welcome!,First login
+Message_Goodbye,Goodbye!,Logout
+Message_Loading,Loading...,Data loading
+Message_SaveComplete,Save completed,Save notification
+Error_NetworkDisconnected,Network connection lost,Error popup
+Error_InvalidInput,Invalid input,Input validation
+Error_FileNotFound,File not found,File error
+Character_Hero_Name,Hero,Character name
+Character_Hero_Desc,A brave warrior who protects justice,Character description
+Character_Mage_Name,Archmage,Character name
+Character_Mage_Desc,A wise wizard with ancient knowledge,Character description
+Item_Sword_Name,Steel Sword,Item name
+Item_Sword_Desc,A sword made of solid steel,Item description
+Item_Shield_Name,Wooden Shield,Item name
+Item_Shield_Desc,A shield made of sturdy wood,Item description

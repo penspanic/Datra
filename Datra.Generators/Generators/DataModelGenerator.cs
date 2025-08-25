@@ -8,11 +8,11 @@ using Datra.Generators.Models;
 
 namespace Datra.Generators.Generators
 {
-    internal class SerializerGenerator
+    internal class DataModelGenerator
     {
         private readonly GeneratorExecutionContext _context;
         
-        public SerializerGenerator(GeneratorExecutionContext context)
+        public DataModelGenerator(GeneratorExecutionContext context)
         {
             _context = context;
         }
@@ -41,7 +41,7 @@ namespace Datra.Generators.Generators
             };
         }
         
-        public string GenerateSerializerFile(DataModelInfo model)
+        public string GenerateDataModelFile(DataModelInfo model)
         {
             var codeBuilder = new CodeBuilder();
             var simpleTypeName = CodeBuilder.GetSimpleTypeName(model.TypeName);
@@ -58,7 +58,8 @@ namespace Datra.Generators.Generators
                 "Newtonsoft.Json",
                 "Newtonsoft.Json.Linq", 
                 "System.Globalization",
-                "Datra.Interfaces"
+                "Datra.Interfaces",
+                "Datra.DataTypes"
             });
             
             codeBuilder.AddBlankLine();
@@ -66,9 +67,16 @@ namespace Datra.Generators.Generators
             // Begin namespace
             codeBuilder.BeginNamespace(namespaceName);
             
-            // Generate partial class with constructors
+            // Generate partial class with constructors and Ref property
             codeBuilder.BeginClass(simpleTypeName, "public partial");
             GenerateConstructors(codeBuilder, model, simpleTypeName);
+            
+            // Generate Ref property for ITableData classes
+            if (model.IsTableData)
+            {
+                GenerateRefProperty(codeBuilder, model, simpleTypeName);
+            }
+            
             codeBuilder.EndClass();
             
             codeBuilder.AddBlankLine();
@@ -140,6 +148,31 @@ namespace Datra.Generators.Generators
             }
             
             codeBuilder.EndMethod();
+        }
+        
+        private void GenerateRefProperty(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)
+        {
+            codeBuilder.AddBlankLine();
+            
+            // Determine the DataRef type based on KeyType
+            string dataRefType;
+            if (model.KeyType == "int")
+            {
+                dataRefType = $"global::Datra.DataTypes.IntDataRef<{model.TypeName}>";
+            }
+            else if (model.KeyType == "string")
+            {
+                dataRefType = $"global::Datra.DataTypes.StringDataRef<{model.TypeName}>";
+            }
+            else
+            {
+                // Skip if KeyType is not supported
+                GeneratorLogger.Log($"Skipping Ref property generation for {simpleTypeName}: Unsupported KeyType '{model.KeyType}'");
+                return;
+            }
+            
+            // Generate Ref property
+            codeBuilder.AppendLine($"public {dataRefType} Ref => new {dataRefType}(this.Id);");
         }
         
         private void GenerateTableSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)

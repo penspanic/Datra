@@ -108,5 +108,10 @@ namespace Datra.Unity.Sample
 
             Debug.Log("");
         }
+
+        static void TestEnum()
+        {
+            
+        }
     }
 }

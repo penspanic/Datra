@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Interfaces;
+using Datra.Services;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
@@ -15,7 +16,9 @@ namespace Datra.Unity.Editor.Panels
         private TreeView treeView;
         private List<TreeViewItemData<DataTypeItem>> treeData;
         private Action<Type> onTypeSelected;
+        private Action onLocalizationSelected;
         private HashSet<Type> modifiedTypes = new HashSet<Type>();
+        private LocalizationContext localizationContext;
         
         // UI References
         private Button collapseAllButton;
@@ -30,6 +33,7 @@ namespace Datra.Unity.Editor.Panels
             public bool IsCategory { get; set; }
             public string Icon { get; set; }
             public bool IsModified { get; set; }
+            public bool IsLocalization { get; set; }
         }
         
         public DatraNavigationPanel()
@@ -192,22 +196,37 @@ namespace Datra.Unity.Editor.Panels
                 return;
             }
 
-            if (!selectedItem.IsCategory && selectedItem.DataType != null)
+            if (!selectedItem.IsCategory)
             {
-                // Save selected type
-                DatraUserPreferences.SetLastSelectedTreePath(selectedItem.DataType.FullName);
-                onTypeSelected?.Invoke(selectedItem.DataType);
+                if (selectedItem.IsLocalization)
+                {
+                    // Handle localization selection
+                    DatraUserPreferences.SetLastSelectedTreePath("Localization");
+                    onLocalizationSelected?.Invoke();
+                }
+                else if (selectedItem.DataType != null)
+                {
+                    // Save selected type
+                    DatraUserPreferences.SetLastSelectedTreePath(selectedItem.DataType.FullName);
+                    onTypeSelected?.Invoke(selectedItem.DataType);
+                }
             }
         }
         
-        public void SetDataTypeInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos, Action<Type> selectionCallback)
+        public void SetDataTypeInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos, Action<Type> selectionCallback, LocalizationContext localizationCtx = null)
         {
             onTypeSelected = selectionCallback;
+            localizationContext = localizationCtx;
             BuildTreeDataFromInfos(dataTypeInfos);
             UpdateStatusLabel();
             
             // Restore last selected item
             RestoreLastSelection();
+        }
+        
+        public void SetLocalizationCallback(Action localizationCallback)
+        {
+            onLocalizationSelected = localizationCallback;
         }
         
         private void BuildTreeDataFromInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos)
@@ -283,6 +302,34 @@ namespace Datra.Unity.Editor.Panels
                     tableDataItems);
                 
                 rootItems.Add(tableDataCategory);
+            }
+            
+            // Add Localization category if LocalizationContext exists
+            if (localizationContext != null)
+            {
+                var localizationItem = new TreeViewItemData<DataTypeItem>(
+                    "LocalizationContext".GetHashCode(),
+                    new DataTypeItem 
+                    { 
+                        Name = "Localization",
+                        DataType = null,
+                        DataTypeInfo = null,
+                        IsCategory = false,
+                        IsLocalization = true,
+                        IsModified = false
+                    });
+                
+                var localizationCategory = new TreeViewItemData<DataTypeItem>(
+                    "Localization".GetHashCode(),
+                    new DataTypeItem 
+                    { 
+                        Name = "Localization (1)",
+                        IsCategory = true,
+                        Icon = "localization"
+                    },
+                    new List<TreeViewItemData<DataTypeItem>> { localizationItem });
+                
+                rootItems.Add(localizationCategory);
             }
             
             // Store the original tree data

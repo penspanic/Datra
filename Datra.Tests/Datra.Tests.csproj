@@ -38,5 +38,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
+    
+    <!-- Include localization CSV files as additional files for the source generator -->
+    <ItemGroup>
+        <AdditionalFiles Include="..\Datra.SampleData\Resources\Localizations\LocalizationKeys.csv" Link="LocalizationKeys.csv" />
+    </ItemGroup>
 
 </Project>

@@ -1,26 +1,17 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
-using Datra.Unity.Editor.Views;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
 {
-    public class DatraInspectorPanel : VisualElement
+    public class DataInspectorPanel : BaseInspectorPanel
     {
-        private VisualElement headerContainer;
-        private VisualElement breadcrumbContainer;
-        private new VisualElement contentContainer;
-        private Label titleLabel;
-        private Label subtitleLabel;
-        
         private Type currentType;
         private object currentRepository;
         private object currentDataContext;
@@ -32,47 +23,14 @@ namespace Datra.Unity.Editor.Panels
         public Type CurrentType => currentType;
         public object CurrentRepository => currentRepository;
         
-        // Events
-        public event Action<Type> OnDataModified;
-        public event Action<Type, object> OnSaveRequested;
-        
-        public DatraInspectorPanel()
+        public DataInspectorPanel() : base()
         {
-            AddToClassList("datra-inspector-panel");
-            Initialize();
+            AddToClassList("datra-data-inspector-panel");
         }
         
-        private void Initialize()
+        protected override VisualElement CreateHeaderActions()
         {
-            style.flexGrow = 1;
-            style.flexDirection = FlexDirection.Column;
-            
-            // Header Section
-            headerContainer = new VisualElement();
-            headerContainer.AddToClassList("inspector-header");
-            
-            // Breadcrumb navigation
-            breadcrumbContainer = new VisualElement();
-            breadcrumbContainer.AddToClassList("breadcrumb-container");
-            headerContainer.Add(breadcrumbContainer);
-            
-            // Title section
-            var titleSection = new VisualElement();
-            titleSection.AddToClassList("title-section");
-            
-            titleLabel = new Label();
-            titleLabel.AddToClassList("inspector-title");
-            titleSection.Add(titleLabel);
-            
-            subtitleLabel = new Label();
-            subtitleLabel.AddToClassList("inspector-subtitle");
-            titleSection.Add(subtitleLabel);
-            
-            headerContainer.Add(titleSection);
-            
-            // Action buttons in header
             var headerActions = new VisualElement();
-            headerActions.AddToClassList("header-actions");
             
             // View mode toggle
             var viewModeContainer = new VisualElement();
@@ -101,21 +59,16 @@ namespace Datra.Unity.Editor.Panels
             refreshButton.AddToClassList("icon-button");
             headerActions.Add(refreshButton);
             
-            headerContainer.Add(headerActions);
-            
-            Add(headerContainer);
-            
-            // Content Section
-            contentContainer = new VisualElement();
-            contentContainer.AddToClassList("inspector-content");
-            contentContainer.style.flexGrow = 1;
-            Add(contentContainer);
-            
+            return headerActions;
+        }
+        
+        protected override void InitializePanel()
+        {
             // Initialize view mode controller
             viewModeController = new DatraViewModeController(contentContainer, headerContainer);
             viewModeController.OnViewModeChanged += OnViewModeChanged;
-            viewModeController.OnSaveRequested += (type, repo) => OnSaveRequested?.Invoke(type, repo);
-            viewModeController.OnDataModified += (type) => OnDataModified?.Invoke(type);
+            viewModeController.OnSaveRequested += (type, repo) => InvokeSaveRequested(type, repo);
+            viewModeController.OnDataModified += (type) => InvokeDataModified(type);
             
             // Update view mode toggle buttons to use controller
             var formButton = headerContainer.Q<Button>("form-view-button");
@@ -123,20 +76,15 @@ namespace Datra.Unity.Editor.Panels
             
             if (formButton != null)
             {
-                // Clear existing click handlers
                 formButton.clickable = new Clickable(() => viewModeController.SetViewMode(DatraViewModeController.ViewMode.Form));
                 formButton.tooltip = "Form View (1)";
             }
             
             if (tableButton != null)
             {
-                // Clear existing click handlers
                 tableButton.clickable = new Clickable(() => viewModeController.SetViewMode(DatraViewModeController.ViewMode.Table));
                 tableButton.tooltip = "Table View (2)";
             }
-            
-            // Show empty state initially
-            ShowEmptyState();
         }
         
         public void SetDataContext(object dataContext, object repository, Type dataType)
@@ -170,13 +118,13 @@ namespace Datra.Unity.Editor.Panels
                 }
             }
             
-            UpdateHeader();
+            UpdateDataHeader();
             
             // Set data in controller
             viewModeController.SetData(dataType, repository, dataContext);
         }
         
-        private void UpdateHeader()
+        private void UpdateDataHeader()
         {
             if (currentType == null)
             {
@@ -195,9 +143,6 @@ namespace Datra.Unity.Editor.Panels
             
             // Update breadcrumb
             UpdateBreadcrumb();
-            
-            // Update view mode buttons
-            UpdateViewModeButtons();
         }
         
         private void UpdateBreadcrumb()
@@ -216,11 +161,6 @@ namespace Datra.Unity.Editor.Panels
             var currentLabel = new Label(currentType.Name);
             currentLabel.AddToClassList("breadcrumb-current");
             breadcrumbContainer.Add(currentLabel);
-        }
-        
-        private void UpdateViewModeButtons()
-        {
-            // Buttons are now updated by OnViewModeChanged callback
         }
         
         private void OnViewModeChanged(DatraViewModeController.ViewMode mode)
@@ -263,28 +203,9 @@ namespace Datra.Unity.Editor.Panels
             viewModeController.SetData(currentType, currentRepository, currentDataContext);
         }
         
-        // SetViewMode method removed - now handled by viewModeController
-        
-        private void ShowEmptyState()
+        protected override string GetEmptyStateMessage()
         {
-            contentContainer.Clear();
-            
-            var emptyState = new VisualElement();
-            emptyState.AddToClassList("empty-state");
-            
-            var icon = new VisualElement();
-            icon.AddToClassList("empty-state-icon");
-            emptyState.Add(icon);
-            
-            var message = new Label("Select a data type to view and edit");
-            message.AddToClassList("empty-state-message");
-            emptyState.Add(message);
-            
-            contentContainer.Add(emptyState);
-            
-            titleLabel.text = "Inspector";
-            subtitleLabel.text = "";
-            breadcrumbContainer.Clear();
+            return "Select a data type to view and edit";
         }
         
         private bool IsTableData(Type type)
@@ -302,43 +223,14 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        private void HandleDataModified(Type type)
-        {
-            OnDataModified?.Invoke(type);
-        }
-        
-        private void HandleSaveRequested(Type type, object repo)
-        {
-            OnSaveRequested?.Invoke(type, repo);
-        }
-
-        private void HandleAddNewItem()
-        {
-            // Mark the type as modified in the navigation tree
-            OnDataModified?.Invoke(currentType);
-
-            // Optionally refresh the entire content to show the new item
-            // This is useful if the view needs to be completely refreshed
-            // RefreshContent();
-        }
-
-
-        private void HandleItemDeleted(object item)
-        {
-            // Mark the type as modified in the navigation tree
-            OnDataModified?.Invoke(currentType);
-            
-            // The view will refresh itself after deletion,
-            // but we need to ensure the tree shows the modified state
-        }
-        public void Cleanup()
+        public override void Cleanup()
         {
             // Cleanup view controller
             if (viewModeController != null)
             {
                 viewModeController.OnViewModeChanged -= OnViewModeChanged;
-                viewModeController.OnSaveRequested -= ((type, repo) => OnSaveRequested?.Invoke(type, repo));
-                viewModeController.OnDataModified -= ((type) => OnDataModified?.Invoke(type));
+                viewModeController.OnSaveRequested -= ((type, repo) => InvokeSaveRequested(type, repo));
+                viewModeController.OnDataModified -= ((type) => InvokeDataModified(type));
                 viewModeController.Cleanup();
             }
         }

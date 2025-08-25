@@ -1,0 +1,21 @@
+Id,Text,Context
+Button_Start,시작,메인 메뉴
+Button_Exit,종료,메인 메뉴
+Button_Settings,설정,메인 메뉴
+Button_Cancel,취소,대화상자
+Button_OK,확인,대화상자
+Message_Welcome,환영합니다!,첫 접속 시
+Message_Goodbye,안녕히 가세요!,로그아웃 시
+Message_Loading,로딩 중...,데이터 로딩
+Message_SaveComplete,저장이 완료되었습니다,저장 알림
+Error_NetworkDisconnected,네트워크 연결이 끊어졌습니다,에러 팝업
+Error_InvalidInput,잘못된 입력입니다,입력 검증
+Error_FileNotFound,파일을 찾을 수 없습니다,파일 에러
+Character_Hero_Name,용사,캐릭터 이름
+Character_Hero_Desc,정의를 수호하는 용감한 전사,캐릭터 설명
+Character_Mage_Name,대마법사,캐릭터 이름
+Character_Mage_Desc,고대의 지혜를 간직한 마법사,캐릭터 설명
+Item_Sword_Name,강철검,아이템 이름
+Item_Sword_Desc,견고한 강철로 만든 검,아이템 설명
+Item_Shield_Name,나무방패,아이템 이름
+Item_Shield_Desc,튼튼한 나무로 만든 방패,아이템 설명

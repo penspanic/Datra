@@ -6,12 +6,11 @@ namespace Datra.DataTypes
 {
     public struct StringDataRef<T> : IDataRef<string, T> where T : class, ITableData<string>
     {
+        public StringDataRef(string value) => Value = value;
+
         public string Value { get; set; }
-        
         public Type DataType => typeof(T);
-        
         public Type KeyType => typeof(string);
-        
         public bool HasValue => !string.IsNullOrEmpty(Value);
         
         public object? GetKeyValue() => Value;
