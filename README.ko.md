@@ -227,7 +227,7 @@ Datra/
 
 1. 저장소를 클론합니다:
 ```bash
-git clone https://github.com/yourusername/Datra.git
+git clone https://github.com/penspanic/Datra.git
 ```
 
 2. 솔루션에 프로젝트 참조를 추가합니다:
@@ -424,8 +424,8 @@ Datra는 깔끔한 아키텍처 접근 방식을 사용합니다:
 
 ## 📞 연락처
 
-- 프로젝트 링크: [https://github.com/penspanic/Datra](https://github.com/yourusername/Datra)
-- 이슈: [https://github.com/penspanic/Datra/issues](https://github.com/yourusername/Datra/issues)
+- 프로젝트 링크: [https://github.com/penspanic/Datra](https://github.com/penspanic/Datra)
+- 이슈: [https://github.com/penspanic/Datra/issues](https://github.com/penspanic/Datra/issues)
 
 ---
 
