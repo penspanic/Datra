@@ -228,7 +228,7 @@ generation
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/Datra.git
+git clone https://github.com/penspanic/Datra.git
 ```
 
 2. Add project references to your solution:
@@ -425,8 +425,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact
 
-- Project Link: [https://github.com/penspanic/Datra](https://github.com/yourusername/Datra)
-- Issues: [https://github.com/penspanic/Datra/issues](https://github.com/yourusername/Datra/issues)
+- Project Link: [https://github.com/penspanic/Datra](https://github.com/penspanic/Datra)
+- Issues: [https://github.com/penspanic/Datra/issues](https://github.com/penspanic/Datra/issues)
 
 ---
 
