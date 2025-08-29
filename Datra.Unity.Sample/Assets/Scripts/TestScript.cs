@@ -1,7 +1,11 @@
+using Datra.Attributes;
 using UnityEngine;
 
 public class TestScript : MonoBehaviour
 {
+    [ReadOnlyInInspector] public int publicReadOnlyInt;
+    [ReadOnlyInInspector][SerializeField] private int privateReadOnlyInt;
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
