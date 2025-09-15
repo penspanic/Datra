@@ -57,15 +57,21 @@ namespace Datra.Generators.Generators
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("var header = headers[i];");
             codeBuilder.AppendLine("var cellValue = i < values.Length ? values[i] : string.Empty;");
+            codeBuilder.AppendLine("// For duplicate column names (especially '~'), append index to make unique key");
+            codeBuilder.AppendLine("var metadataKey = header;");
+            codeBuilder.AppendLine("if (header == \"~\" || item.CsvMetadata.ContainsKey(header))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("metadataKey = $\"{header}_{i}\";");
+            codeBuilder.EndBlock();
             codeBuilder.AppendLine("if (header.StartsWith(\"~\"))");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Metadata column - store the value");
-            codeBuilder.AppendLine("item.CsvMetadata[header] = (i, cellValue);");
+            codeBuilder.AppendLine("// Metadata column - store the value and original column name");
+            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, header, cellValue);");
             codeBuilder.EndBlock();
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Regular column - store just the index (value comes from property)");
-            codeBuilder.AppendLine("item.CsvMetadata[header] = (i, null);");
+            codeBuilder.AppendLine("// Regular column - store just the index and column name (value comes from property)");
+            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, header, null);");
             codeBuilder.EndBlock();
             codeBuilder.EndBlock();
 
@@ -93,7 +99,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("if (firstItem.CsvMetadata != null && firstItem.CsvMetadata.Count > 0)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("// Use original column order from CsvMetadata");
-            codeBuilder.AppendLine("var columnList = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).Select(kvp => kvp.Key).ToList();");
+            codeBuilder.AppendLine("var columnList = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).Select(kvp => kvp.Value.columnName).ToList();");
             codeBuilder.AddBlankLine();
 
             codeBuilder.AppendLine("// Write header");
@@ -107,12 +113,14 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("for (int i = 0; i < columnList.Count; i++)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("var columnName = columnList[i];");
+            codeBuilder.AppendLine("// Find the metadata entry for this column at this index");
+            codeBuilder.AppendLine("var metaEntry = item.CsvMetadata.FirstOrDefault(kvp => kvp.Value.columnIndex == i);");
             codeBuilder.AppendLine("if (columnName.StartsWith(\"~\"))");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Metadata column - get stored value");
-            codeBuilder.AppendLine("if (item.CsvMetadata.TryGetValue(columnName, out var metaValue))");
+            codeBuilder.AppendLine("// Metadata column - get stored value from the entry at this index");
+            codeBuilder.AppendLine("if (metaEntry.Key != null)");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("values[i] = metaValue.value ?? string.Empty;");
+            codeBuilder.AppendLine("values[i] = metaEntry.Value.value ?? string.Empty;");
             codeBuilder.EndBlock();
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
@@ -152,7 +160,7 @@ namespace Datra.Generators.Generators
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("if (!allMetadataColumns.ContainsKey(meta.Value.columnIndex))");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("allMetadataColumns[meta.Value.columnIndex] = meta.Key;");
+            codeBuilder.AppendLine("allMetadataColumns[meta.Value.columnIndex] = meta.Value.columnName;");
             codeBuilder.EndBlock();
             codeBuilder.EndBlock();
             codeBuilder.EndBlock();
@@ -192,7 +200,10 @@ namespace Datra.Generators.Generators
             // Add metadata values
             codeBuilder.AppendLine("foreach (var meta in item.CsvMetadata)");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("valueDict[meta.Value.columnIndex] = meta.Value.value ?? string.Empty;");
+            codeBuilder.AppendLine("if (meta.Value.value != null)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("valueDict[meta.Value.columnIndex] = meta.Value.value;");
+            codeBuilder.EndBlock();
             codeBuilder.EndBlock();
 
             // Create final value list with all columns in correct order
