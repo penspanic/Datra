@@ -173,15 +173,28 @@ namespace Datra.Generators.Analyzers
                     var isArray = false;
                     string elementType = null;
                     
+                    // Enhanced type metadata
+                    bool isEnum = false;
+                    bool isValueType = false;
+                    bool elementIsEnum = false;
+                    bool elementIsValueType = false;
+                    string cleanTypeName = null;
+                    string cleanElementType = null;
+
                     // Check if it's an array type
                     if (propertyType is IArrayTypeSymbol arrayType)
                     {
                         isArray = true;
                         var elementTypeSymbol = arrayType.ElementType;
                         elementType = elementTypeSymbol.ToDisplayString(FullyQualifiedFormat);
-                        
+                        cleanElementType = elementTypeSymbol.ToDisplayString();
+
+                        // Capture element type metadata
+                        elementIsEnum = elementTypeSymbol.TypeKind == TypeKind.Enum;
+                        elementIsValueType = elementTypeSymbol.IsValueType;
+
                         // Check if array element is DataRef
-                        if (elementTypeSymbol is INamedTypeSymbol namedElementType && 
+                        if (elementTypeSymbol is INamedTypeSymbol namedElementType &&
                             namedElementType.IsGenericType)
                         {
                             var constructedFrom = namedElementType.ConstructedFrom.ToDisplayString(FullyQualifiedFormat);
@@ -195,7 +208,7 @@ namespace Datra.Generators.Analyzers
                         }
                     }
                     // Check if it's any DataRef type (non-array)
-                    else if (propertyType is INamedTypeSymbol namedType && 
+                    else if (propertyType is INamedTypeSymbol namedType &&
                         namedType.IsGenericType)
                     {
                         var constructedFrom = namedType.ConstructedFrom.ToDisplayString(FullyQualifiedFormat);
@@ -207,7 +220,12 @@ namespace Datra.Generators.Analyzers
                             dataRefTargetType = namedType.TypeArguments[0].Name;
                         }
                     }
-                    
+
+                    // Capture main type metadata
+                    cleanTypeName = property.Type.ToDisplayString();
+                    isEnum = propertyType.TypeKind == TypeKind.Enum;
+                    isValueType = propertyType.IsValueType;
+
                     properties.Add(new PropertyInfo
                     {
                         Name = property.Name,
@@ -217,7 +235,14 @@ namespace Datra.Generators.Analyzers
                         DataRefKeyType = dataRefKeyType,
                         DataRefTargetType = dataRefTargetType,
                         IsArray = isArray,
-                        ElementType = elementType
+                        ElementType = elementType,
+                        // New enhanced metadata
+                        CleanTypeName = cleanTypeName,
+                        CleanElementType = cleanElementType,
+                        IsEnum = isEnum,
+                        IsValueType = isValueType,
+                        ElementIsEnum = elementIsEnum,
+                        ElementIsValueType = elementIsValueType
                     });
                 }
             }

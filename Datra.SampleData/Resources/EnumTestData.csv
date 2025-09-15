@@ -1,0 +1,4 @@
+Id,Name,Quality,AllowedQualities,StatType,StatTypes
+1,Test Item 1,Common,Common|Rare,Attack,Attack|Defense
+2,Test Item 2,Legendary,Epic|Legendary,Defense,HealthRegen|Speed
+3,Test Item 3,Rare,Common|Rare|Epic,HealthRegen,Attack|HealthRegen|Defense

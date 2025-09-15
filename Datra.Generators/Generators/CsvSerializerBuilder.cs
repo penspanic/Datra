@@ -113,9 +113,19 @@ namespace Datra.Generators.Generators
                 }
             }
             
-            switch (prop.Type)
+            // Handle enums using enhanced metadata
+            if (prop.IsEnum)
+            {
+                // Use Type which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
+                return $"global::System.Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
+            }
+
+            // Handle basic types using CleanTypeName to avoid issues with fully qualified names
+            var cleanType = prop.CleanTypeName ?? prop.Type;
+            switch (cleanType)
             {
                 case "string":
+                case "System.String":
                     return getValueCode;
                 case "int":
                 case "System.Int32":
@@ -130,11 +140,7 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"bool.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : false";
                 default:
-                    // Enum handling
-                    if (prop.Type.Contains("."))
-                    {
-                        return $"global::System.Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
-                    }
+                    // Fallback for unknown types
                     return $"default({prop.Type})";
             }
         }
@@ -143,7 +149,7 @@ namespace Datra.Generators.Generators
         {
             var arrayDelimiter = $"{configVar}.CsvArrayDelimiter";
             var elementType = prop.ElementType;
-            
+
             // Handle DataRef array types
             if (prop.IsDataRef)
             {
@@ -156,9 +162,18 @@ namespace Datra.Generators.Generators
                     return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = int.TryParse(x, out var val) ? val : 0 }}).ToArray()";
                 }
             }
-            
+
+            // Handle enum arrays using enhanced metadata
+            if (prop.ElementIsEnum)
+            {
+                // Use ElementType which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
+                return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
+            }
+
             // Handle basic type arrays
-            switch (elementType)
+            // Use CleanElementType to avoid issues with fully qualified names
+            var cleanType = prop.CleanElementType ?? elementType;
+            switch (cleanType)
             {
                 case "string":
                 case "System.String":
@@ -176,8 +191,8 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
                 default:
-                    // Handle enum arrays - elementType already has global:: prefix if needed
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
+                    // Fallback for unknown types - return empty array
+                    return $"new {elementType}[0]";
             }
         }
         
@@ -230,7 +245,7 @@ namespace Datra.Generators.Generators
         {
             var arrayDelimiter = "config.CsvArrayDelimiter.ToString()";
             var arrayVar = $"{itemVar}.{prop.Name}";
-            
+
             // Handle DataRef array types
             if (prop.IsDataRef)
             {
@@ -243,9 +258,17 @@ namespace Datra.Generators.Generators
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.Value.ToString()))";
                 }
             }
-            
-            // Handle basic type arrays
-            switch (prop.ElementType)
+
+            // Handle enum arrays using enhanced metadata
+            if (prop.ElementIsEnum)
+            {
+                // Enums are value types and don't need null check on individual elements
+                return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";
+            }
+
+            // Handle basic type arrays using CleanElementType
+            var cleanType = prop.CleanElementType ?? prop.ElementType;
+            switch (cleanType)
             {
                 case "string":
                 case "System.String":
@@ -261,11 +284,7 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";
                 default:
-                    // Handle enum arrays - enums are value types and don't need null check
-                    if (prop.ElementType.Contains("."))
-                    {
-                        return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x.ToString()))";
-                    }
+                    // Fallback for unknown types
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x?.ToString() ?? string.Empty))";
             }
         }

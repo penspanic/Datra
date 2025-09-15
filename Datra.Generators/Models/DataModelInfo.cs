@@ -23,7 +23,15 @@ namespace Datra.Generators.Models
         public string DataRefTargetType { get; set; } // e.g., "CharacterData" for DataRef<CharacterData>
         public bool IsArray { get; set; }
         public string ElementType { get; set; } // e.g., "int" for int[], "IntDataRef<ItemData>" for IntDataRef<ItemData>[]
-        
+
+        // Enhanced type metadata for better code generation
+        public string CleanTypeName { get; set; } // Type name without global:: prefix
+        public string CleanElementType { get; set; } // Element type without global:: prefix for arrays
+        public bool IsEnum { get; set; }
+        public bool IsValueType { get; set; }
+        public bool ElementIsEnum { get; set; } // For array elements
+        public bool ElementIsValueType { get; set; } // For array elements
+
         // For backward compatibility
         public bool IsStringDataRef => IsDataRef && DataRefKeyType == "string";
     }
