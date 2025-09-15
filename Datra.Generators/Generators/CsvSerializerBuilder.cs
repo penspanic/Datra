@@ -14,14 +14,14 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine($"var result = new global::System.Collections.Generic.Dictionary<{model.KeyType}, {typeName}>();");
             codeBuilder.AppendLine("using (var reader = new global::System.IO.StringReader(data))");
             codeBuilder.BeginBlock();
-            
+
             codeBuilder.AppendLine("var headerLine = reader.ReadLine();");
             codeBuilder.AppendLine("if (headerLine == null) return result;");
             codeBuilder.AddBlankLine();
-            
+
             codeBuilder.AppendLine("var headers = headerLine.Split(config.CsvFieldDelimiter);");
-            
-            // Generate header index mapping
+
+            // Generate header index mapping for ALL columns (both regular and metadata)
             codeBuilder.AppendLine("var headerIndex = new global::System.Collections.Generic.Dictionary<string, int>(global::System.StringComparer.OrdinalIgnoreCase);");
             codeBuilder.AppendLine("for (int i = 0; i < headers.Length; i++)");
             codeBuilder.BeginBlock();
@@ -44,13 +44,31 @@ namespace Datra.Generators.Generators
                 var parseCode = GetCsvPropertyParseCode(prop, "values", "headerIndex", varName, "config");
                 codeBuilder.AppendLine($"var {varName} = {parseCode};");
             }
-            
+
             // Create object using constructor
             codeBuilder.AppendLine($"var item = new {typeName}(");
             for (int i = 0; i < model.Properties.Count; i++)
                 codeBuilder.AppendLine($"    {CodeBuilder.ToCamelCase(model.Properties[i].Name)}{(i == model.Properties.Count - 1 ? "" : ",")}");
             codeBuilder.AppendLine(");");
-            
+
+            // Store ALL column indices and values in CsvMetadata
+            codeBuilder.AppendLine("// Store all column information for perfect serialization");
+            codeBuilder.AppendLine("for (int i = 0; i < headers.Length; i++)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var header = headers[i];");
+            codeBuilder.AppendLine("var cellValue = i < values.Length ? values[i] : string.Empty;");
+            codeBuilder.AppendLine("if (header.StartsWith(\"~\"))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Metadata column - store the value");
+            codeBuilder.AppendLine("item.CsvMetadata[header] = (i, cellValue);");
+            codeBuilder.EndBlock();
+            codeBuilder.AppendLine("else");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Regular column - store just the index (value comes from property)");
+            codeBuilder.AppendLine("item.CsvMetadata[header] = (i, null);");
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+
             codeBuilder.AppendLine("result[item.Id] = item;");
             
             codeBuilder.EndBlock(); // while loop
@@ -63,30 +81,133 @@ namespace Datra.Generators.Generators
         {
             codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfigurationValue.CreateDefault();");
             codeBuilder.AppendLine("var csv = new global::System.Text.StringBuilder();");
-            codeBuilder.AppendLine("// CSV header");
-            
-            var headers = model.Properties.Select(p => p.Name);
-            codeBuilder.AppendLine($"csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), new[] {{ \"{string.Join("\", \"", headers)}\" }}));");
+            codeBuilder.AddBlankLine();
+
+            // Build complete column list from first item's CsvMetadata
+            codeBuilder.AppendLine("if (table.Count > 0)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var firstItem = table.Values.First();");
+            codeBuilder.AddBlankLine();
+
+            codeBuilder.AppendLine("// Check if CsvMetadata is populated (from deserialization)");
+            codeBuilder.AppendLine("if (firstItem.CsvMetadata != null && firstItem.CsvMetadata.Count > 0)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Use original column order from CsvMetadata");
+            codeBuilder.AppendLine("var columnList = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).Select(kvp => kvp.Key).ToList();");
+            codeBuilder.AddBlankLine();
+
+            codeBuilder.AppendLine("// Write header");
+            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), columnList));");
+            codeBuilder.AddBlankLine();
+
+            codeBuilder.AppendLine("// Write data rows");
+            codeBuilder.AppendLine("foreach (var item in table.Values)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var values = new string[columnList.Count];");
+            codeBuilder.AppendLine("for (int i = 0; i < columnList.Count; i++)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var columnName = columnList[i];");
+            codeBuilder.AppendLine("if (columnName.StartsWith(\"~\"))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Metadata column - get stored value");
+            codeBuilder.AppendLine("if (item.CsvMetadata.TryGetValue(columnName, out var metaValue))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("values[i] = metaValue.value ?? string.Empty;");
+            codeBuilder.EndBlock();
+            codeBuilder.AppendLine("else");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("values[i] = string.Empty;");
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+            codeBuilder.AppendLine("else");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Regular property column - get property value");
+            codeBuilder.AppendLine("switch (columnName)");
+            codeBuilder.BeginBlock();
+            foreach (var prop in model.Properties)
+            {
+                var serializeCode = GetCsvSerializeCode(prop, "item", "config");
+                codeBuilder.AppendLine($"case \"{prop.Name}\":");
+                codeBuilder.AppendLine($"    values[i] = {serializeCode};");
+                codeBuilder.AppendLine("    break;");
+            }
+            codeBuilder.AppendLine("default:");
+            codeBuilder.AppendLine("    values[i] = string.Empty;");
+            codeBuilder.AppendLine("    break;");
+            codeBuilder.EndBlock(); // switch
+            codeBuilder.EndBlock(); // else
+            codeBuilder.EndBlock(); // for loop
+            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), values));");
+            codeBuilder.EndBlock(); // foreach item
+            codeBuilder.EndBlock(); // if CsvMetadata populated
+            codeBuilder.AppendLine("else");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// CsvMetadata not populated - use default property-based serialization");
+
+            // Collect all unique metadata columns from all items
+            codeBuilder.AppendLine("var allMetadataColumns = new global::System.Collections.Generic.SortedDictionary<int, string>();");
+            codeBuilder.AppendLine("foreach (var item in table.Values)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("foreach (var meta in item.CsvMetadata)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("if (!allMetadataColumns.ContainsKey(meta.Value.columnIndex))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("allMetadataColumns[meta.Value.columnIndex] = meta.Key;");
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+            codeBuilder.AddBlankLine();
+
+            // Build header line with property columns and metadata columns in correct positions
+            codeBuilder.AppendLine("var headerList = new global::System.Collections.Generic.List<(int index, string name)>();");
+            var propIndex = 0;
+            foreach (var prop in model.Properties)
+            {
+                codeBuilder.AppendLine($"headerList.Add(({propIndex}, \"{prop.Name}\"));");
+                propIndex++;
+            }
+            codeBuilder.AppendLine("foreach (var metaCol in allMetadataColumns)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("headerList.Add((metaCol.Key, metaCol.Value));");
+            codeBuilder.EndBlock();
+            codeBuilder.AppendLine("headerList.Sort((a, b) => a.index.CompareTo(b.index));");
+            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), headerList.Select(h => h.name)));");
             codeBuilder.AddBlankLine();
             
             codeBuilder.AppendLine("foreach (var item in table.Values)");
             codeBuilder.BeginBlock();
-            
-            codeBuilder.AppendLine("var values = new string[]");
-            codeBuilder.BeginBlock();
-            
+
+            // Build value array with correct size including metadata columns
+            codeBuilder.AppendLine("var valueDict = new global::System.Collections.Generic.Dictionary<int, string>();");
+
+            // Add property values
+            propIndex = 0;
             foreach (var prop in model.Properties)
             {
                 var serializeCode = GetCsvSerializeCode(prop, "item", "config");
-                codeBuilder.AppendLine($"{serializeCode},");
+                codeBuilder.AppendLine($"valueDict[{propIndex}] = {serializeCode};");
+                propIndex++;
             }
-            
+
+            // Add metadata values
+            codeBuilder.AppendLine("foreach (var meta in item.CsvMetadata)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("valueDict[meta.Value.columnIndex] = meta.Value.value ?? string.Empty;");
             codeBuilder.EndBlock();
-            codeBuilder.AppendLine(";");
-            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), values));");
-            
+
+            // Create final value list with all columns in correct order
+            codeBuilder.AppendLine("var valueList = new global::System.Collections.Generic.List<string>();");
+            codeBuilder.AppendLine("foreach (var header in headerList.OrderBy(h => h.index))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("valueList.Add(valueDict.ContainsKey(header.index) ? valueDict[header.index] : string.Empty);");
             codeBuilder.EndBlock();
-            
+
+            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), valueList));");
+
+            codeBuilder.EndBlock(); // foreach
+            codeBuilder.EndBlock(); // else (CsvMetadata not populated)
+            codeBuilder.EndBlock(); // if table.Count > 0
+
             codeBuilder.AppendLine("return csv.ToString();");
         }
         

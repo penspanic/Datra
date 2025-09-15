@@ -103,9 +103,16 @@ namespace Datra.Generators.Generators
         
         private void GenerateConstructors(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
+            // Add CsvMetadata property for CSV format to store ~ columns with their index
+            if (model.Format == "Csv")
+            {
+                codeBuilder.AppendLine("public global::System.Collections.Generic.Dictionary<string, (int columnIndex, string value)> CsvMetadata { get; set; } = new global::System.Collections.Generic.Dictionary<string, (int columnIndex, string value)>();");
+                codeBuilder.AddBlankLine();
+            }
+
             // Default constructor
             codeBuilder.BeginMethod($"public {typeName}()");
-            
+
             foreach (var prop in model.Properties)
             {
                 if (prop.IsArray)
