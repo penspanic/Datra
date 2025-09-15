@@ -176,12 +176,8 @@ namespace Datra.Generators.Generators
                 case "System.Boolean":
                     return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
                 default:
-                    // Handle enum arrays
-                    if (elementType.Contains("."))
-                    {
-                        return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
-                    }
-                    return $"new {prop.Type}[0]"; // Empty array for unsupported types
+                    // Handle enum arrays - elementType already has global:: prefix if needed
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
             }
         }
         
