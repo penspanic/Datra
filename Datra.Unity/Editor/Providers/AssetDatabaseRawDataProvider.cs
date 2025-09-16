@@ -22,7 +22,7 @@ namespace Datra.Unity.Editor.Providers
         public Task<string> LoadTextAsync(string path)
         {
 #if UNITY_EDITOR
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
             if (textAsset != null)
             {
@@ -45,7 +45,7 @@ namespace Datra.Unity.Editor.Providers
         {
 #if UNITY_EDITOR
             // Ensure directory exists
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
@@ -69,7 +69,7 @@ namespace Datra.Unity.Editor.Providers
         {
 #if UNITY_EDITOR
             // Check if it exists as an asset
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
             if (asset != null)
             {
@@ -86,7 +86,7 @@ namespace Datra.Unity.Editor.Providers
         public string ResolveFilePath(string path)
         {
 #if UNITY_EDITOR
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             // Convert to absolute path if it starts with Assets/
             if (path.StartsWith("Assets/"))
             {
@@ -96,6 +96,26 @@ namespace Datra.Unity.Editor.Providers
 #else
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
 #endif
+        }
+
+        private string CombinePath(string basePath, string path)
+        {
+            if (string.IsNullOrEmpty(basePath))
+                return path;
+
+            if (string.IsNullOrEmpty(path))
+                return basePath;
+
+            // Remove trailing slash from basePath if present
+            if (basePath.EndsWith("/"))
+                basePath = basePath.Substring(0, basePath.Length - 1);
+
+            // Remove leading slash from path if present
+            if (path.StartsWith("/"))
+                path = path.Substring(1);
+
+            // Combine with forward slash
+            return basePath + "/" + path;
         }
     }
 }

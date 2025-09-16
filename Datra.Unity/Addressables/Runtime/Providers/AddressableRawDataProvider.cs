@@ -19,7 +19,7 @@ namespace Datra.Unity.Addressables.Runtime.Providers
 
         public async Task<string> LoadTextAsync(string path)
         {
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             var handle = global::UnityEngine.AddressableAssets.Addressables.LoadAssetAsync<TextAsset>(path);
             var textAsset = await handle.Task;
 
@@ -42,7 +42,7 @@ namespace Datra.Unity.Addressables.Runtime.Providers
         public bool Exists(string path)
         {
             // Check if the address exists by attempting to load its location
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             var handle = global::UnityEngine.AddressableAssets.Addressables.LoadResourceLocationsAsync(path);
             var result = handle.WaitForCompletion();
             var exists = result != null && result.Count > 0;
@@ -52,9 +52,29 @@ namespace Datra.Unity.Addressables.Runtime.Providers
 
         public string ResolveFilePath(string path)
         {
-            path = string.IsNullOrEmpty(_basePath) ? path : Path.Combine(_basePath, path);
+            path = CombinePath(_basePath, path);
             // In Addressables, we return a virtual path since there's no real file system path at runtime
             return $"Addressables/{path}";
+        }
+
+        private string CombinePath(string basePath, string path)
+        {
+            if (string.IsNullOrEmpty(basePath))
+                return path;
+
+            if (string.IsNullOrEmpty(path))
+                return basePath;
+
+            // Remove trailing slash from basePath if present
+            if (basePath.EndsWith("/"))
+                basePath = basePath.Substring(0, basePath.Length - 1);
+
+            // Remove leading slash from path if present
+            if (path.StartsWith("/"))
+                path = path.Substring(1);
+
+            // Combine with forward slash
+            return basePath + "/" + path;
         }
     }
 }
