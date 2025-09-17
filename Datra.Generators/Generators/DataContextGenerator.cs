@@ -230,27 +230,16 @@ namespace Datra.Generators.Generators
             
             // Define local generic function to load and update
             builder.AppendLine("// Local function to load repository and update DataTypeInfo");
-            builder.AppendLine("async Task LoadAndUpdateAsync<TRepo>(TRepo repo, string propertyName) where TRepo : class");
+            builder.AppendLine("async Task LoadAndUpdateAsync<TRepo>(TRepo repo, string propertyName) where TRepo : IDataRepository");
             builder.BeginBlock();
-            builder.AppendLine("if (repo == null) return;");
+            builder.AppendLine("if (repo == null) throw new Exception(\"Repo is null! type: {typeof(TRepo)}\");");
             builder.AddBlankLine();
-            builder.AppendLine("// Try to call LoadAsync if it exists");
-            builder.AppendLine("var loadMethod = repo.GetType().GetMethod(\"LoadAsync\");");
-            builder.AppendLine("if (loadMethod != null)");
-            builder.BeginBlock();
-            builder.AppendLine("await (Task)loadMethod.Invoke(repo, null);");
-            builder.EndBlock();
+            builder.AppendLine("await repo.LoadAsync();");
             builder.AddBlankLine();
             builder.AppendLine("// Get loaded file path and update DataTypeInfo");
-            builder.AppendLine("var getPathMethod = repo.GetType().GetMethod(\"GetLoadedFilePath\");");
-            builder.AppendLine("if (getPathMethod != null)");
-            builder.BeginBlock();
-            builder.AppendLine("var loadedPath = (string)getPathMethod.Invoke(repo, null);");
-            builder.AppendLine("if (!string.IsNullOrEmpty(loadedPath))");
-            builder.BeginBlock();
+            builder.AppendLine("var loadedPath = repo.GetLoadedFilePath();");
+            builder.AppendLine("if (string.IsNullOrEmpty(loadedPath)) throw new Exception(\"loadedPath is null or empty! type: {typeof(TRepo)}\");");
             builder.AppendLine("UpdateDataTypeInfoAfterLoad(propertyName, loadedPath);");
-            builder.EndBlock();
-            builder.EndBlock();
             builder.EndBlock();
             builder.AddBlankLine();
             

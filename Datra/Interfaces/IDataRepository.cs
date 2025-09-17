@@ -3,10 +3,18 @@ using System.Threading.Tasks;
 
 namespace Datra.Interfaces
 {
+    public interface IDataRepository
+    {
+        Task LoadAsync();
+        Task SaveAsync();
+        string GetLoadedFilePath();
+    }
+
     /// <summary>
     /// Base interface for data repository
     /// </summary>
-    public interface IDataRepository<TKey, TData> : IReadOnlyDictionary<TKey, TData>
+    public interface IDataRepository<TKey, TData>
+        : IDataRepository, IReadOnlyDictionary<TKey, TData>
         where TData : class, ITableData<TKey>
     {
         /// <summary>
@@ -18,7 +26,9 @@ namespace Datra.Interfaces
     /// <summary>
     /// Repository interface for single data
     /// </summary>
-    public interface ISingleDataRepository<TData> where TData : class
+    public interface ISingleDataRepository<TData>
+        : IDataRepository
+        where TData : class
     {
         /// <summary>
         /// Get data
