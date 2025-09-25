@@ -7,13 +7,17 @@ namespace Datra.Unity.Editor.Panels
 {
     public class DatraToolbarPanel : VisualElement
     {
+        private Button saveButton;
         private Button saveAllButton;
         private Button reloadButton;
         private Button settingsButton;
         private Label projectLabel;
         private VisualElement modifiedIndicator;
-        
+
+        public event Action OnSaveClicked;
         public event Action OnSaveAllClicked;
+        public event Action OnForceSaveClicked;
+        public event Action OnForceSaveAllClicked;
         public event Action OnReloadClicked;
         public event Action OnSettingsClicked;
         
@@ -63,14 +67,47 @@ namespace Datra.Unity.Editor.Panels
             // Right section - Action buttons
             var rightSection = new VisualElement();
             rightSection.AddToClassList("toolbar-right");
-            
+
+            // Save button for current data
+            saveButton = new Button(() => OnSaveClicked?.Invoke());
+            saveButton.text = "💾 Save";
+            saveButton.tooltip = "Save current data\nRight-click for Force Save";
+            saveButton.AddToClassList("toolbar-button");
+            saveButton.AddToClassList("save-button");
+
+            // Add context menu for Save button
+            saveButton.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button == 1) // Right click
+                {
+                    var menu = new GenericMenu();
+                    menu.AddItem(new GUIContent("Force Save"), false, () => OnForceSaveClicked?.Invoke());
+                    menu.ShowAsContext();
+                    evt.StopPropagation();
+                }
+            });
+            rightSection.Add(saveButton);
+
+            // Save All button
             saveAllButton = new Button(() => OnSaveAllClicked?.Invoke());
             saveAllButton.text = "💾 Save All";
-            saveAllButton.tooltip = "Save all modified data (Ctrl+S)";
+            saveAllButton.tooltip = "Save all modified data (Ctrl+S)\nRight-click for Force Save All";
             saveAllButton.AddToClassList("toolbar-button");
-            saveAllButton.AddToClassList("save-button");
+            saveAllButton.AddToClassList("save-all-button");
+
+            // Add context menu for Save All button
+            saveAllButton.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button == 1) // Right click
+                {
+                    var menu = new GenericMenu();
+                    menu.AddItem(new GUIContent("Force Save All"), false, () => OnForceSaveAllClicked?.Invoke());
+                    menu.ShowAsContext();
+                    evt.StopPropagation();
+                }
+            });
             rightSection.Add(saveAllButton);
-            
+
             reloadButton = new Button(() => OnReloadClicked?.Invoke());
             reloadButton.text = "↻ Reload";
             reloadButton.tooltip = "Reload all data from disk";
@@ -100,21 +137,41 @@ namespace Datra.Unity.Editor.Panels
         public void SetModifiedState(bool hasModifications)
         {
             modifiedIndicator.style.display = hasModifications ? DisplayStyle.Flex : DisplayStyle.None;
-            saveAllButton.SetEnabled(hasModifications);
-            
+            // Don't disable buttons - just change visual state
+            // Users can always Force Save even when there are no modifications
+
             if (hasModifications)
             {
+                saveButton.AddToClassList("highlighted");
                 saveAllButton.AddToClassList("highlighted");
             }
             else
             {
+                saveButton.RemoveFromClassList("highlighted");
                 saveAllButton.RemoveFromClassList("highlighted");
             }
         }
-        
+
         public void SetSaveButtonEnabled(bool enabled)
         {
+            // Keep buttons always enabled for Force Save functionality
+            // Only used during save operations to prevent double-clicks
+            saveButton.SetEnabled(enabled);
             saveAllButton.SetEnabled(enabled);
+        }
+
+        public void SetCurrentDataModified(bool isModified)
+        {
+            // Don't disable Save button - just change visual state
+            // Users can always Force Save
+            if (isModified)
+            {
+                saveButton.AddToClassList("highlighted");
+            }
+            else
+            {
+                saveButton.RemoveFromClassList("highlighted");
+            }
         }
         
         public void SetReloadButtonEnabled(bool enabled)

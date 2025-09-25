@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -81,7 +82,10 @@ namespace Datra.Unity.Editor
             
             // Create toolbar
             toolbar = new DatraToolbarPanel();
+            toolbar.OnSaveClicked += SaveCurrentData;
             toolbar.OnSaveAllClicked += SaveAllData;
+            toolbar.OnForceSaveClicked += ForceSaveCurrentData;
+            toolbar.OnForceSaveAllClicked += ForceSaveAllData;
             toolbar.OnReloadClicked += ReloadData;
             toolbar.OnSettingsClicked += ShowSettings;
             mainContainer.Add(toolbar);
@@ -128,11 +132,11 @@ namespace Datra.Unity.Editor
             // Create both inspector panels
             dataInspectorPanel = new DataInspectorPanel();
             dataInspectorPanel.OnDataModified += OnDataModified;
-            dataInspectorPanel.OnSaveRequested += SaveCurrentData;
+            dataInspectorPanel.OnSaveRequested += OnInspectorSaveRequested;
             
             localizationInspectorPanel = new LocalizationInspectorPanel();
             localizationInspectorPanel.OnDataModified += OnDataModified;
-            localizationInspectorPanel.OnSaveRequested += SaveCurrentData;
+            localizationInspectorPanel.OnSaveRequested += OnInspectorSaveRequested;
             
             // Initialize data
             EditorApplication.delayCall += InitializeData;
@@ -278,6 +282,7 @@ namespace Datra.Unity.Editor
             {
                 ShowDataInspector();
                 dataInspectorPanel.SetDataContext(dataContext, repository, dataType);
+                UpdateCurrentDataModifiedState();
             }
         }
         
@@ -380,12 +385,25 @@ namespace Datra.Unity.Editor
         private async void SaveAllData()
         {
             if (dataManager == null) return;
-            
+
+            // Check if there are any modifications
+            if (!dataManager.HasModifiedData)
+            {
+                // No modifications - suggest Force Save All
+                if (EditorUtility.DisplayDialog("No Changes",
+                    "No data has unsaved changes.\n\nWould you like to Force Save All anyway?",
+                    "Force Save All", "Cancel"))
+                {
+                    ForceSaveAllData();
+                }
+                return;
+            }
+
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(repositories);
-                
+                var success = await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories));
+
                 // Update navigation panel modified states
                 if (success)
                 {
@@ -404,14 +422,133 @@ namespace Datra.Unity.Editor
             }
         }
         
-        private async void SaveCurrentData(Type dataType, object repository)
+        private async void OnInspectorSaveRequested(Type dataType, object repository)
         {
-            if (dataManager == null || repository == null) return;
-            
+            await SaveSpecificData(dataType, repository);
+        }
+
+        private async void SaveCurrentData()
+        {
+            // Save currently selected/active data
+            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
+            {
+                var dataType = dataInspectorPanel.CurrentType;
+                var repository = dataInspectorPanel.CurrentRepository;
+
+                // Check if there are modifications
+                if (!dataManager.ModifiedTypes.Contains(dataType))
+                {
+                    // No modifications - suggest Force Save
+                    if (EditorUtility.DisplayDialog("No Changes",
+                        $"{dataType.Name} has no unsaved changes.\n\nWould you like to Force Save anyway?",
+                        "Force Save", "Cancel"))
+                    {
+                        await ForceSaveData(dataType, repository);
+                    }
+                }
+                else
+                {
+                    await SaveSpecificData(dataType, repository);
+                }
+            }
+            else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
+            {
+                await SaveLocalizationData();
+            }
+        }
+
+        private async Task<bool> SaveSpecificData(Type dataType, object repository)
+        {
+            if (dataManager == null || repository == null) return false;
+
             var success = await dataManager.SaveAsync(dataType, repository);
             if (success)
             {
                 navigationPanel.MarkTypeAsModified(dataType, false);
+                UpdateCurrentDataModifiedState();
+            }
+            return success;
+        }
+
+        private async void ForceSaveCurrentData()
+        {
+            // Force save currently selected/active data (even if not modified)
+            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
+            {
+                await ForceSaveData(dataInspectorPanel.CurrentType, dataInspectorPanel.CurrentRepository);
+            }
+            else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
+            {
+                ForceSaveLocalizationData();
+            }
+        }
+
+        private async Task ForceSaveData(Type dataType, object repository)
+        {
+            if (dataManager == null || repository == null) return;
+
+            // Force save bypasses modification check
+            var success = await dataManager.SaveAsync(dataType, repository, true);
+            if (success)
+            {
+                navigationPanel.MarkTypeAsModified(dataType, false);
+                UpdateCurrentDataModifiedState();
+                EditorUtility.DisplayDialog("Force Save", $"Force saved {dataType.Name} successfully!", "OK");
+            }
+        }
+
+        private async void ForceSaveAllData()
+        {
+            if (dataManager == null) return;
+
+            try
+            {
+                toolbar.SetSaveButtonEnabled(false);
+                var success = await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories), true); // Force save all
+
+                if (success)
+                {
+                    // Clear all modified states
+                    foreach (var type in repositories.Keys)
+                    {
+                        navigationPanel.MarkTypeAsModified(type, false);
+                    }
+                }
+            }
+            finally
+            {
+                toolbar.SetSaveButtonEnabled(true);
+            }
+        }
+
+        private async Task SaveLocalizationData()
+        {
+            // TODO: Implement localization saving
+            if (localizationContext != null)
+            {
+                // For now, just mark as saved
+                navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
+                await Task.CompletedTask; // Placeholder for async operation
+            }
+        }
+
+        private void ForceSaveLocalizationData()
+        {
+            // TODO: Implement force localization saving
+            if (localizationContext != null)
+            {
+                // For now, just mark as saved
+                navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
+            }
+        }
+
+        private void UpdateCurrentDataModifiedState()
+        {
+            // Update the Save button state based on current data
+            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
+            {
+                var isModified = dataManager?.ModifiedTypes.Contains(dataInspectorPanel.CurrentType) ?? false;
+                toolbar.SetCurrentDataModified(isModified);
             }
         }
         
@@ -425,7 +562,7 @@ namespace Datra.Unity.Editor
                 var result = await dataManager.CheckUnsavedChangesAsync("reloading");
                 if (!result) // User wants to save first
                 {
-                    await dataManager.SaveAllAsync(repositories);
+                    await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories));
                 }
             }
             

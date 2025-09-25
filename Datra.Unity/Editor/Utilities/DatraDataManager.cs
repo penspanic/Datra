@@ -66,7 +66,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Save all modified data
         /// </summary>
-        public async Task<bool> SaveAllAsync(Dictionary<Type, object> repositories)
+        public async Task<bool> SaveAllAsync(Dictionary<Type, object> repositories, bool forceSave = false)
         {
             if (dataContext == null) return false;
             
@@ -74,9 +74,14 @@ namespace Datra.Unity.Editor.Utilities
             {
                 var savedTypes = new List<Type>();
                 var failedTypes = new List<(Type type, string error)>();
-                
-                // Save only modified types
-                foreach (var type in modifiedTypes)
+
+                // Determine which types to save
+                var typesToSave = forceSave
+                    ? repositories.Keys.ToList()
+                    : modifiedTypes.ToList();
+
+                // Save types
+                foreach (var type in typesToSave)
                 {
                     if (repositories.TryGetValue(type, out var repository))
                     {
@@ -138,16 +143,26 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Save a specific data type
         /// </summary>
-        public async Task<bool> SaveAsync(Type dataType, object repository)
+        public async Task<bool> SaveAsync(Type dataType, object repository, bool forceSave = false)
         {
             if (dataContext == null || repository == null) return false;
-            
+
+            // Check if save is needed
+            if (!forceSave && !modifiedTypes.Contains(dataType))
+            {
+                OnOperationCompleted?.Invoke($"{dataType.Name} has no changes to save.");
+                return true;
+            }
+
             try
             {
                 if (await SaveRepositoryAsync(repository, dataType))
                 {
                     ClearModifiedState(dataType);
-                    OnOperationCompleted?.Invoke($"{dataType.Name} saved successfully!");
+                    var message = forceSave
+                        ? $"{dataType.Name} force saved successfully!"
+                        : $"{dataType.Name} saved successfully!";
+                    OnOperationCompleted?.Invoke(message);
                     return true;
                 }
                 else
