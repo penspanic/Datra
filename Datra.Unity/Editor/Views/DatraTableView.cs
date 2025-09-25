@@ -141,8 +141,9 @@ namespace Datra.Unity.Editor.Views
             hasUnsavedChanges = false;
             
             // Get columns (properties) BEFORE calling RefreshContent
+            // Filter out properties with DatraIgnore attribute
             columns = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead)
+                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
                 .ToList();
                 
             
