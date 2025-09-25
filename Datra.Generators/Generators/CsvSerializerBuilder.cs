@@ -25,7 +25,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("if (headerLine == null) return result;");
             codeBuilder.AddBlankLine();
 
-            codeBuilder.AppendLine("var headers = headerLine.Split(config.CsvFieldDelimiter);");
+            codeBuilder.AppendLine("var headers = global::Datra.Helpers.CsvParsingHelper.ParseCsvLine(headerLine, config.CsvFieldDelimiter);");
 
             // Generate header index mapping for ALL columns (both regular and metadata)
             codeBuilder.AppendLine("var headerIndex = new global::System.Collections.Generic.Dictionary<string, int>(global::System.StringComparer.OrdinalIgnoreCase);");
@@ -43,7 +43,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("try");
             codeBuilder.BeginBlock();
 
-            codeBuilder.AppendLine("var values = line.Split(config.CsvFieldDelimiter);");
+            codeBuilder.AppendLine("var values = global::Datra.Helpers.CsvParsingHelper.ParseCsvLine(line, config.CsvFieldDelimiter);");
             codeBuilder.AppendLine("if (values.Length != headers.Length)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("var context = new global::Datra.Interfaces.SerializationErrorContext");
@@ -259,7 +259,7 @@ namespace Datra.Generators.Generators
             codeBuilder.AddBlankLine();
 
             codeBuilder.AppendLine("// Write header");
-            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), columnList));");
+            codeBuilder.AppendLine("csv.AppendLine(global::Datra.Helpers.CsvParsingHelper.JoinCsvFields(columnList.ToArray(), config.CsvFieldDelimiter));");
             codeBuilder.AddBlankLine();
 
             codeBuilder.AppendLine("// Write data rows");
@@ -293,7 +293,7 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock(); // switch
             codeBuilder.EndBlock(); // else
             codeBuilder.EndBlock(); // for loop
-            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), values));");
+            codeBuilder.AppendLine("csv.AppendLine(global::Datra.Helpers.CsvParsingHelper.JoinCsvFields(values, config.CsvFieldDelimiter));");
             codeBuilder.EndBlock(); // foreach item
             codeBuilder.EndBlock(); // if table.Count > 0
 
