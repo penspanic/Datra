@@ -11,7 +11,13 @@ namespace Datra.Generators.Generators
         {
             codeBuilder.AppendLine("// Custom CSV deserializer for immutable types");
             codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfigurationValue.CreateDefault();");
+            codeBuilder.AppendLine("logger ??= global::Datra.Logging.NullSerializationLogger.Instance;");
             codeBuilder.AppendLine($"var result = new global::System.Collections.Generic.Dictionary<{model.KeyType}, {typeName}>();");
+            codeBuilder.AppendLine("var errorCount = 0;");
+            codeBuilder.AppendLine("var successCount = 0;");
+            codeBuilder.AppendLine("var lineNumber = 0;");
+            codeBuilder.AddBlankLine();
+            codeBuilder.AppendLine($"logger.LogDeserializationStart(\"{model.FilePath}\", \"CSV\");");
             codeBuilder.AppendLine("using (var reader = new global::System.IO.StringReader(data))");
             codeBuilder.BeginBlock();
 
@@ -28,21 +34,44 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("headerIndex[headers[i]] = i;");
             codeBuilder.EndBlock();
             codeBuilder.AddBlankLine();
-            
+
             codeBuilder.AppendLine("string line;");
             codeBuilder.AppendLine("while ((line = reader.ReadLine()) != null)");
             codeBuilder.BeginBlock();
-            
+            codeBuilder.AppendLine("lineNumber++;");
+            codeBuilder.AppendLine("string currentRecordId = null;");
+            codeBuilder.AppendLine("try");
+            codeBuilder.BeginBlock();
+
             codeBuilder.AppendLine("var values = line.Split(config.CsvFieldDelimiter);");
-            codeBuilder.AppendLine("if (values.Length != headers.Length) continue;");
+            codeBuilder.AppendLine("if (values.Length != headers.Length)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var context = new global::Datra.Interfaces.SerializationErrorContext");
+            codeBuilder.AppendLine("{");
+            codeBuilder.AppendLine($"    FileName = \"{model.FilePath}\",");
+            codeBuilder.AppendLine("    Format = \"CSV\",");
+            codeBuilder.AppendLine("    LineNumber = lineNumber + 1,");
+            codeBuilder.AppendLine("    Message = $\"Column count mismatch. Expected {headers.Length}, got {values.Length}\"");
+            codeBuilder.AppendLine("};");
+            codeBuilder.AppendLine("logger.LogValidationError(context);");
+            codeBuilder.AppendLine("errorCount++;");
+            codeBuilder.AppendLine("continue;");
+            codeBuilder.EndBlock();
             codeBuilder.AddBlankLine();
             
+            // File name constant for logging
+            codeBuilder.AppendLine($"const string fileName = \"{model.FilePath}\";");
+            codeBuilder.AddBlankLine();
+
             // Parse each property value
             foreach (var prop in model.Properties)
             {
                 var varName = CodeBuilder.ToCamelCase(prop.Name);
-                var parseCode = GetCsvPropertyParseCode(prop, "values", "headerIndex", varName, "config");
-                codeBuilder.AppendLine($"var {varName} = {parseCode};");
+                GetCsvPropertyParseCodeWithLogging(codeBuilder, prop, "values", "headerIndex", varName, "config", "logger", "lineNumber + 1", "fileName");
+                if (prop.Name == "Id")
+                {
+                    codeBuilder.AppendLine($"currentRecordId = {varName}.ToString();");
+                }
             }
 
             // Create object using constructor
@@ -76,17 +105,36 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock();
 
             codeBuilder.AppendLine("result[item.Id] = item;");
-            
+            codeBuilder.AppendLine("successCount++;");
+
+            codeBuilder.EndBlock(); // try block
+            codeBuilder.AppendLine("catch (global::System.Exception ex)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var context = new global::Datra.Interfaces.SerializationErrorContext");
+            codeBuilder.AppendLine("{");
+            codeBuilder.AppendLine($"    FileName = \"{model.FilePath}\",");
+            codeBuilder.AppendLine("    Format = \"CSV\",");
+            codeBuilder.AppendLine("    LineNumber = lineNumber + 1,");
+            codeBuilder.AppendLine("    RecordId = currentRecordId,");
+            codeBuilder.AppendLine("    Message = $\"Failed to parse record: {ex.Message}\"");
+            codeBuilder.AppendLine("};");
+            codeBuilder.AppendLine("logger.LogParsingError(context, ex);");
+            codeBuilder.AppendLine("errorCount++;");
+            codeBuilder.EndBlock(); // catch block
+
             codeBuilder.EndBlock(); // while loop
             codeBuilder.EndBlock(); // using block
-            
+
+            codeBuilder.AppendLine($"logger.LogDeserializationComplete(\"{model.FilePath}\", successCount, errorCount);");
             codeBuilder.AppendLine("return result;");
         }
         
         public void GenerateTableSerializer(CodeBuilder codeBuilder, DataModelInfo model, string typeName)
         {
             codeBuilder.AppendLine("config ??= global::Datra.Configuration.DatraConfigurationValue.CreateDefault();");
+            codeBuilder.AppendLine("logger ??= global::Datra.Logging.NullSerializationLogger.Instance;");
             codeBuilder.AppendLine("var csv = new global::System.Text.StringBuilder();");
+            codeBuilder.AppendLine($"logger.LogSerializationStart(\"{model.FilePath}\", \"CSV\");");
             codeBuilder.AddBlankLine();
 
             // Build complete column list from first item's CsvMetadata
@@ -219,37 +267,49 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock(); // else (CsvMetadata not populated)
             codeBuilder.EndBlock(); // if table.Count > 0
 
+            codeBuilder.AppendLine($"logger.LogSerializationComplete(\"{model.FilePath}\", table.Count);");
             codeBuilder.AppendLine("return csv.ToString();");
         }
         
-        private string GetCsvPropertyParseCode(PropertyInfo prop, string valuesVar, string headerIndexVar, string varName, string configVar)
+        private void GetCsvPropertyParseCodeWithLogging(CodeBuilder codeBuilder, PropertyInfo prop, string valuesVar, string headerIndexVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
         {
             var getValueCode = $"{headerIndexVar}.TryGetValue(\"{prop.Name}\", out var {varName}Idx) && {varName}Idx < {valuesVar}.Length ? {valuesVar}[{varName}Idx] : \"\"";
-            
+
+            // Get the raw value
+            codeBuilder.AppendLine($"var {varName}Raw = {getValueCode};");
+
+            // Generate parse code using ParsingHelper
+            var parseCode = GetParseCodeWithHelper(prop, $"{varName}Raw", varName, configVar, loggerVar, lineNumberVar, fileName);
+            codeBuilder.AppendLine($"var {varName} = {parseCode};");
+            codeBuilder.AddBlankLine(); // Add blank line between properties for readability
+        }
+
+        private string GetParseCodeWithHelper(PropertyInfo prop, string rawValueVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
+        {
             // Handle array types
             if (prop.IsArray)
             {
-                return GetArrayParseCode(prop, getValueCode, varName, configVar);
+                return GetArrayParseCodeWithHelper(prop, rawValueVar, varName, configVar, loggerVar, lineNumberVar, fileName);
             }
-            
+
             // Handle DataRef types
             if (prop.IsDataRef)
             {
                 if (prop.DataRefKeyType == "string")
                 {
-                    return $"new {prop.Type} {{ Value = {getValueCode} }}";
+                    return $"new {prop.Type} {{ Value = {rawValueVar} }}";
                 }
                 else if (prop.DataRefKeyType == "int")
                 {
-                    return $"new {prop.Type} {{ Value = int.TryParse({getValueCode}, out var {varName}RefVal) ? {varName}RefVal : 0 }}";
+                    return $"new {prop.Type} {{ Value = global::Datra.Helpers.ParsingHelper.ParseInt({rawValueVar}, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\") }}";
                 }
             }
-            
+
             // Handle enums using enhanced metadata
             if (prop.IsEnum)
             {
-                // Use Type which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
-                return $"global::System.Enum.TryParse<{prop.Type}>({getValueCode}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
+                // Use ParsingHelper for enum parsing
+                return $"global::Datra.Helpers.ParsingHelper.ParseEnum<{prop.Type}>({rawValueVar}, default({prop.Type}), {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
             }
 
             // Handle basic types using CleanTypeName to avoid issues with fully qualified names
@@ -258,25 +318,156 @@ namespace Datra.Generators.Generators
             {
                 case "string":
                 case "System.String":
-                    return getValueCode;
+                    return rawValueVar;
                 case "int":
                 case "System.Int32":
-                    return $"int.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : 0";
+                    return $"global::Datra.Helpers.ParsingHelper.ParseInt({rawValueVar}, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
                 case "float":
                 case "System.Single":
-                    return $"float.TryParse({getValueCode}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
+                    return $"global::Datra.Helpers.ParsingHelper.ParseFloat({rawValueVar}, 0f, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
                 case "double":
                 case "System.Double":
-                    return $"double.TryParse({getValueCode}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
+                    return $"global::Datra.Helpers.ParsingHelper.ParseDouble({rawValueVar}, 0.0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
                 case "bool":
                 case "System.Boolean":
-                    return $"bool.TryParse({getValueCode}, out var {varName}Val) ? {varName}Val : false";
+                    return $"global::Datra.Helpers.ParsingHelper.ParseBool({rawValueVar}, false, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "long":
+                case "System.Int64":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseLong({rawValueVar}, 0L, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "short":
+                case "System.Int16":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseShort({rawValueVar}, (short)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "byte":
+                case "System.Byte":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseByte({rawValueVar}, (byte)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "decimal":
+                case "System.Decimal":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseDecimal({rawValueVar}, 0m, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "uint":
+                case "System.UInt32":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseUInt({rawValueVar}, 0u, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "ulong":
+                case "System.UInt64":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseULong({rawValueVar}, 0ul, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "ushort":
+                case "System.UInt16":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseUShort({rawValueVar}, (ushort)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "sbyte":
+                case "System.SByte":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseSByte({rawValueVar}, (sbyte)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                case "char":
+                case "System.Char":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseChar({rawValueVar}, '\\0', {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}\")";
+                default:
+                    // Fallback for unknown types
+                    return $"default({prop.Type})";
+            }
+        }
+
+        private string GetCsvPropertyParseCode(PropertyInfo prop, string rawValueVar, string varName, string configVar)
+        {
+            // Handle array types
+            if (prop.IsArray)
+            {
+                return GetArrayParseCode(prop, rawValueVar, varName, configVar);
+            }
+
+            // Handle DataRef types
+            if (prop.IsDataRef)
+            {
+                if (prop.DataRefKeyType == "string")
+                {
+                    return $"new {prop.Type} {{ Value = {rawValueVar} }}";
+                }
+                else if (prop.DataRefKeyType == "int")
+                {
+                    return $"new {prop.Type} {{ Value = int.TryParse({rawValueVar}, out var {varName}RefVal) ? {varName}RefVal : 0 }}";
+                }
+            }
+
+            // Handle enums using enhanced metadata
+            if (prop.IsEnum)
+            {
+                // Use Type which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
+                return $"global::System.Enum.TryParse<{prop.Type}>({rawValueVar}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
+            }
+
+            // Handle basic types using CleanTypeName to avoid issues with fully qualified names
+            var cleanType = prop.CleanTypeName ?? prop.Type;
+            switch (cleanType)
+            {
+                case "string":
+                case "System.String":
+                    return rawValueVar;
+                case "int":
+                case "System.Int32":
+                    return $"int.TryParse({rawValueVar}, out var {varName}Val) ? {varName}Val : 0";
+                case "float":
+                case "System.Single":
+                    return $"float.TryParse({rawValueVar}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
+                case "double":
+                case "System.Double":
+                    return $"double.TryParse({rawValueVar}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
+                case "bool":
+                case "System.Boolean":
+                    return $"bool.TryParse({rawValueVar}, out var {varName}Val) ? {varName}Val : false";
                 default:
                     // Fallback for unknown types
                     return $"default({prop.Type})";
             }
         }
         
+        private string GetArrayParseCodeWithHelper(PropertyInfo prop, string getValueCode, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
+        {
+            var arrayDelimiter = $"{configVar}.CsvArrayDelimiter";
+            var elementType = prop.ElementType;
+
+            // Handle DataRef array types
+            if (prop.IsDataRef)
+            {
+                if (prop.DataRefKeyType == "string")
+                {
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = x }}).ToArray()";
+                }
+                else if (prop.DataRefKeyType == "int")
+                {
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => new {elementType} {{ Value = global::Datra.Helpers.ParsingHelper.ParseInt(x, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\") }}).ToArray()";
+                }
+            }
+
+            // Handle enum arrays using enhanced metadata
+            if (prop.ElementIsEnum)
+            {
+                // Use ParsingHelper for enum parsing in arrays
+                return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => global::Datra.Helpers.ParsingHelper.ParseEnum<{elementType}>(x, default({elementType}), {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\")).ToArray()";
+            }
+
+            // Handle basic type arrays
+            // Use CleanElementType to avoid issues with fully qualified names
+            var cleanType = prop.CleanElementType ?? elementType;
+            switch (cleanType)
+            {
+                case "string":
+                case "System.String":
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries)";
+                case "int":
+                case "System.Int32":
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => global::Datra.Helpers.ParsingHelper.ParseInt(x, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\")).ToArray()";
+                case "float":
+                case "System.Single":
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => global::Datra.Helpers.ParsingHelper.ParseFloat(x, 0f, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\")).ToArray()";
+                case "double":
+                case "System.Double":
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => global::Datra.Helpers.ParsingHelper.ParseDouble(x, 0.0, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\")).ToArray()";
+                case "bool":
+                case "System.Boolean":
+                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select((x, idx) => global::Datra.Helpers.ParsingHelper.ParseBool(x, false, {loggerVar}, {fileName}, {lineNumberVar}, \"{prop.Name}[\" + idx + \"]\")).ToArray()";
+                default:
+                    // Fallback for unknown types - return empty array
+                    return $"new {elementType}[0]";
+            }
+        }
+
         private string GetArrayParseCode(PropertyInfo prop, string getValueCode, string varName, string configVar)
         {
             var arrayDelimiter = $"{configVar}.CsvArrayDelimiter";

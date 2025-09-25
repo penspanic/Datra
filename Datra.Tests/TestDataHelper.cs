@@ -47,5 +47,6 @@ namespace Datra.Tests
             var loaderFactory = new DataSerializerFactory();
             return new GameDataContext(rawDataProvider, loaderFactory);
         }
+
     }
 }

@@ -217,15 +217,15 @@ namespace Datra.Generators.Generators
                 codeBuilder.AddBlankLine();
                 
                 // CSV Deserialize method without serializer
-                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfigurationValue config = null)");
+                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfigurationValue config = null, global::Datra.Interfaces.ISerializationLogger logger = null)");
                 var csvBuilder2 = new CsvSerializerBuilder();
                 csvBuilder2.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();
-                
+
                 codeBuilder.AddBlankLine();
-                
+
                 // CSV Serialize method without serializer
-                codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfigurationValue config = null)");
+                codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfigurationValue config = null, global::Datra.Interfaces.ISerializationLogger logger = null)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
                 codeBuilder.EndMethod();

@@ -1,0 +1,5 @@
+Id,Name,Level,Power,IsActive,SkillType,Rarity,Costs,AvailableTypes,CharacterRef,RequiredItems
+test_001,Fire Ball,5,120.5,true,Magical,Rare,10|20|30,Magical|Support,hero_001,1001|1002
+test_002,Lightning Strike,INVALID_INT,180.0,true,InvalidSkill,Epic,15|30|45,Physical|Unknown,hero_002,1003
+test_003,Healing Touch,3,INVALID_FLOAT,false,Support,SuperRare,5|10|15,Support,hero_003,
+test_004,Shield Bash,6,90.0,NotBool,Physical,Uncommon,8|abc|24,Physical|InvalidType,hero_004,1001
