@@ -82,25 +82,36 @@ namespace Datra.Generators.Generators
 
             // Store ALL column indices and values in CsvMetadata
             codeBuilder.AppendLine("// Store all column information for perfect serialization");
+            codeBuilder.AppendLine("var tildeCounter = 0;");
             codeBuilder.AppendLine("for (int i = 0; i < headers.Length; i++)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("var header = headers[i];");
             codeBuilder.AppendLine("var cellValue = i < values.Length ? values[i] : string.Empty;");
-            codeBuilder.AppendLine("// For duplicate column names (especially '~'), append index to make unique key");
             codeBuilder.AppendLine("var metadataKey = header;");
-            codeBuilder.AppendLine("if (header == \"~\" || item.CsvMetadata.ContainsKey(header))");
+            codeBuilder.AppendLine("var columnName = header;");
+            codeBuilder.AddBlankLine();
+            codeBuilder.AppendLine("// Handle '~' columns by numbering them");
+            codeBuilder.AppendLine("if (header == \"~\")");
             codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("tildeCounter++;");
+            codeBuilder.AppendLine("columnName = $\"~{tildeCounter}\";");
+            codeBuilder.AppendLine("metadataKey = columnName;");
+            codeBuilder.EndBlock();
+            codeBuilder.AppendLine("else if (item.CsvMetadata.ContainsKey(header))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Handle other duplicate column names");
             codeBuilder.AppendLine("metadataKey = $\"{header}_{i}\";");
             codeBuilder.EndBlock();
+            codeBuilder.AddBlankLine();
             codeBuilder.AppendLine("if (header.StartsWith(\"~\"))");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Metadata column - store the value and original column name");
-            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, header, cellValue);");
+            codeBuilder.AppendLine("// Metadata column - store the value");
+            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, columnName, cellValue);");
             codeBuilder.EndBlock();
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("// Regular column - store just the index and column name (value comes from property)");
-            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, header, null);");
+            codeBuilder.AppendLine("item.CsvMetadata[metadataKey] = (i, columnName, null);");
             codeBuilder.EndBlock();
             codeBuilder.EndBlock();
 
@@ -143,11 +154,108 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("var firstItem = table.Values.First();");
             codeBuilder.AddBlankLine();
 
-            codeBuilder.AppendLine("// Check if CsvMetadata is populated (from deserialization)");
+            codeBuilder.AppendLine("// Build column list based on class property order with metadata preservation");
+            codeBuilder.AppendLine("var columnList = new global::System.Collections.Generic.List<string>();");
+            codeBuilder.AppendLine("var processedMetadata = new global::System.Collections.Generic.HashSet<string>();");
+            codeBuilder.AddBlankLine();
+
+            // Check if we have metadata to preserve
             codeBuilder.AppendLine("if (firstItem.CsvMetadata != null && firstItem.CsvMetadata.Count > 0)");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Use original column order from CsvMetadata");
-            codeBuilder.AppendLine("var columnList = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).Select(kvp => kvp.Value.columnName).ToList();");
+
+            codeBuilder.AppendLine("// Use the original column order from CsvMetadata");
+            codeBuilder.AppendLine("// This preserves the exact order and metadata positions");
+            codeBuilder.AppendLine("var originalColumns = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).ToList();");
+
+            codeBuilder.AppendLine("// Get class properties for finding new ones");
+            codeBuilder.AppendLine("var classProperties = new global::System.Collections.Generic.HashSet<string>();");
+            foreach (var prop in model.Properties)
+            {
+                codeBuilder.AppendLine($"classProperties.Add(\"{prop.Name}\");");
+            }
+
+            codeBuilder.AppendLine("// First, add all original columns in their exact order");
+            codeBuilder.AppendLine("foreach (var col in originalColumns)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("columnList.Add(col.Value.columnName);");
+            codeBuilder.EndBlock();
+
+            codeBuilder.AppendLine("// Then, add any new properties that weren't in the original CSV");
+            codeBuilder.AppendLine("// Add them in class definition order");
+
+            // Create a list of properties to add
+            codeBuilder.AppendLine("var propertiesToAdd = new global::System.Collections.Generic.List<string>();");
+            foreach (var prop in model.Properties)
+            {
+                codeBuilder.AppendLine($"if (!columnList.Contains(\"{prop.Name}\"))");
+                codeBuilder.BeginBlock();
+                codeBuilder.AppendLine($"propertiesToAdd.Add(\"{prop.Name}\");");
+                codeBuilder.EndBlock();
+            }
+
+            codeBuilder.AppendLine("// Add new properties in class order, finding the best position for each");
+            codeBuilder.AppendLine("foreach (var propName in propertiesToAdd)");
+            codeBuilder.BeginBlock();
+
+            // Generate logic to find the best insertion position
+            codeBuilder.AppendLine("var insertIndex = columnList.Count; // Default to end");
+            codeBuilder.AppendLine("// Find the best position based on class property order");
+
+            for (int i = 0; i < model.Properties.Count; i++)
+            {
+                var prop = model.Properties[i];
+                codeBuilder.AppendLine($"if (propName == \"{prop.Name}\")");
+                codeBuilder.BeginBlock();
+
+                if (i > 0)
+                {
+                    // Find the previous property that exists in the column list
+                    codeBuilder.AppendLine("// Look for previous properties in class order");
+                    for (int j = i - 1; j >= 0; j--)
+                    {
+                        var prevProp = model.Properties[j];
+                        codeBuilder.AppendLine($"{{");
+                        codeBuilder.AppendLine($"    var idx = columnList.IndexOf(\"{prevProp.Name}\");");
+                        codeBuilder.AppendLine($"    if (idx >= 0)");
+                        codeBuilder.AppendLine($"    {{");
+                        codeBuilder.AppendLine($"        insertIndex = idx + 1;");
+                        codeBuilder.AppendLine($"        // Skip any metadata columns that follow");
+                        codeBuilder.AppendLine($"        while (insertIndex < columnList.Count && columnList[insertIndex].StartsWith(\"~\"))");
+                        codeBuilder.AppendLine($"        {{");
+                        codeBuilder.AppendLine($"            insertIndex++;");
+                        codeBuilder.AppendLine($"        }}");
+                        codeBuilder.AppendLine($"        goto foundPosition;");
+                        codeBuilder.AppendLine($"    }}");
+                        codeBuilder.AppendLine($"}}");
+                    }
+                }
+                else
+                {
+                    // First property - insert at the beginning (after leading metadata)
+                    codeBuilder.AppendLine("insertIndex = 0;");
+                    codeBuilder.AppendLine("// Skip any leading metadata columns");
+                    codeBuilder.AppendLine("while (insertIndex < columnList.Count && columnList[insertIndex].StartsWith(\"~\"))");
+                    codeBuilder.BeginBlock();
+                    codeBuilder.AppendLine("insertIndex++;");
+                    codeBuilder.EndBlock();
+                }
+
+                codeBuilder.EndBlock();
+            }
+
+            codeBuilder.AppendLine("foundPosition:");
+            codeBuilder.AppendLine("columnList.Insert(insertIndex, propName);");
+            codeBuilder.EndBlock(); // foreach propertiesToAdd
+
+            codeBuilder.EndBlock(); // if CsvMetadata populated
+            codeBuilder.AppendLine("else");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// No metadata - just use class properties in order");
+            foreach (var prop in model.Properties)
+            {
+                codeBuilder.AppendLine($"columnList.Add(\"{prop.Name}\");");
+            }
+            codeBuilder.EndBlock();
             codeBuilder.AddBlankLine();
 
             codeBuilder.AppendLine("// Write header");
@@ -161,19 +269,11 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("for (int i = 0; i < columnList.Count; i++)");
             codeBuilder.BeginBlock();
             codeBuilder.AppendLine("var columnName = columnList[i];");
-            codeBuilder.AppendLine("// Find the metadata entry for this column at this index");
-            codeBuilder.AppendLine("var metaEntry = item.CsvMetadata.FirstOrDefault(kvp => kvp.Value.columnIndex == i);");
             codeBuilder.AppendLine("if (columnName.StartsWith(\"~\"))");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Metadata column - get stored value from the entry at this index");
-            codeBuilder.AppendLine("if (metaEntry.Key != null)");
-            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Metadata column - find the stored value");
+            codeBuilder.AppendLine("var metaEntry = item.CsvMetadata.FirstOrDefault(kvp => kvp.Value.columnName == columnName);");
             codeBuilder.AppendLine("values[i] = metaEntry.Value.value ?? string.Empty;");
-            codeBuilder.EndBlock();
-            codeBuilder.AppendLine("else");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("values[i] = string.Empty;");
-            codeBuilder.EndBlock();
             codeBuilder.EndBlock();
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
@@ -195,76 +295,6 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock(); // for loop
             codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), values));");
             codeBuilder.EndBlock(); // foreach item
-            codeBuilder.EndBlock(); // if CsvMetadata populated
-            codeBuilder.AppendLine("else");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// CsvMetadata not populated - use default property-based serialization");
-
-            // Collect all unique metadata columns from all items
-            codeBuilder.AppendLine("var allMetadataColumns = new global::System.Collections.Generic.SortedDictionary<int, string>();");
-            codeBuilder.AppendLine("foreach (var item in table.Values)");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("foreach (var meta in item.CsvMetadata)");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("if (!allMetadataColumns.ContainsKey(meta.Value.columnIndex))");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("allMetadataColumns[meta.Value.columnIndex] = meta.Value.columnName;");
-            codeBuilder.EndBlock();
-            codeBuilder.EndBlock();
-            codeBuilder.EndBlock();
-            codeBuilder.AddBlankLine();
-
-            // Build header line with property columns and metadata columns in correct positions
-            codeBuilder.AppendLine("var headerList = new global::System.Collections.Generic.List<(int index, string name)>();");
-            var propIndex = 0;
-            foreach (var prop in model.Properties)
-            {
-                codeBuilder.AppendLine($"headerList.Add(({propIndex}, \"{prop.Name}\"));");
-                propIndex++;
-            }
-            codeBuilder.AppendLine("foreach (var metaCol in allMetadataColumns)");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("headerList.Add((metaCol.Key, metaCol.Value));");
-            codeBuilder.EndBlock();
-            codeBuilder.AppendLine("headerList.Sort((a, b) => a.index.CompareTo(b.index));");
-            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), headerList.Select(h => h.name)));");
-            codeBuilder.AddBlankLine();
-            
-            codeBuilder.AppendLine("foreach (var item in table.Values)");
-            codeBuilder.BeginBlock();
-
-            // Build value array with correct size including metadata columns
-            codeBuilder.AppendLine("var valueDict = new global::System.Collections.Generic.Dictionary<int, string>();");
-
-            // Add property values
-            propIndex = 0;
-            foreach (var prop in model.Properties)
-            {
-                var serializeCode = GetCsvSerializeCode(prop, "item", "config");
-                codeBuilder.AppendLine($"valueDict[{propIndex}] = {serializeCode};");
-                propIndex++;
-            }
-
-            // Add metadata values
-            codeBuilder.AppendLine("foreach (var meta in item.CsvMetadata)");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("if (meta.Value.value != null)");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("valueDict[meta.Value.columnIndex] = meta.Value.value;");
-            codeBuilder.EndBlock();
-            codeBuilder.EndBlock();
-
-            // Create final value list with all columns in correct order
-            codeBuilder.AppendLine("var valueList = new global::System.Collections.Generic.List<string>();");
-            codeBuilder.AppendLine("foreach (var header in headerList.OrderBy(h => h.index))");
-            codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("valueList.Add(valueDict.ContainsKey(header.index) ? valueDict[header.index] : string.Empty);");
-            codeBuilder.EndBlock();
-
-            codeBuilder.AppendLine("csv.AppendLine(string.Join(config.CsvFieldDelimiter.ToString(), valueList));");
-
-            codeBuilder.EndBlock(); // foreach
-            codeBuilder.EndBlock(); // else (CsvMetadata not populated)
             codeBuilder.EndBlock(); // if table.Count > 0
 
             codeBuilder.AppendLine($"logger.LogSerializationComplete(\"{model.FilePath}\", table.Count);");
