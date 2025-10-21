@@ -14,6 +14,12 @@ namespace Datra.Generators.Models
         public List<PropertyInfo> Properties { get; set; } = new List<PropertyInfo>();
 
         /// <summary>
+        /// The physical file path of the source model class (e.g., /path/to/CharacterData.cs)
+        /// Used for emitting physical files next to the source
+        /// </summary>
+        public string SourceFilePath { get; set; }
+
+        /// <summary>
         /// Get properties that should be included in serialization.
         /// Excludes: FixedLocale (computed properties that cannot be serialized)
         /// </summary>

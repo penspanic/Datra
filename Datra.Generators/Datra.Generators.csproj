@@ -9,6 +9,8 @@
         <IncludeBuildOutput>true</IncludeBuildOutput>
         <DevelopmentDependency>true</DevelopmentDependency>
         <RootNamespace>Datra.Generators</RootNamespace>
+        <!-- Allow file IO for physical file emission feature -->
+        <NoWarn>$(NoWarn);RS1035</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

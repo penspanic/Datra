@@ -51,7 +51,17 @@ namespace Datra.Configuration
         /// Default is ','
         /// </summary>
         public char CsvFieldDelimiter { get; }
-        
+
+        /// <summary>
+        /// Emit generated files as physical files in the project for easier debugging
+        /// </summary>
+        public bool EmitPhysicalFiles { get; }
+
+        /// <summary>
+        /// Path for physical files when EmitPhysicalFiles is true
+        /// </summary>
+        public string? PhysicalFilesPath { get; }
+
         public DatraConfigurationValue(
             bool enableLocalization = false,
             string localizationKeyDataPath = "Localizations/LocalizationKeys.csv",
@@ -61,7 +71,9 @@ namespace Datra.Configuration
             string generatedNamespace = "Datra.Generated",
             bool enableDebugLogging = false,
             char csvArrayDelimiter = '|',
-            char csvFieldDelimiter = ',')
+            char csvFieldDelimiter = ',',
+            bool emitPhysicalFiles = false,
+            string? physicalFilesPath = null)
         {
             EnableLocalization = enableLocalization;
             LocalizationKeyDataPath = localizationKeyDataPath;
@@ -72,6 +84,8 @@ namespace Datra.Configuration
             EnableDebugLogging = enableDebugLogging;
             CsvArrayDelimiter = csvArrayDelimiter;
             CsvFieldDelimiter = csvFieldDelimiter;
+            EmitPhysicalFiles = emitPhysicalFiles;
+            PhysicalFilesPath = physicalFilesPath;
         }
         
         /// <summary>

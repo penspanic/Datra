@@ -194,57 +194,40 @@ namespace Datra.Generators.Generators
                 codeBuilder.EndBlock();
             }
 
+            codeBuilder.AppendLine("// Build property order map for efficient insertion");
+            codeBuilder.AppendLine("var propOrder = new global::System.Collections.Generic.Dictionary<string, int>();");
+            for (int i = 0; i < model.Properties.Count; i++)
+            {
+                codeBuilder.AppendLine($"propOrder[\"{model.Properties[i].Name}\"] = {i};");
+            }
+            codeBuilder.AddBlankLine();
+
             codeBuilder.AppendLine("// Add new properties in class order, finding the best position for each");
             codeBuilder.AppendLine("foreach (var propName in propertiesToAdd)");
             codeBuilder.BeginBlock();
 
-            // Generate logic to find the best insertion position
-            codeBuilder.AppendLine("var insertIndex = columnList.Count; // Default to end");
-            codeBuilder.AppendLine("// Find the best position based on class property order");
+            codeBuilder.AppendLine("var insertIndex = 0;");
+            codeBuilder.AppendLine("var maxFoundOrder = -1;");
+            codeBuilder.AppendLine("var targetOrder = propOrder[propName];");
+            codeBuilder.AddBlankLine();
 
-            for (int i = 0; i < model.Properties.Count; i++)
-            {
-                var prop = model.Properties[i];
-                codeBuilder.AppendLine($"if (propName == \"{prop.Name}\")");
-                codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("// Find the rightmost existing property that comes before this one in class order");
+            codeBuilder.AppendLine("for (int i = 0; i < columnList.Count; i++)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("var colName = columnList[i];");
+            codeBuilder.AppendLine("if (propOrder.TryGetValue(colName, out var order) && order < targetOrder && order > maxFoundOrder)");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("maxFoundOrder = order;");
+            codeBuilder.AppendLine("insertIndex = i + 1;");
+            codeBuilder.AppendLine("// Skip any metadata columns that follow");
+            codeBuilder.AppendLine("while (insertIndex < columnList.Count && columnList[insertIndex].StartsWith(\"~\"))");
+            codeBuilder.BeginBlock();
+            codeBuilder.AppendLine("insertIndex++;");
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+            codeBuilder.EndBlock();
+            codeBuilder.AddBlankLine();
 
-                if (i > 0)
-                {
-                    // Find the previous property that exists in the column list
-                    codeBuilder.AppendLine("// Look for previous properties in class order");
-                    for (int j = i - 1; j >= 0; j--)
-                    {
-                        var prevProp = model.Properties[j];
-                        codeBuilder.AppendLine($"{{");
-                        codeBuilder.AppendLine($"    var idx = columnList.IndexOf(\"{prevProp.Name}\");");
-                        codeBuilder.AppendLine($"    if (idx >= 0)");
-                        codeBuilder.AppendLine($"    {{");
-                        codeBuilder.AppendLine($"        insertIndex = idx + 1;");
-                        codeBuilder.AppendLine($"        // Skip any metadata columns that follow");
-                        codeBuilder.AppendLine($"        while (insertIndex < columnList.Count && columnList[insertIndex].StartsWith(\"~\"))");
-                        codeBuilder.AppendLine($"        {{");
-                        codeBuilder.AppendLine($"            insertIndex++;");
-                        codeBuilder.AppendLine($"        }}");
-                        codeBuilder.AppendLine($"        goto foundPosition;");
-                        codeBuilder.AppendLine($"    }}");
-                        codeBuilder.AppendLine($"}}");
-                    }
-                }
-                else
-                {
-                    // First property - insert at the beginning (after leading metadata)
-                    codeBuilder.AppendLine("insertIndex = 0;");
-                    codeBuilder.AppendLine("// Skip any leading metadata columns");
-                    codeBuilder.AppendLine("while (insertIndex < columnList.Count && columnList[insertIndex].StartsWith(\"~\"))");
-                    codeBuilder.BeginBlock();
-                    codeBuilder.AppendLine("insertIndex++;");
-                    codeBuilder.EndBlock();
-                }
-
-                codeBuilder.EndBlock();
-            }
-
-            codeBuilder.AppendLine("foundPosition:");
             codeBuilder.AppendLine("columnList.Insert(insertIndex, propName);");
             codeBuilder.EndBlock(); // foreach propertiesToAdd
 

@@ -50,5 +50,21 @@ namespace Datra.Attributes
         /// Default: false
         /// </summary>
         public bool EnableDebugLogging { get; set; } = false;
+
+        /// <summary>
+        /// Emit generated files as physical files in the project for easier debugging
+        /// When false, files are only generated in obj/ folder
+        /// When true, files are written to the project directory
+        /// Default: false
+        /// </summary>
+        public bool EmitPhysicalFiles { get; set; } = false;
+
+        /// <summary>
+        /// Path for physical files when EmitPhysicalFiles is true
+        /// null or empty: Generate files next to their source models (models) and project root (context)
+        /// "Generated/": Generate all files in the specified folder relative to project root
+        /// Default: null
+        /// </summary>
+        public string? PhysicalFilesPath { get; set; } = null;
     }
 }

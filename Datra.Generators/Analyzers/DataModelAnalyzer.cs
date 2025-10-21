@@ -51,8 +51,10 @@ namespace Datra.Generators.Analyzers
                 var dataModel = AnalyzeClass(classSymbol);
                 if (dataModel != null)
                 {
+                    // Store the source file path for physical file emission
+                    dataModel.SourceFilePath = classDeclaration.SyntaxTree.FilePath;
                     dataModels.Add(dataModel);
-                    GeneratorLogger.Log($"Found data model: {dataModel.TypeName} ({(dataModel.IsTableData ? "Table" : "Single")})");
+                    GeneratorLogger.Log($"Found data model: {dataModel.TypeName} ({(dataModel.IsTableData ? "Table" : "Single")}), Source: {dataModel.SourceFilePath}");
                 }
             }
 
