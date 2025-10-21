@@ -279,6 +279,13 @@ namespace Datra.Unity.Editor.Views
             foreach (var key in keys)
             {
                 var text = localizationContext.GetText(key);
+
+                // Remove [Missing: prefix for display (we'll show it visually instead)
+                if (!string.IsNullOrEmpty(text) && text.StartsWith("[Missing:"))
+                {
+                    text = ""; // Show as empty instead of [Missing: Key]
+                }
+
                 var keyData = localizationContext.GetKeyData(key);
                 var wrapper = new LocalizationKeyWrapper(key, text, keyData);
                 wrappers.Add(wrapper);
@@ -352,6 +359,12 @@ namespace Datra.Unity.Editor.Views
             row.style.height = RowHeight;
             row.style.alignItems = Align.Center;
 
+            // Add missing locale indicator
+            if (wrapper.IsMissing)
+            {
+                row.AddToClassList("missing-locale-row");
+            }
+
             var cells = new Dictionary<string, VisualElement>();
             cellElements[wrapper] = cells;
 
@@ -400,17 +413,124 @@ namespace Datra.Unity.Editor.Views
 
             // Row hover effect
             row.RegisterCallback<MouseEnterEvent>(evt => {
-                if (!row.ClassListContains("selected"))
+                if (!row.ClassListContains("selected") && !row.ClassListContains("missing-locale-row"))
                     row.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f, 0.2f);
             });
 
             row.RegisterCallback<MouseLeaveEvent>(evt => {
-                if (!row.ClassListContains("selected"))
+                if (!row.ClassListContains("selected") && !row.ClassListContains("missing-locale-row"))
                     row.style.backgroundColor = Color.clear;
+            });
+
+            // Right-click context menu
+            row.RegisterCallback<MouseDownEvent>(evt => {
+                if (evt.button == 1) // Right click
+                {
+                    evt.StopPropagation();
+                    ShowRowContextMenu(wrapper);
+                }
             });
 
             container.Add(row);
             rowElements[wrapper] = row;
+        }
+
+        private void ShowRowContextMenu(LocalizationKeyWrapper wrapper)
+        {
+            var menu = new GenericMenu();
+
+            // Auto Translate option (only show for missing or empty translations)
+            if (wrapper.IsMissing)
+            {
+                menu.AddItem(new GUIContent("Auto Translate from English"), false, () => {
+                    AutoTranslateKey(wrapper, LanguageCode.En);
+                });
+                menu.AddSeparator("");
+            }
+
+            // Copy Key
+            menu.AddItem(new GUIContent("Copy Key"), false, () => {
+                EditorGUIUtility.systemCopyBuffer = wrapper.Id;
+            });
+
+            // Copy Text
+            if (!string.IsNullOrEmpty(wrapper.Text))
+            {
+                menu.AddItem(new GUIContent("Copy Text"), false, () => {
+                    EditorGUIUtility.systemCopyBuffer = wrapper.Text;
+                });
+            }
+
+            menu.ShowAsContext();
+        }
+
+        private async void AutoTranslateKey(LocalizationKeyWrapper wrapper, LanguageCode sourceLanguage)
+        {
+            if (localizationContext == null || wrapper == null) return;
+
+            try
+            {
+                UpdateStatus($"Translating '{wrapper.Id}'...");
+
+                // Use the localization context's auto-translate method
+                var success = await localizationContext.AutoTranslateKeyAsync(wrapper.Id, sourceLanguage);
+
+                if (success)
+                {
+                    // Update the wrapper with the new translated text
+                    var translatedText = localizationContext.GetText(wrapper.Id);
+                    wrapper.Text = translatedText;
+
+                    // Get the tracker for this wrapper and track the change
+                    if (itemTrackers.TryGetValue(wrapper, out var tracker))
+                    {
+                        // Force the tracker to recognize this as a modification
+                        tracker.TrackChange(wrapper, "Text", translatedText);
+                    }
+
+                    // Mark as modified
+                    MarkAsModified();
+
+                    // Update the specific row visually
+                    if (rowElements.TryGetValue(wrapper, out var row))
+                    {
+                        // Remove missing-locale-row class if it exists
+                        row.RemoveFromClassList("missing-locale-row");
+
+                        // Update the text field cell
+                        if (cellElements.TryGetValue(wrapper, out var cells))
+                        {
+                            if (cells.TryGetValue("Text", out var textCell))
+                            {
+                                // Find the TextField and update its value
+                                var textField = textCell.Q<TextField>();
+                                if (textField != null)
+                                {
+                                    textField.SetValueWithoutNotify(translatedText);
+                                }
+                            }
+                        }
+                    }
+
+                    UpdateStatus($"'{wrapper.Id}' translated successfully");
+                }
+                else
+                {
+                    UpdateStatus($"Translation failed: Source text not found for '{wrapper.Id}'");
+                    EditorUtility.DisplayDialog("Translation Failed",
+                        $"Could not find source text in {sourceLanguage.GetDisplayName()} for key '{wrapper.Id}'.\n\n" +
+                        "Make sure the key exists in the source language.",
+                        "OK");
+                }
+            }
+            catch (Exception e)
+            {
+                UpdateStatus($"Translation error: {e.Message}");
+                EditorUtility.DisplayDialog("Translation Error",
+                    $"Failed to translate '{wrapper.Id}':\n\n{e.Message}",
+                    "OK");
+                Debug.LogError($"Auto-translate failed: {e}");
+            }
         }
 
         private VisualElement CreateActionsCell(LocalizationKeyWrapper wrapper)

@@ -170,6 +170,17 @@
     opacity: 0.6;
 }
 
+/* Missing locale rows */
+.table-row.missing-locale-row {
+    background-color: rgba(139, 69, 19, 0.25) !important;
+    border-left-width: 3px;
+    border-left-color: #d97706;
+}
+
+.table-row.missing-locale-row:hover {
+    background-color: rgba(139, 69, 19, 0.35) !important;
+}
+
 /* Delete column styles */
 .delete-column-container {
     background-color: #1a1a1a;

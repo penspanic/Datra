@@ -40,6 +40,11 @@ namespace Datra.Unity.Editor.Models
         public string Category { get; set; }
 
         /// <summary>
+        /// Whether this key has a missing translation in the current language
+        /// </summary>
+        public bool IsMissing => string.IsNullOrEmpty(Text) || Text.StartsWith("[Missing:");
+
+        /// <summary>
         /// Creates a new LocalizationKeyWrapper
         /// </summary>
         /// <param name="key">The localization key</param>

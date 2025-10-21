@@ -26,6 +26,7 @@ namespace Datra.Services
         private readonly IRawDataProvider _rawDataProvider;
         private readonly DataSerializerFactory _serializerFactory;
         private readonly DatraConfigurationValue _config;
+        private readonly ITranslationProvider _translationProvider;
         private readonly Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>> _languageData;
         private DataRepository<string, LocalizationKeyData>? _keyRepository;
         private Dictionary<string, object> _languageRepositories; // Will be IDataRepository<string, LocalizationData> at runtime
@@ -47,11 +48,20 @@ namespace Datra.Services
         /// <summary>
         /// Creates a new LocalizationContext
         /// </summary>
-        public LocalizationContext(IRawDataProvider rawDataProvider, DataSerializerFactory? serializerFactory = null, DatraConfigurationValue? config = null)
+        /// <param name="rawDataProvider">Provider for loading/saving localization data</param>
+        /// <param name="serializerFactory">Factory for creating serializers (optional, uses default if null)</param>
+        /// <param name="config">Configuration values (optional, uses default if null)</param>
+        /// <param name="translationProvider">Translation provider for auto-translate features (optional, uses DummyTranslationProvider if null)</param>
+        public LocalizationContext(
+            IRawDataProvider rawDataProvider,
+            DataSerializerFactory? serializerFactory = null,
+            DatraConfigurationValue? config = null,
+            ITranslationProvider? translationProvider = null)
         {
             _rawDataProvider = rawDataProvider ?? throw new ArgumentNullException(nameof(rawDataProvider));
             _serializerFactory = serializerFactory ?? new DataSerializerFactory();
             _config = config ?? DatraConfigurationValue.CreateDefault();
+            _translationProvider = translationProvider ?? new DummyTranslationProvider();
             _languageData = new Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>>();
             _languageRepositories = new Dictionary<string, object>();
             _availableLanguages = new List<LanguageCode>();
@@ -464,6 +474,60 @@ namespace Datra.Services
             {
                 await SaveCurrentLanguageAsync();
             }
+        }
+
+        /// <summary>
+        /// Translates text from source language to target language using the configured translation provider
+        /// </summary>
+        /// <param name="text">The text to translate</param>
+        /// <param name="sourceLanguage">The source language code</param>
+        /// <param name="targetLanguage">The target language code</param>
+        /// <returns>The translated text</returns>
+        public async Task<string> TranslateTextAsync(string text, LanguageCode sourceLanguage, LanguageCode targetLanguage)
+        {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
+            if (!_translationProvider.SupportsLanguagePair(sourceLanguage, targetLanguage))
+            {
+                throw new InvalidOperationException(
+                    $"Translation provider does not support translation from {sourceLanguage.ToIsoCode()} to {targetLanguage.ToIsoCode()}");
+            }
+
+            return await _translationProvider.TranslateAsync(text, sourceLanguage, targetLanguage);
+        }
+
+        /// <summary>
+        /// Auto-translates a key from a source language to the current language
+        /// </summary>
+        /// <param name="key">The localization key to translate</param>
+        /// <param name="sourceLanguage">The source language to translate from</param>
+        /// <returns>True if translation was successful and applied, false otherwise</returns>
+        public async Task<bool> AutoTranslateKeyAsync(string key, LanguageCode sourceLanguage)
+        {
+            if (string.IsNullOrEmpty(key))
+                return false;
+
+            // Get source text
+            string? sourceText = null;
+            if (_languageData.TryGetValue(sourceLanguage, out var sourceDict))
+            {
+                if (sourceDict.TryGetValue(key, out var entry))
+                {
+                    sourceText = entry.Text;
+                }
+            }
+
+            if (string.IsNullOrEmpty(sourceText))
+                return false;
+
+            // Translate
+            var translatedText = await TranslateTextAsync(sourceText, sourceLanguage, _currentLanguageCode);
+
+            // Apply translation to current language
+            SetText(key, translatedText);
+
+            return true;
         }
     }
 }
