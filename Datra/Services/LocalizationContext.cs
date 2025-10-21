@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,8 +19,8 @@ namespace Datra.Services
     {
         private class LocalizationEntry
         {
-            public string Text { get; set; }
-            public string Context { get; set; }
+            public string Text { get; set; } = string.Empty;
+            public string Context { get; set; } = string.Empty;
         }
         
         private readonly IRawDataProvider _rawDataProvider;
@@ -91,7 +92,7 @@ namespace Datra.Services
         /// <summary>
         /// Gets key information for a specific key
         /// </summary>
-        public LocalizationKeyData GetKeyData(string key)
+        public LocalizationKeyData? GetKeyData(string key)
         {
             if (_keyRepository == null || string.IsNullOrEmpty(key))
                 return null;

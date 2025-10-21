@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using YamlDotNet.Core;
 using YamlDotNet.Core.Events;

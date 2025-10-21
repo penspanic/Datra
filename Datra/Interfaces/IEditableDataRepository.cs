@@ -27,11 +27,6 @@ namespace Datra.Interfaces
         /// Clear all data
         /// </summary>
         void Clear();
-        
-        /// <summary>
-        /// Save changes to storage
-        /// </summary>
-        Task SaveAsync();
     }
     
     /// <summary>
@@ -44,10 +39,5 @@ namespace Datra.Interfaces
         /// Set data
         /// </summary>
         void Set(TData data);
-        
-        /// <summary>
-        /// Save changes to storage
-        /// </summary>
-        Task SaveAsync();
     }
 }
