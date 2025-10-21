@@ -27,19 +27,19 @@ namespace Datra.Unity.Editor.Views
         {
             // Header already created by base class
             // Add any form-specific header elements if needed
-            
+
             // Create ScrollView for form content
             scrollView = new ScrollView();
             scrollView.AddToClassList("form-view-scroll");
-            scrollView.style.flexGrow = 1;
+            scrollView.AddToClassList("form-scroll-view");
             scrollView.verticalScrollerVisibility = ScrollerVisibility.Auto;
             scrollView.horizontalScrollerVisibility = ScrollerVisibility.Hidden;
-            
+
             // Create scroll content container
             scrollContent = new VisualElement();
             scrollContent.AddToClassList("form-view-scroll-content");
             scrollView.Add(scrollContent);
-            
+
             // Add ScrollView to the main content container
             contentContainer.Add(scrollView);
         }
@@ -126,27 +126,21 @@ namespace Datra.Unity.Editor.Views
         {
             var toolbar = new VisualElement();
             toolbar.AddToClassList("table-toolbar");
-            toolbar.style.flexDirection = FlexDirection.Row;
-            toolbar.style.height = 36;
-            toolbar.style.paddingLeft = 8;
-            toolbar.style.paddingRight = 8;
-            toolbar.style.alignItems = Align.Center;
-            toolbar.style.borderBottomWidth = 1;
-            toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
-            
+            toolbar.AddToClassList("form-toolbar");
+
             var addButton = new Button(() => base.AddNewItem());
             addButton.text = "➕ Add New Item";
             addButton.AddToClassList("add-button");
-            addButton.style.marginRight = 16;
+            addButton.AddToClassList("form-add-button");
             toolbar.Add(addButton);
-            
+
             this.searchField = new TextField();
             //searchField.placeholder = "Search items...";
             this.searchField.AddToClassList("table-search");
-            this.searchField.style.flexGrow = 1;
+            this.searchField.AddToClassList("form-search");
             (searchField as TextField).RegisterValueChangedCallback(evt => FilterItems(evt.newValue));
             toolbar.Add(this.searchField);
-            
+
             return toolbar;
         }
         
@@ -176,19 +170,15 @@ namespace Datra.Unity.Editor.Views
             // Create header controls container
             var headerControls = new VisualElement();
             headerControls.AddToClassList("table-item-controls");
-            headerControls.style.flexDirection = FlexDirection.Row;
-            headerControls.style.alignItems = Align.Center;
-            headerControls.style.position = Position.Absolute;
-            headerControls.style.right = 8;
-            headerControls.style.top = 4;
-            
+            headerControls.AddToClassList("form-header-controls");
+
             // ID field
             if (idProperty != null && idProperty.CanWrite && !isReadOnly)
             {
                 var idFieldContainer = CreateIdField(actualData, item, idProperty, currentId);
                 headerControls.Add(idFieldContainer);
             }
-            
+
             // Delete button
             if (!isReadOnly)
             {
@@ -198,7 +188,7 @@ namespace Datra.Unity.Editor.Views
                 deleteButton.text = "🗑";
                 deleteButton.tooltip = "Delete Item";
                 deleteButton.AddToClassList("delete-button");
-                deleteButton.style.marginLeft = 4;
+                deleteButton.AddToClassList("form-delete-button");
                 headerControls.Add(deleteButton);
             }
             
@@ -253,21 +243,19 @@ namespace Datra.Unity.Editor.Views
         {
             var idFieldContainer = new VisualElement();
             idFieldContainer.AddToClassList("id-field-container");
-            idFieldContainer.style.flexDirection = FlexDirection.Row;
-            idFieldContainer.style.alignItems = Align.Center;
-            idFieldContainer.style.marginRight = 8;
-            
+            idFieldContainer.AddToClassList("form-id-field-container");
+
             var idLabel = new Label("ID:");
             idLabel.AddToClassList("id-field-label");
-            idLabel.style.marginRight = 4;
+            idLabel.AddToClassList("form-id-label");
             idFieldContainer.Add(idLabel);
-            
+
             if (idProperty.PropertyType == typeof(int))
             {
                 var idField = new IntegerField();
                 idField.value = (int)(currentId ?? 0);
                 idField.AddToClassList("id-field");
-                idField.style.width = 60;
+                idField.AddToClassList("form-id-field-int");
                 idField.RegisterValueChangedCallback(evt =>
                 {
                     var oldKey = GetKeyFromItem(item);
@@ -284,7 +272,7 @@ namespace Datra.Unity.Editor.Views
                 var idField = new TextField();
                 idField.value = currentId as string ?? "";
                 idField.AddToClassList("id-field");
-                idField.style.width = 100;
+                idField.AddToClassList("form-id-field-string");
                 idField.RegisterValueChangedCallback(evt =>
                 {
                     var oldKey = GetKeyFromItem(item);

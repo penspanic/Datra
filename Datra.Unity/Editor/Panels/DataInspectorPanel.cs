@@ -217,7 +217,15 @@ namespace Datra.Unity.Editor.Panels
             var interfaces = type.GetInterfaces();
             return interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableData<>));
         }
-        
+
+        /// <summary>
+        /// Refresh the modified state of the current view (e.g., after save)
+        /// </summary>
+        public void RefreshModifiedState()
+        {
+            viewModeController?.RefreshModifiedState();
+        }
+
         public override void Cleanup()
         {
             // Cleanup view controller

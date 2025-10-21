@@ -23,9 +23,6 @@ namespace Datra.Unity.Editor.Views
         private Dictionary<object, VisualElement> rowElements;
         private ScrollView bodyScrollView;
 
-        // Events
-        public event Action<object, string, object> OnCellValueChanged;
-        
         // Properties
         public bool ShowIdColumn { get; set; } = true;
         public bool ShowActionsColumn { get; set; } = true;
@@ -56,30 +53,21 @@ namespace Datra.Unity.Editor.Views
             // Create main table container
             tableContainer = new VisualElement();
             tableContainer.AddToClassList("table-container");
-            tableContainer.style.flexGrow = 1;
-            tableContainer.style.flexDirection = FlexDirection.Column;
-            
+
             // Create header container
             var tableHeaderContainer = new VisualElement();
-            tableHeaderContainer.style.height = RowHeight;
-            tableHeaderContainer.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
-            tableHeaderContainer.style.borderBottomWidth = 1;
-            tableHeaderContainer.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
-            tableHeaderContainer.style.overflow = Overflow.Hidden;
-            
+            tableHeaderContainer.AddToClassList("table-header-container");
+
             headerRow = new VisualElement();
             headerRow.AddToClassList("table-header-row");
-            headerRow.style.flexDirection = FlexDirection.Row;
-            headerRow.style.height = RowHeight;
             tableHeaderContainer.Add(headerRow);
-            
+
             tableContainer.Add(tableHeaderContainer);
-            
+
             // Create 2D scroll view for body
             bodyScrollView = new ScrollView(ScrollViewMode.VerticalAndHorizontal);
             bodyScrollView.name = "table-body";
             bodyScrollView.AddToClassList("table-body-scroll");
-            bodyScrollView.style.flexGrow = 1;
             
             // Sync horizontal scroll with header
             bodyScrollView.horizontalScroller.valueChanged += (value) => {
@@ -94,14 +82,7 @@ namespace Datra.Unity.Editor.Views
         {
             var toolbar = new VisualElement();
             toolbar.AddToClassList("table-toolbar");
-            toolbar.style.flexDirection = FlexDirection.Row;
-            toolbar.style.height = 36;
-            toolbar.style.paddingLeft = 8;
-            toolbar.style.paddingRight = 8;
-            toolbar.style.alignItems = Align.Center;
-            toolbar.style.borderBottomWidth = 1;
-            toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
-            
+
             // Add button
             var addButton = new Button(() => {
                 if (!isReadOnly)
@@ -109,25 +90,22 @@ namespace Datra.Unity.Editor.Views
             });
             addButton.text = "➕ Add Row";
             addButton.AddToClassList("table-add-button");
-            addButton.style.marginRight = 8;
             addButton.SetEnabled(!isReadOnly);
             toolbar.Add(addButton);
-            
+
             // Search field
             searchField = new ToolbarSearchField();
             searchField.AddToClassList("table-search");
-            searchField.style.flexGrow = 1;
             (searchField as ToolbarSearchField).RegisterValueChangedCallback(evt => FilterRows(evt.newValue));
             toolbar.Add(searchField);
-            
+
             // View options
             var optionsButton = new Button(() => ShowViewOptions());
             optionsButton.text = "⚙";
             optionsButton.tooltip = "View Options";
             optionsButton.AddToClassList("table-options-button");
-            optionsButton.style.marginLeft = 8;
             toolbar.Add(optionsButton);
-            
+
             return toolbar;
         }
         
@@ -145,7 +123,6 @@ namespace Datra.Unity.Editor.Views
             if (isDifferentType)
             {
                 hasUnsavedChanges = false;
-                // Clear modification tracking when switching to different type is handled by changeTracker
             }
 
             // Get columns (properties) BEFORE calling RefreshContent
@@ -158,12 +135,6 @@ namespace Datra.Unity.Editor.Views
             CleanupFields();
             RefreshContent();
             UpdateFooter();
-        }
-        
-        public void SetTableData(IEnumerable<object> data)
-        {
-            items = data?.ToList() ?? new List<object>();
-            RefreshContent();
         }
         
         public override void RefreshContent()
@@ -195,9 +166,6 @@ namespace Datra.Unity.Editor.Views
                         items.Add(actualData);
                     }
                 }
-                else
-                {
-                }
             }
             else
             {
@@ -218,7 +186,6 @@ namespace Datra.Unity.Editor.Views
 
             var bodyContainer = new VisualElement();
             bodyContainer.AddToClassList("table-body-container");
-            bodyContainer.style.flexDirection = FlexDirection.Column;
 
             // Create data rows
             foreach (var item in items)
@@ -297,63 +264,52 @@ namespace Datra.Unity.Editor.Views
         {
             var cell = new VisualElement();
             cell.AddToClassList("table-header-cell");
+            cell.AddToClassList("header-cell-content");
             cell.style.width = width;
             cell.style.minWidth = width;
-            cell.style.paddingLeft = 8;
-            cell.style.paddingRight = 8;
-            cell.style.justifyContent = Justify.Center;
-            
+
             var label = new Label(text);
-            label.style.unityFontStyleAndWeight = FontStyle.Bold;
-            label.style.fontSize = 11;
+            label.AddToClassList("header-cell-label");
             cell.Add(label);
-            
+
             // Add resize handle on the right
             var resizeHandleRight = new VisualElement();
             resizeHandleRight.AddToClassList("table-resize-handle");
+            resizeHandleRight.AddToClassList("resize-handle");
             resizeHandleRight.AddToClassList("resize-handle-right");
-            resizeHandleRight.style.position = Position.Absolute;
-            resizeHandleRight.style.right = -3; // Extend 3px to the right
-            resizeHandleRight.style.top = 0;
-            resizeHandleRight.style.bottom = 0;
-            resizeHandleRight.style.width = 6;
             resizeHandleRight.pickingMode = PickingMode.Position;
-            
+
             // Add resize handle on the left (except for first column)
             var resizeHandleLeft = new VisualElement();
             resizeHandleLeft.AddToClassList("table-resize-handle");
+            resizeHandleLeft.AddToClassList("resize-handle");
             resizeHandleLeft.AddToClassList("resize-handle-left");
-            resizeHandleLeft.style.position = Position.Absolute;
-            resizeHandleLeft.style.left = -3; // Extend 3px to the left
-            resizeHandleLeft.style.top = 0;
-            resizeHandleLeft.style.bottom = 0;
-            resizeHandleLeft.style.width = 6;
             resizeHandleLeft.pickingMode = PickingMode.Position;
-            
+
             // Set cursor style for right handle
             resizeHandleRight.RegisterCallback<MouseEnterEvent>(evt => {
                 resizeHandleRight.style.cursor = new Cursor() { hotspot = Vector2.zero };
                 resizeHandleRight.style.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
             });
-            
+
             resizeHandleRight.RegisterCallback<MouseLeaveEvent>(evt => {
                 resizeHandleRight.style.cursor = StyleKeyword.Null;
                 resizeHandleRight.style.backgroundColor = Color.clear;
             });
-            
+
             resizeHandleRight.RegisterCallback<MouseDownEvent>(evt => StartResize(evt, cell));
-            
+
             // Set cursor style for left handle
             resizeHandleLeft.RegisterCallback<MouseEnterEvent>(evt => {
                 resizeHandleLeft.style.cursor = new Cursor() { hotspot = Vector2.zero };
                 resizeHandleLeft.style.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
             });
-            
+
             resizeHandleLeft.RegisterCallback<MouseLeaveEvent>(evt => {
                 resizeHandleLeft.style.cursor = StyleKeyword.Null;
                 resizeHandleLeft.style.backgroundColor = Color.clear;
             });
-            
+
             resizeHandleLeft.RegisterCallback<MouseDownEvent>(evt => {
                 // Find previous cell to resize
                 var index = headerRow.IndexOf(cell);
@@ -363,10 +319,10 @@ namespace Datra.Unity.Editor.Views
                     StartResize(evt, previousCell);
                 }
             });
-            
+
             cell.Add(resizeHandleRight);
             cell.Add(resizeHandleLeft);
-            
+
             return cell;
         }
         
@@ -374,23 +330,17 @@ namespace Datra.Unity.Editor.Views
         {
             var row = new VisualElement();
             row.AddToClassList("table-row");
-            row.style.flexDirection = FlexDirection.Row;
-            row.style.height = RowHeight;
-            row.style.alignItems = Align.Center;
-            
+
             var cells = new Dictionary<string, VisualElement>();
             cellElements[item] = cells;
-            
+
             // Add delete button as the first cell in the row
             if (ShowActionsColumn)
             {
                 var deleteCell = new VisualElement();
                 deleteCell.AddToClassList("table-cell");
-                deleteCell.style.width = 60;
-                deleteCell.style.minWidth = 60;
-                deleteCell.style.justifyContent = Justify.Center;
-                deleteCell.style.alignItems = Align.Center;
-                
+                deleteCell.AddToClassList("delete-cell");
+
                 var deleteButton = new Button(() => {
                     if (!isReadOnly)
                     {
@@ -401,10 +351,10 @@ namespace Datra.Unity.Editor.Views
                 deleteButton.tooltip = "Delete Row";
                 deleteButton.AddToClassList("table-delete-button");
                 deleteCell.Add(deleteButton);
-                
+
                 row.Add(deleteCell);
             }
-            
+
             // ID field (only for table data, not single data)
             if (ShowIdColumn && IsTableData(dataType))
             {
@@ -416,28 +366,17 @@ namespace Datra.Unity.Editor.Views
                     row.Add(idCell);
                 }
             }
-            
+
             // Data cells
             foreach (var column in columns)
             {
                 if (column.Name == "Id" && ShowIdColumn) continue;
-                
+
                 var cell = CreateEditableCell(item, column, 150);
                 cells[column.Name] = cell;
                 row.Add(cell);
             }
-            
-            // Row hover effect
-            row.RegisterCallback<MouseEnterEvent>(evt => {
-                if (!row.ClassListContains("selected") && !row.ClassListContains("modified-row"))
-                    row.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f, 0.2f);
-            });
-            
-            row.RegisterCallback<MouseLeaveEvent>(evt => {
-                if (!row.ClassListContains("selected") && !row.ClassListContains("modified-row"))
-                    row.style.backgroundColor = Color.clear;
-            });
-            
+
             container.Add(row);
             rowElements[item] = row;
         }
@@ -446,20 +385,16 @@ namespace Datra.Unity.Editor.Views
         {
             var cell = new VisualElement();
             cell.AddToClassList("table-cell");
+            cell.AddToClassList("editable-cell");
             cell.style.width = width;
             cell.style.minWidth = width;
-            cell.style.paddingLeft = 8;
-            cell.style.paddingRight = 8;
-            
+
             if (isReadOnly || !property.CanWrite)
             {
                 // Read-only display
                 var value = property.GetValue(item);
                 var displayValue = GetDisplayValue(property.PropertyType, value);
                 var label = new Label(displayValue);
-                label.style.fontSize = 11;
-                label.style.overflow = Overflow.Hidden;
-                label.style.textOverflow = TextOverflow.Ellipsis;
                 cell.Add(label);
             }
             else
@@ -467,8 +402,6 @@ namespace Datra.Unity.Editor.Views
                 // Create field using DatraPropertyField in table mode
                 var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table);
                 field.OnValueChanged += (propName, newValue) => {
-                    OnCellValueChanged?.Invoke(item, propName, newValue);
-
                     var itemKey = GetKeyFromItem(item);
                     changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
 
@@ -506,10 +439,9 @@ namespace Datra.Unity.Editor.Views
                     Debug.Log($"[OnRevertRequested] Reverted property: key={itemKey}, property={propName}");
                 };
 
-                field.style.flexGrow = 1;
                 cell.Add(field);
             }
-            
+
             return cell;
         }
         
@@ -704,15 +636,15 @@ namespace Datra.Unity.Editor.Views
             }
         }
         
-        protected override void SaveChanges()
+        protected override void OnModificationsCleared()
         {
-            base.SaveChanges();
+            base.OnModificationsCleared();
 
-            // Clear visual modifications from all cells after save
+            // Clear visual modifications from all cells
             foreach (var (item, cells) in cellElements)
             {
                 foreach (var (property, cell) in cells)
-                    cell.Q<DatraPropertyField>().SetModified(false);
+                    cell.Q<DatraPropertyField>()?.SetModified(false);
             }
 
             // Clear new row indicators
@@ -721,39 +653,18 @@ namespace Datra.Unity.Editor.Views
                 row.RemoveFromClassList("new-row");
                 row.RemoveFromClassList("deleted-row");
             }
+        }
 
-            // modifiedCells tracking removed - using changeTracker only
-
-            // Update modification state (should be false after save)
+        protected override void SaveChanges()
+        {
+            base.SaveChanges();
             UpdateModifiedState();
         }
 
         protected override void RevertChanges()
         {
             base.RevertChanges();
-
-            // Clear visual modifications from all cells
-            foreach (var (item, cells) in cellElements)
-            {
-                foreach (var (property, cell) in cells)
-                {
-                    cell.Q<DatraPropertyField>().SetModified(false);
-                }
-            }
-
-            // Clear new row indicators
-            foreach (var row in rowElements.Values)
-            {
-                row.RemoveFromClassList("new-row");
-                row.RemoveFromClassList("deleted-row");
-            }
-
-            // modifiedCells tracking removed - using changeTracker only
-
-            // Update modification state (should be false after revert)
             UpdateModifiedState();
         }
-
-        // Baseline management and field update methods are now inherited from DatraDataView
     }
 }

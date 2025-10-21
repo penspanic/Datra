@@ -1,0 +1,67 @@
+/* Form View Styles */
+.form-scroll-view {
+    flex-grow: 1;
+}
+
+/* Form Toolbar */
+.form-toolbar {
+    flex-direction: row;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+}
+
+.form-add-button {
+    margin-right: 16px;
+}
+
+.form-search {
+    flex-grow: 1;
+}
+
+/* Item Container */
+.form-item-container {
+    border-bottom-width: 1px;
+    border-bottom-color: #2a2a2a;
+}
+
+/* Form Item Header */
+.form-item-header {
+    flex-direction: row;
+    align-items: center;
+    position: relative;
+}
+
+.form-header-controls {
+    flex-direction: row;
+    align-items: center;
+    position: absolute;
+    right: 8px;
+    top: 4px;
+}
+
+.form-delete-button {
+    margin-left: 4px;
+}
+
+/* ID Field Container */
+.form-id-field-container {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 8px;
+}
+
+.form-id-label {
+    margin-right: 4px;
+}
+
+.form-id-field-int {
+    width: 60px;
+}
+
+.form-id-field-string {
+    width: 100px;
+}

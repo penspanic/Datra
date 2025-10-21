@@ -322,3 +322,130 @@
 .tab-close-button:hover {
     color: #f44336;
 }
+
+/* Table Container */
+.table-container {
+    flex-grow: 1;
+    flex-direction: column;
+}
+
+/* Table Header Container */
+.table-header-container {
+    height: 28px;
+    background-color: #262626;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+    overflow: hidden;
+}
+
+/* Table Header Row */
+.table-header-row {
+    flex-direction: row;
+    height: 28px;
+}
+
+/* Table Body Scroll View */
+.table-body-scroll {
+    flex-grow: 1;
+}
+
+/* Table Body Container */
+.table-body-container {
+    flex-direction: column;
+}
+
+/* Toolbar Inline Styles */
+.table-toolbar {
+    flex-direction: row;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+}
+
+.table-add-button {
+    margin-right: 8px;
+}
+
+.table-search {
+    flex-grow: 1;
+}
+
+.table-options-button {
+    margin-left: 8px;
+}
+
+/* Header Cell Components */
+.header-cell-content {
+    width: 100%;
+    min-width: 100%;
+    padding-left: 8px;
+    padding-right: 8px;
+    justify-content: center;
+}
+
+.header-cell-label {
+    -unity-font-style: bold;
+    font-size: 11px;
+}
+
+/* Resize Handles */
+.resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+}
+
+.resize-handle-right {
+    right: -3px;
+}
+
+.resize-handle-left {
+    left: -3px;
+}
+
+.resize-handle:hover {
+    background-color: rgba(90, 159, 212, 0.3);
+}
+
+/* Table Row Styling */
+.table-row {
+    flex-direction: row;
+    height: 28px;
+    align-items: center;
+}
+
+.table-row:hover {
+    background-color: rgba(48, 48, 48, 0.2);
+}
+
+.table-row.selected {
+    background-color: rgba(48, 48, 48, 0.2);
+}
+
+/* Delete Cell */
+.delete-cell {
+    width: 60px;
+    min-width: 60px;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Editable Cell */
+.editable-cell {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+.editable-cell Label {
+    font-size: 11px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.editable-cell .datra-property-field {
+    flex-grow: 1;
+}

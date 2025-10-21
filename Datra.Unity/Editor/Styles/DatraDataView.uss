@@ -1,0 +1,30 @@
+/* Data View Base Styles */
+.data-view-content {
+    flex-grow: 1;
+}
+
+/* Footer Styles */
+.data-view-footer {
+    flex-direction: row;
+    justify-content: space-between;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    border-top-width: 1px;
+    border-top-color: #1a1a1a;
+}
+
+.footer-status-area {
+    flex-direction: row;
+    align-items: center;
+}
+
+.footer-action-area {
+    flex-direction: row;
+    align-items: center;
+}
+
+.secondary-button {
+    margin-right: 8px;
+}

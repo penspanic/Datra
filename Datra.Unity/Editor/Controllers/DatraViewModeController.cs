@@ -232,7 +232,18 @@ namespace Datra.Unity.Editor.Controllers
         {
             OnDataModified?.Invoke(type, isModified);
         }
-        
+
+        /// <summary>
+        /// Refresh the modified state of the current view (e.g., after save)
+        /// </summary>
+        public void RefreshModifiedState()
+        {
+            if (currentView != null)
+            {
+                currentView.UpdateModifiedState();
+            }
+        }
+
         public void Cleanup()
         {
             CleanupCurrentView();

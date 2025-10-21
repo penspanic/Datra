@@ -80,9 +80,8 @@ namespace Datra.Unity.Editor.Views
             // Content container (no scroll - let subclasses handle scrolling)
             contentContainer = new VisualElement();
             contentContainer.AddToClassList("data-view-content");
-            contentContainer.style.flexGrow = 1;
             Add(contentContainer);
-            
+
             // Footer
             footerContainer = new VisualElement();
             footerContainer.AddToClassList("data-view-footer");
@@ -95,44 +94,32 @@ namespace Datra.Unity.Editor.Views
         
         private void InitializeFooter()
         {
-            footerContainer.style.flexDirection = FlexDirection.Row;
-            footerContainer.style.justifyContent = Justify.SpaceBetween;
-            footerContainer.style.paddingLeft = 8;
-            footerContainer.style.paddingRight = 8;
-            footerContainer.style.paddingTop = 4;
-            footerContainer.style.paddingBottom = 4;
-            footerContainer.style.borderTopWidth = 1;
-            footerContainer.style.borderTopColor = new Color(0.1f, 0.1f, 0.1f);
-            
             // Status area
             var statusArea = new VisualElement();
-            statusArea.style.flexDirection = FlexDirection.Row;
-            statusArea.style.alignItems = Align.Center;
-            
+            statusArea.AddToClassList("footer-status-area");
+
             statusLabel = new Label("Ready");
             statusLabel.AddToClassList("status-label");
             statusArea.Add(statusLabel);
-            
+
             footerContainer.Add(statusArea);
-            
+
             // Action buttons
             var actionArea = new VisualElement();
-            actionArea.style.flexDirection = FlexDirection.Row;
-            actionArea.style.alignItems = Align.Center;
-            
+            actionArea.AddToClassList("footer-action-area");
+
             revertButton = new Button(RevertChanges);
             revertButton.text = "Revert";
             revertButton.AddToClassList("secondary-button");
             revertButton.SetEnabled(false);
-            revertButton.style.marginRight = 8;
             actionArea.Add(revertButton);
-            
+
             saveButton = new Button(SaveChanges);
             saveButton.text = "Save";
             saveButton.AddToClassList("primary-button");
             saveButton.SetEnabled(false);
             actionArea.Add(saveButton);
-            
+
             footerContainer.Add(actionArea);
         }
         
@@ -194,19 +181,34 @@ namespace Datra.Unity.Editor.Views
         /// <summary>
         /// Updates the modified state based on actual modification check
         /// </summary>
-        protected void UpdateModifiedState()
+        public void UpdateModifiedState()
         {
             bool actuallyModified = HasActualModifications();
 
             Debug.Log($"[UpdateModifiedState] DataType: {dataType?.Name}, Tracker: {(changeTracker != null ? "exists" : "null")}, ActuallyModified: {actuallyModified}, HasUnsavedChanges: {hasUnsavedChanges}");
 
+            bool wasModified = hasUnsavedChanges;
             if (hasUnsavedChanges != actuallyModified)
             {
                 hasUnsavedChanges = actuallyModified;
                 UpdateFooter();
                 OnDataModified?.Invoke(dataType, actuallyModified);
                 Debug.Log($"[UpdateModifiedState] Fired OnDataModified event: {dataType?.Name}, isModified: {actuallyModified}");
+
+                // If changed from modified to not modified, clear UI modifications
+                if (wasModified && !actuallyModified)
+                {
+                    OnModificationsCleared();
+                }
             }
+        }
+
+        /// <summary>
+        /// Called when modifications are cleared (e.g., after save). Override to clear UI indicators.
+        /// </summary>
+        protected virtual void OnModificationsCleared()
+        {
+            // Override in derived classes to clear visual modification indicators
         }
 
         /// <summary>

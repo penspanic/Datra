@@ -154,7 +154,9 @@ namespace Datra.Unity.Editor
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraNavigationPanel.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraInspectorPanel.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss",
-                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraTableView.uss"
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraDataView.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraTableView.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraFormView.uss"
             };
             
             foreach (var path in stylePaths)
@@ -554,6 +556,12 @@ namespace Datra.Unity.Editor
                             navigationPanel.MarkTypeAsModified(type, false);
                         }
                     }
+
+                    // Refresh current view's modified state if it was saved
+                    if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
+                    {
+                        dataInspectorPanel.RefreshModifiedState();
+                    }
                 }
             }
             finally
@@ -620,6 +628,12 @@ namespace Datra.Unity.Editor
             {
                 navigationPanel.MarkTypeAsModified(dataType, false);
                 UpdateCurrentDataModifiedState();
+
+                // Refresh the view's modified state to clear UI indicators
+                if (currentInspectorPanel == dataInspectorPanel)
+                {
+                    dataInspectorPanel.RefreshModifiedState();
+                }
             }
             return success;
         }
@@ -647,6 +661,13 @@ namespace Datra.Unity.Editor
             {
                 navigationPanel.MarkTypeAsModified(dataType, false);
                 UpdateCurrentDataModifiedState();
+
+                // Refresh the view's modified state to clear UI indicators
+                if (currentInspectorPanel == dataInspectorPanel)
+                {
+                    dataInspectorPanel.RefreshModifiedState();
+                }
+
                 EditorUtility.DisplayDialog("Force Save", $"Force saved {dataType.Name} successfully!", "OK");
             }
         }
@@ -666,6 +687,12 @@ namespace Datra.Unity.Editor
                     foreach (var type in repositories.Keys)
                     {
                         navigationPanel.MarkTypeAsModified(type, false);
+                    }
+
+                    // Refresh current view's modified state
+                    if (currentInspectorPanel == dataInspectorPanel)
+                    {
+                        dataInspectorPanel.RefreshModifiedState();
                     }
                 }
             }
