@@ -49,8 +49,11 @@ namespace Datra.Unity.Editor.Panels
             contentContainer.Clear();
             localizationView = new DatraLocalizationView();
             localizationView.SetLocalizationContext(context);
-            localizationView.OnDataModified += () => InvokeDataModified(null);
-            localizationView.OnSaveCompleted += () => InvokeSaveRequested(null, localizationContext);
+
+            // DatraLocalizationView now extends DatraDataView, so use its events
+            localizationView.OnDataModified += (type) => InvokeDataModified(type);
+            localizationView.OnSaveRequested += (type, repo) => InvokeSaveRequested(type, repo);
+
             contentContainer.Add(localizationView);
         }
         
@@ -83,7 +86,7 @@ namespace Datra.Unity.Editor.Panels
             // Refresh the localization view
             if (localizationView != null)
             {
-                localizationView.RefreshView();
+                localizationView.RefreshContent();
             }
         }
         

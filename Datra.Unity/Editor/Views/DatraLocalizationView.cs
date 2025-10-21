@@ -4,101 +4,137 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Datra.Localization;
-using UnityEngine;
-using UnityEngine.UIElements;
+using Datra.Services;
+using Datra.Unity.Editor.Components;
+using Datra.Unity.Editor.Models;
+using Datra.Unity.Editor.Windows;
 using UnityEditor;
 using UnityEditor.UIElements;
-using Datra.Services;
-using Datra.Unity.Editor.Utilities;
+using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Datra.Unity.Editor.Views
 {
-    public class DatraLocalizationView : VisualElement
+    /// <summary>
+    /// View for editing localization data with full change tracking and revert functionality
+    /// </summary>
+    public class DatraLocalizationView : DatraDataView
     {
         private LocalizationContext localizationContext;
         private DropdownField languageDropdown;
-        private VisualElement keyListContainer;
-        private TextField searchField;
-        private ScrollView scrollView;
-        private string currentLanguage;
-        private Dictionary<string, TextField> textFields = new Dictionary<string, TextField>();
+        private VisualElement tableContainer;
+        private VisualElement headerRow;
+        private ScrollView bodyScrollView;
+        private Dictionary<LocalizationKeyWrapper, Dictionary<string, VisualElement>> cellElements;
+        private Dictionary<LocalizationKeyWrapper, VisualElement> rowElements;
         private VisualElement loadingOverlay;
         private bool isLoading = false;
-        
-        // Events
-        public event Action OnDataModified;
-        public event Action OnSaveCompleted;
-        
-        public DatraLocalizationView()
+        private LanguageCode currentLanguageCode;
+
+        // Column widths
+        private const float ActionsColumnWidth = 60f;
+        private const float KeyColumnWidth = 300f;
+        private const float RowHeight = 28f;
+
+        public DatraLocalizationView() : base()
         {
             AddToClassList("datra-localization-view");
-            Initialize();
+            cellElements = new Dictionary<LocalizationKeyWrapper, Dictionary<string, VisualElement>>();
+            rowElements = new Dictionary<LocalizationKeyWrapper, VisualElement>();
         }
-        
-        private void Initialize()
+
+        protected override void InitializeView()
         {
-            style.flexGrow = 1;
-            style.flexDirection = FlexDirection.Column;
-            
-            // Toolbar
+            // Clear content container from base class
+            contentContainer.Clear();
+
+            // Add toolbar to header
+            var toolbar = CreateToolbar();
+            headerContainer.Add(toolbar);
+
+            // Create main table container
+            tableContainer = new VisualElement();
+            tableContainer.AddToClassList("table-container");
+            tableContainer.style.flexGrow = 1;
+            tableContainer.style.flexDirection = FlexDirection.Column;
+
+            // Create header container
+            var tableHeaderContainer = new VisualElement();
+            tableHeaderContainer.style.height = RowHeight;
+            tableHeaderContainer.style.backgroundColor = new Color(0.15f, 0.15f, 0.15f);
+            tableHeaderContainer.style.borderBottomWidth = 1;
+            tableHeaderContainer.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            tableHeaderContainer.style.overflow = Overflow.Hidden;
+
+            headerRow = new VisualElement();
+            headerRow.AddToClassList("table-header-row");
+            headerRow.style.flexDirection = FlexDirection.Row;
+            headerRow.style.height = RowHeight;
+            tableHeaderContainer.Add(headerRow);
+
+            tableContainer.Add(tableHeaderContainer);
+
+            // Create scroll view for body
+            bodyScrollView = new ScrollView(ScrollViewMode.VerticalAndHorizontal);
+            bodyScrollView.name = "table-body";
+            bodyScrollView.AddToClassList("table-body-scroll");
+            bodyScrollView.style.flexGrow = 1;
+
+            // Sync horizontal scroll with header
+            bodyScrollView.horizontalScroller.valueChanged += (value) => {
+                headerRow.style.left = -value;
+            };
+
+            tableContainer.Add(bodyScrollView);
+            contentContainer.Add(tableContainer);
+
+            // Create loading overlay
+            CreateLoadingOverlay();
+        }
+
+        private VisualElement CreateToolbar()
+        {
             var toolbar = new VisualElement();
             toolbar.AddToClassList("localization-toolbar");
             toolbar.style.flexDirection = FlexDirection.Row;
-            toolbar.style.SetPadding(new StyleLength(8));
-            toolbar.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f);
-            
+            toolbar.style.height = 36;
+            toolbar.style.paddingLeft = 8;
+            toolbar.style.paddingRight = 8;
+            toolbar.style.alignItems = Align.Center;
+            toolbar.style.borderBottomWidth = 1;
+            toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+
             // Language selector
             var languageLabel = new Label("Language:");
             languageLabel.style.marginRight = 8;
-            languageLabel.style.alignSelf = Align.Center;
             toolbar.Add(languageLabel);
-            
+
             languageDropdown = new DropdownField();
             languageDropdown.style.width = 150;
             languageDropdown.style.marginRight = 20;
             languageDropdown.RegisterValueChangedCallback(OnLanguageChanged);
             toolbar.Add(languageDropdown);
-            
+
+            // Add key button
+            var addButton = new Button(() => {
+                if (!isReadOnly)
+                    AddNewLocalizationKey();
+            });
+            addButton.text = "➕ Add Key";
+            addButton.AddToClassList("table-add-button");
+            addButton.style.marginRight = 8;
+            toolbar.Add(addButton);
+
             // Search field
-            var searchLabel = new Label("Search:");
-            searchLabel.style.marginRight = 8;
-            searchLabel.style.alignSelf = Align.Center;
-            toolbar.Add(searchLabel);
-            
-            searchField = new TextField();
-            searchField.style.width = 200;
-            searchField.RegisterValueChangedCallback(OnSearchChanged);
+            searchField = new ToolbarSearchField();
+            searchField.AddToClassList("table-search");
+            searchField.style.flexGrow = 1;
+            (searchField as ToolbarSearchField).RegisterValueChangedCallback(evt => FilterItems(evt.newValue));
             toolbar.Add(searchField);
-            
-            // Refresh button
-            var refreshButton = new Button(RefreshView);
-            refreshButton.text = "Refresh";
-            refreshButton.style.marginLeft = StyleKeyword.Auto;
-            toolbar.Add(refreshButton);
-            
-            // Save button
-            var saveButton = new Button(SaveChanges);
-            saveButton.text = "Save All";
-            saveButton.style.marginLeft = 8;
-            toolbar.Add(saveButton);
-            
-            Add(toolbar);
-            
-            // Content area with scroll view
-            scrollView = new ScrollView();
-            scrollView.style.flexGrow = 1;
-            
-            keyListContainer = new VisualElement();
-            keyListContainer.AddToClassList("localization-key-list");
-            keyListContainer.style.SetPadding(new StyleLength(8));
-            scrollView.Add(keyListContainer);
-            
-            Add(scrollView);
-            
-            // Create loading overlay
-            CreateLoadingOverlay();
+
+            return toolbar;
         }
-        
+
         private void CreateLoadingOverlay()
         {
             loadingOverlay = new VisualElement();
@@ -111,22 +147,23 @@ namespace Datra.Unity.Editor.Views
             loadingOverlay.style.alignItems = Align.Center;
             loadingOverlay.style.justifyContent = Justify.Center;
             loadingOverlay.style.display = DisplayStyle.None;
-            
+
             var loadingContainer = new VisualElement();
             loadingContainer.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f);
-            // Border radius if supported (Unity 2021.2+)
-            // loadingContainer.style.borderRadius = new StyleLength(8);
-            loadingContainer.style.SetPadding(new StyleLength(20));
-            
+            loadingContainer.style.paddingLeft = 20;
+            loadingContainer.style.paddingRight = 20;
+            loadingContainer.style.paddingTop = 20;
+            loadingContainer.style.paddingBottom = 20;
+
             var loadingLabel = new Label("Loading language data...");
             loadingLabel.style.fontSize = 14;
             loadingLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             loadingContainer.Add(loadingLabel);
-            
+
             loadingOverlay.Add(loadingContainer);
             Add(loadingOverlay);
         }
-        
+
         private void ShowLoading(bool show)
         {
             isLoading = show;
@@ -134,237 +171,487 @@ namespace Datra.Unity.Editor.Views
             {
                 loadingOverlay.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
             }
-            
+
             // Disable/enable interactive elements
             if (languageDropdown != null)
                 languageDropdown.SetEnabled(!show);
             if (searchField != null)
                 searchField.SetEnabled(!show);
         }
-        
+
         public async void SetLocalizationContext(LocalizationContext context)
         {
             localizationContext = context;
-            
+
             if (context == null)
             {
-                ShowEmptyState();
+                headerContainer.SetEnabled(false);
+                contentContainer.SetEnabled(false);
                 return;
             }
-            
-            // Get available languages
-            var languages = GetAvailableLanguages();
+
+            // Initialize language dropdown
+            var languages = context.GetAvailableLanguageIsoCodes().ToList();
+            languageDropdown.choices = languages;
+
             if (languages.Count > 0)
             {
-                languageDropdown.choices = languages;
-                currentLanguage = context.CurrentLanguage ?? languages[0];
-                languageDropdown.value = currentLanguage;
-                
-                // Show loading and wait for initial language load
-                ShowLoading(true);
-                await LoadLanguageAsync(currentLanguage);
-                ShowLoading(false);
-            }
-            else
-            {
-                RefreshView();
+                currentLanguageCode = context.CurrentLanguageCode;
+                languageDropdown.value = context.CurrentLanguage;
+                await LoadLanguageDataAsync(currentLanguageCode);
             }
         }
 
-        private List<string> GetAvailableLanguages()
-        {
-            if (localizationContext == null)
-                return new List<string>();
-            
-            // Get languages from LocalizationContext
-            var languages = localizationContext.GetAvailableLanguages().ToList();
-            return languages.Select(c => c.ToIsoCode()).ToList();
-        }
-        
         private async void OnLanguageChanged(ChangeEvent<string> evt)
         {
-            currentLanguage = evt.newValue;
-            ShowLoading(true);
-            await LoadLanguageAsync(currentLanguage);
-            ShowLoading(false);
+            if (isLoading) return;
+
+            if (Enum.TryParse<LanguageCode>(evt.newValue, out var languageCode))
+            {
+                // Check for unsaved changes
+                if (hasUnsavedChanges)
+                {
+                    if (!EditorUtility.DisplayDialog("Unsaved Changes",
+                        "You have unsaved changes. Do you want to discard them and switch language?",
+                        "Discard", "Cancel"))
+                    {
+                        languageDropdown.SetValueWithoutNotify(evt.previousValue);
+                        return;
+                    }
+                }
+
+                currentLanguageCode = languageCode;
+                await LoadLanguageDataAsync(languageCode);
+            }
         }
-        
-        private async Task LoadLanguageAsync(string language)
+
+        private async Task LoadLanguageDataAsync(LanguageCode languageCode)
         {
-            if (localizationContext == null) return;
-            
+            ShowLoading(true);
+
             try
             {
-                await localizationContext.LoadLanguageAsync(language);
-                RefreshView();
+                await localizationContext.LoadLanguageAsync(languageCode);
+                RefreshContent();
+                UpdateStatus($"Loaded language: {languageCode.GetDisplayName()}");
             }
             catch (Exception e)
             {
-                Debug.LogError($"Failed to load language {language}: {e.Message}");
+                EditorUtility.DisplayDialog("Error",
+                    $"Failed to load language data: {e.Message}", "OK");
+                Debug.LogError($"Failed to load language: {e}");
+            }
+            finally
+            {
+                ShowLoading(false);
             }
         }
-        
-        public void RefreshView()
-        {
-            if (localizationContext == null) return;
 
-            keyListContainer.Clear();
-            textFields.Clear();
-            
-            // Get all localization keys
-            var keys = GetAllLocalizationKeys();
-            var searchTerm = searchField.value?.ToLower() ?? "";
-            
-            // Create header
-            var headerRow = new VisualElement();
-            headerRow.style.flexDirection = FlexDirection.Row;
-            headerRow.style.SetPadding(new StyleLength(4));
-            headerRow.style.backgroundColor = new Color(0.22f, 0.22f, 0.22f);
-            headerRow.style.borderBottomWidth = 1;
-            headerRow.style.borderBottomColor = new Color(0.15f, 0.15f, 0.15f);
-            
-            var keyHeader = new Label("Key");
-            keyHeader.style.width = 300;
-            keyHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
-            headerRow.Add(keyHeader);
-            
-            var valueHeader = new Label("Value");
-            valueHeader.style.flexGrow = 1;
-            valueHeader.style.unityFontStyleAndWeight = FontStyle.Bold;
-            headerRow.Add(valueHeader);
-            
-            keyListContainer.Add(headerRow);
-            
-            // Add key-value pairs
+        public override void RefreshContent()
+        {
+            if (tableContainer == null || localizationContext == null) return;
+
+            // Store current modified state before clearing
+            var previousModifiedCells = new HashSet<(object, string)>();
+            foreach (var kvp in itemTrackers)
+            {
+                if (kvp.Value.HasAnyModifications())
+                {
+                    previousModifiedCells.Add((kvp.Key, "Text"));
+                }
+            }
+
+            // Clear body content (keep header intact)
+            bodyScrollView?.Clear();
+            headerRow?.Clear();
+            cellElements.Clear();
+            rowElements.Clear();
+
+            // Get all keys and wrap them
+            var keys = localizationContext.GetAllKeys().ToList();
+            var wrappers = new List<LocalizationKeyWrapper>();
+
             foreach (var key in keys)
             {
-                if (!string.IsNullOrEmpty(searchTerm) && !key.ToLower().Contains(searchTerm))
-                    continue;
-                
-                var row = CreateLocalizationRow(key);
-                keyListContainer.Add(row);
+                var text = localizationContext.GetText(key);
+                var keyData = localizationContext.GetKeyData(key);
+                var wrapper = new LocalizationKeyWrapper(key, text, keyData);
+                wrappers.Add(wrapper);
+
+                // Create tracker for this wrapper
+                if (!itemTrackers.ContainsKey(wrapper))
+                {
+                    var tracker = new DatraPropertyTracker();
+                    tracker.StartTracking(wrapper);
+                    tracker.OnAnyPropertyModified += OnTrackerModified;
+                    itemTrackers[wrapper] = tracker;
+                }
             }
+
+            // Create header cells
+            CreateHeaderCells();
+
+            // Create body container
+            var bodyContainer = new VisualElement();
+            bodyContainer.AddToClassList("table-body-container");
+            bodyContainer.style.flexDirection = FlexDirection.Column;
+
+            // Create data rows
+            foreach (var wrapper in wrappers)
+            {
+                CreateDataRow(wrapper, bodyContainer);
+            }
+
+            bodyScrollView?.Add(bodyContainer);
         }
-        
-        private VisualElement CreateLocalizationRow(string key)
+
+        private void CreateHeaderCells()
+        {
+            // Actions column header
+            var actionsHeader = CreateHeaderCell("", ActionsColumnWidth);
+            headerRow.Add(actionsHeader);
+
+            // Key column header
+            var keyHeader = CreateHeaderCell("Key", KeyColumnWidth);
+            headerRow.Add(keyHeader);
+
+            // Text column header
+            var textHeader = CreateHeaderCell("Text", 400f);
+            textHeader.style.flexGrow = 1;
+            headerRow.Add(textHeader);
+        }
+
+        private VisualElement CreateHeaderCell(string text, float width)
+        {
+            var cell = new VisualElement();
+            cell.AddToClassList("table-header-cell");
+            cell.style.width = width;
+            cell.style.minWidth = width;
+            cell.style.paddingLeft = 8;
+            cell.style.paddingRight = 8;
+            cell.style.justifyContent = Justify.Center;
+
+            var label = new Label(text);
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.fontSize = 11;
+            cell.Add(label);
+
+            return cell;
+        }
+
+        private void CreateDataRow(LocalizationKeyWrapper wrapper, VisualElement container)
         {
             var row = new VisualElement();
-            row.AddToClassList("localization-row");
+            row.AddToClassList("table-row");
             row.style.flexDirection = FlexDirection.Row;
-            row.style.SetPadding(new StyleLength(4));
-            row.style.borderBottomWidth = 1;
-            row.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
+            row.style.height = RowHeight;
+            row.style.alignItems = Align.Center;
 
-            // Check if this is a fixed key
-            var keyData = localizationContext.GetKeyData(key);
-            bool isFixedKey = keyData != null && keyData.IsFixedKey;
+            var cells = new Dictionary<string, VisualElement>();
+            cellElements[wrapper] = cells;
 
-            // Key label or container
-            if (isFixedKey)
+            // 1. Actions column
+            var actionsCell = CreateActionsCell(wrapper);
+            row.Add(actionsCell);
+
+            // 2. Key column (read-only)
+            var keyCell = CreateKeyCell(wrapper);
+            cells["Id"] = keyCell;
+            row.Add(keyCell);
+
+            // 3. Text column (editable with DatraPropertyField)
+            var textProperty = typeof(LocalizationKeyWrapper).GetProperty("Text");
+            if (textProperty != null && itemTrackers.ContainsKey(wrapper))
             {
-                // Fixed keys: use a styled container with label
-                var keyContainer = new VisualElement();
-                keyContainer.style.width = 300;
-                keyContainer.style.flexDirection = FlexDirection.Row;
-                keyContainer.style.alignItems = Align.Center;
-                keyContainer.style.backgroundColor = new Color(0.25f, 0.25f, 0.28f);
-                keyContainer.style.borderLeftWidth = 3;
-                keyContainer.style.borderLeftColor = new Color(0.4f, 0.6f, 0.8f); // Blue accent
-                keyContainer.style.SetPadding(new StyleLength(4));
+                var textField = new DatraPropertyField(
+                    wrapper,
+                    textProperty,
+                    itemTrackers[wrapper],
+                    DatraFieldLayoutMode.Table
+                );
 
-                var keyLabel = new Label(key);
-                keyLabel.style.color = new Color(0.7f, 0.8f, 0.9f); // Lighter text
-                keyLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
-                keyLabel.tooltip = $"{key}\n(Fixed key - cannot be edited)";
+                textField.OnValueChanged += (propName, newValue) => {
+                    // Update LocalizationContext
+                    localizationContext.SetText(wrapper.Id, newValue as string);
+                    MarkAsModified();
 
-                // Add a lock icon using Unicode
-                var lockIcon = new Label("🔒"); // 
-                lockIcon.style.marginRight = 4;
-                lockIcon.style.fontSize = 12;
-                lockIcon.tooltip = "Fixed key";
+                    // Add visual indicator to the cell
+                    if (cells.TryGetValue("Text", out var textCell))
+                    {
+                        textCell.AddToClassList("modified-cell");
 
-                keyContainer.Add(lockIcon);
-                keyContainer.Add(keyLabel);
-                row.Add(keyContainer);
+                        // Also update row background
+                        if (rowElements.TryGetValue(wrapper, out var modifiedRow))
+                        {
+                            modifiedRow.style.backgroundColor = new Color(0.4f, 0.3f, 0.2f, 0.3f);
+                        }
+                    }
+                };
+
+                textField.style.flexGrow = 1;
+                cells["Text"] = textField;
+                row.Add(textField);
+            }
+
+            // Row hover effect
+            row.RegisterCallback<MouseEnterEvent>(evt => {
+                if (!row.ClassListContains("selected"))
+                    row.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f, 0.2f);
+            });
+
+            row.RegisterCallback<MouseLeaveEvent>(evt => {
+                if (!row.ClassListContains("selected"))
+                    row.style.backgroundColor = Color.clear;
+            });
+
+            container.Add(row);
+            rowElements[wrapper] = row;
+        }
+
+        private VisualElement CreateActionsCell(LocalizationKeyWrapper wrapper)
+        {
+            var cell = new VisualElement();
+            cell.AddToClassList("table-cell");
+            cell.style.width = ActionsColumnWidth;
+            cell.style.minWidth = ActionsColumnWidth;
+            cell.style.justifyContent = Justify.Center;
+            cell.style.alignItems = Align.Center;
+
+            if (wrapper.IsFixedKey)
+            {
+                // Fixed key: show lock icon
+                var lockIcon = new Label("🔒");
+                lockIcon.tooltip = "Fixed key - cannot be deleted";
+                lockIcon.style.fontSize = 14;
+                lockIcon.style.unityTextAlign = TextAnchor.MiddleCenter;
+                cell.Add(lockIcon);
             }
             else
             {
-                // Regular keys: simple label
-                var keyLabel = new Label(key);
-                keyLabel.style.width = 300;
-                keyLabel.style.alignSelf = Align.Center;
-                keyLabel.style.SetPadding(new StyleLength(4));
-                keyLabel.tooltip = key;
-                row.Add(keyLabel);
+                // Regular key: show delete button
+                var deleteButton = new Button(() => {
+                    if (!isReadOnly)
+                        DeleteLocalizationKey(wrapper);
+                });
+                deleteButton.text = "🗑️";
+                deleteButton.tooltip = "Delete this key";
+                deleteButton.AddToClassList("table-delete-button");
+                deleteButton.style.width = 30;
+                deleteButton.style.height = 20;
+                deleteButton.SetEnabled(!isReadOnly);
+                cell.Add(deleteButton);
             }
 
-            // Value text field
-            var valueField = new TextField();
-            valueField.style.flexGrow = 1;
-            valueField.multiline = true;
-            valueField.value = localizationContext.GetText(key);
-            valueField.RegisterValueChangedCallback(evt => {
-                OnDataModified?.Invoke();
-            });
+            return cell;
+        }
 
-            textFields[key] = valueField;
-            row.Add(valueField);
+        private VisualElement CreateKeyCell(LocalizationKeyWrapper wrapper)
+        {
+            var cell = new VisualElement();
+            cell.AddToClassList("table-cell");
+            cell.style.width = KeyColumnWidth;
+            cell.style.minWidth = KeyColumnWidth;
+            cell.style.paddingLeft = 8;
+            cell.style.paddingRight = 8;
 
-            return row;
+            var label = new Label(wrapper.Id);
+            label.style.fontSize = 11;
+            label.style.overflow = Overflow.Hidden;
+            label.style.textOverflow = TextOverflow.Ellipsis;
+            label.tooltip = $"{wrapper.Id}\n{wrapper.Description}";
+
+            // Style fixed keys differently
+            if (wrapper.IsFixedKey)
+            {
+                label.style.unityFontStyleAndWeight = FontStyle.Italic;
+                label.style.color = new Color(0.7f, 0.8f, 0.9f);
+            }
+
+            cell.Add(label);
+            return cell;
         }
-        
-        private List<string> GetAllLocalizationKeys()
+
+        private async void DeleteLocalizationKey(LocalizationKeyWrapper wrapper)
         {
-            // Use the GetAllKeys method from LocalizationContext
-            return localizationContext.GetAllKeys().OrderBy(k => k).ToList();
+            if (EditorUtility.DisplayDialog(
+                "Delete Localization Key",
+                $"Are you sure you want to delete '{wrapper.Id}'?\n\n" +
+                $"This will remove the key from all languages.",
+                "Delete", "Cancel"))
+            {
+                try
+                {
+                    await localizationContext.DeleteKeyAsync(wrapper.Id);
+
+                    // Remove from tracking
+                    if (itemTrackers.ContainsKey(wrapper))
+                    {
+                        itemTrackers[wrapper].OnAnyPropertyModified -= OnTrackerModified;
+                        itemTrackers.Remove(wrapper);
+                    }
+
+                    RefreshContent();
+                    UpdateStatus($"Key '{wrapper.Id}' deleted successfully");
+                }
+                catch (Exception e)
+                {
+                    EditorUtility.DisplayDialog("Error",
+                        $"Failed to delete key: {e.Message}", "OK");
+                    Debug.LogError($"Failed to delete key: {e}");
+                }
+            }
         }
-        
-        private void OnSearchChanged(ChangeEvent<string> evt)
+
+        private void AddNewLocalizationKey()
         {
-            RefreshView();
+            DatraInputDialog.Show("New Localization Key",
+                "Enter the key name:",
+                "New_Key",
+                async (input) => {
+                    if (!string.IsNullOrWhiteSpace(input))
+                    {
+                        try
+                        {
+                            await localizationContext.AddKeyAsync(input);
+                            RefreshContent();
+                            UpdateStatus($"Key '{input}' added successfully");
+                            MarkAsModified();
+                        }
+                        catch (Exception e)
+                        {
+                            EditorUtility.DisplayDialog("Error",
+                                $"Failed to add key: {e.Message}", "OK");
+                        }
+                    }
+                    else
+                    {
+                        EditorUtility.DisplayDialog("Invalid Key", "Key cannot be empty", "OK");
+                    }
+                });
         }
-        
-        public async void SaveChanges()
+
+        protected override void FilterItems(string searchTerm)
         {
-            if (localizationContext == null) return;
-            
+            if (rowElements == null) return;
+
+            foreach (var kvp in rowElements)
+            {
+                var wrapper = kvp.Key;
+                var row = kvp.Value;
+
+                bool matches = string.IsNullOrEmpty(searchTerm);
+                if (!matches)
+                {
+                    // Search in key, text, description, category
+                    matches = wrapper.Id.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              wrapper.Text.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                              (wrapper.Description?.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
+                              (wrapper.Category?.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
+                }
+
+                row.style.display = matches ? DisplayStyle.Flex : DisplayStyle.None;
+            }
+        }
+
+        protected override void SaveChanges()
+        {
+            if (localizationContext == null || isReadOnly) return;
+
             try
             {
-                // Update all values in the localization context
-                foreach (var kvp in textFields)
+                // Save all modified text values to LocalizationContext
+                foreach (var kvp in itemTrackers)
                 {
-                    var key = kvp.Key;
-                    var value = kvp.Value.value;
-                    
-                    // Update the localization context with new values
-                    localizationContext.SetText(key, value);
+                    var wrapper = kvp.Key as LocalizationKeyWrapper;
+                    if (wrapper != null && kvp.Value.IsPropertyModified(wrapper, "Text"))
+                    {
+                        localizationContext.SetText(wrapper.Id, wrapper.Text);
+                    }
                 }
-                
-                // Save the current language data to file
-                await localizationContext.SaveCurrentLanguageAsync();
-                
-                // Refresh Unity's asset database to reflect the changes
+
+                // Save to file
+                var saveTask = localizationContext.SaveCurrentLanguageAsync();
+                saveTask.Wait();
+
+                // Call base to update baselines
+                base.SaveChanges();
+
+                // Clear visual modifications from all cells
+                foreach (var (wrapper, cells) in cellElements)
+                {
+                    foreach (var (property, cell) in cells)
+                    {
+                        cell.RemoveFromClassList("modified-cell");
+                    }
+                }
+
+                // Clear row backgrounds
+                foreach (var row in rowElements.Values)
+                {
+                    row.style.backgroundColor = Color.clear;
+                }
+
                 AssetDatabase.Refresh();
-                
-                EditorUtility.DisplayDialog("Save", $"Localization changes for '{currentLanguage}' saved successfully!", "OK");
-                Debug.Log($"Saved localization data for language: {currentLanguage}");
-                OnSaveCompleted?.Invoke();
+                UpdateStatus($"Localization saved for '{languageDropdown.value}'");
             }
             catch (Exception e)
             {
-                EditorUtility.DisplayDialog("Error", $"Failed to save localization changes: {e.Message}", "OK");
-                Debug.LogError($"Failed to save localization changes: {e}");
+                EditorUtility.DisplayDialog("Error",
+                    $"Failed to save: {e.Message}", "OK");
+                Debug.LogError($"Failed to save: {e}");
             }
         }
-        
-        private void ShowEmptyState()
+
+        protected override void RevertChanges()
         {
-            keyListContainer.Clear();
-            
-            var emptyLabel = new Label("No localization context available");
-            emptyLabel.style.alignSelf = Align.Center;
-            emptyLabel.style.marginTop = 20;
-            keyListContainer.Add(emptyLabel);
+            // Base handles tracker revert and UI refresh
+            base.RevertChanges();
+
+            // Additional: reload data from LocalizationContext
+            foreach (var kvp in itemTrackers)
+            {
+                var wrapper = kvp.Key as LocalizationKeyWrapper;
+                if (wrapper != null)
+                {
+                    wrapper.Text = localizationContext.GetText(wrapper.Id);
+                }
+            }
+
+            // Clear visual modifications from all cells
+            foreach (var (wrapper, cells) in cellElements)
+            {
+                foreach (var (property, cell) in cells)
+                {
+                    cell.RemoveFromClassList("modified-cell");
+                }
+            }
+
+            // Clear row backgrounds
+            foreach (var row in rowElements.Values)
+            {
+                row.style.backgroundColor = Color.clear;
+            }
+
+            UpdateStatus("Changes reverted");
+        }
+
+        protected override void UpdateEditability()
+        {
+            base.UpdateEditability();
+
+            // Update add button
+            var addButton = headerContainer.Q<Button>(className: "table-add-button");
+            addButton?.SetEnabled(!isReadOnly);
+
+            // Update delete buttons in rows
+            var deleteButtons = bodyScrollView?.Query<Button>(className: "table-delete-button").ToList();
+            if (deleteButtons != null)
+            {
+                foreach (var button in deleteButtons)
+                {
+                    button.SetEnabled(!isReadOnly);
+                }
+            }
         }
     }
 }

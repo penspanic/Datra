@@ -363,8 +363,106 @@ namespace Datra.Services
             
             // Add last value
             values.Add(currentValue.ToString().Trim());
-            
+
             return values.ToArray();
+        }
+
+        /// <summary>
+        /// Deletes a localization key from all languages
+        /// </summary>
+        /// <param name="key">The key to delete</param>
+        /// <exception cref="ArgumentException">If key is null or empty</exception>
+        /// <exception cref="InvalidOperationException">If key is a fixed key</exception>
+        public async Task DeleteKeyAsync(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentException("Key cannot be null or empty", nameof(key));
+
+            // Check if fixed key
+            var keyData = GetKeyData(key);
+            if (keyData != null && keyData.IsFixedKey)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot delete fixed localization key: {key}");
+            }
+
+            // Remove from key repository
+            if (_keyRepository != null)
+            {
+                _keyRepository.Remove(key);
+                await _keyRepository.SaveAsync();
+            }
+
+            // Remove from all language data
+            foreach (var langData in _languageData.Values)
+            {
+                langData.Remove(key);
+            }
+
+            // Save all language files that are currently loaded
+            foreach (var languageCode in _languageData.Keys)
+            {
+                var previousLanguage = _currentLanguageCode;
+                _currentLanguageCode = languageCode;
+                await SaveCurrentLanguageAsync();
+                _currentLanguageCode = previousLanguage;
+            }
+        }
+
+        /// <summary>
+        /// Adds a new localization key
+        /// </summary>
+        /// <param name="key">The key to add</param>
+        /// <param name="description">Description of the key</param>
+        /// <param name="category">Category for grouping</param>
+        /// <param name="isFixedKey">Whether this is a fixed key</param>
+        /// <exception cref="ArgumentException">If key is null or empty</exception>
+        /// <exception cref="InvalidOperationException">If key already exists</exception>
+        public async Task AddKeyAsync(string key, string description = "", string category = "", bool isFixedKey = false)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentException("Key cannot be null or empty", nameof(key));
+
+            // Check if key already exists
+            var existingKey = GetKeyData(key);
+            if (existingKey != null)
+            {
+                throw new InvalidOperationException($"Key '{key}' already exists");
+            }
+
+            // Add to key repository
+            if (_keyRepository != null)
+            {
+                var newKeyData = new LocalizationKeyData
+                {
+                    Id = key,
+                    Description = description,
+                    Category = category,
+                    IsFixedKey = isFixedKey
+                };
+
+                _keyRepository.Add(newKeyData);
+                await _keyRepository.SaveAsync();
+            }
+
+            // Add empty entries to all loaded languages
+            foreach (var languageCode in _languageData.Keys)
+            {
+                if (!_languageData[languageCode].ContainsKey(key))
+                {
+                    _languageData[languageCode][key] = new LocalizationEntry
+                    {
+                        Text = "",
+                        Context = ""
+                    };
+                }
+            }
+
+            // Save current language
+            if (_languageData.ContainsKey(_currentLanguageCode))
+            {
+                await SaveCurrentLanguageAsync();
+            }
         }
     }
 }

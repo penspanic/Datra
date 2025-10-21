@@ -70,15 +70,19 @@ namespace Datra.Unity.Editor.Components
                 fieldContainer.style.flexDirection = FlexDirection.Row;
                 fieldContainer.style.alignItems = Align.Center;
                 Add(fieldContainer);
-                
+
                 // No header in table mode - indicators will be inline
-                modifiedIndicator = new VisualElement();
+                modifiedIndicator = new Label("🟡");
                 modifiedIndicator.AddToClassList("property-modified-indicator");
                 modifiedIndicator.AddToClassList("table-mode");
                 modifiedIndicator.tooltip = "Modified";
                 modifiedIndicator.style.display = DisplayStyle.None;
+                modifiedIndicator.style.fontSize = 10;
+                modifiedIndicator.style.marginLeft = 4;
+                modifiedIndicator.style.marginRight = 2;
+                modifiedIndicator.style.unityTextAlign = TextAnchor.MiddleCenter;
                 fieldContainer.Add(modifiedIndicator);
-                
+
                 // Revert button inline
                 revertButton = new Button(() => RevertValue());
                 revertButton.text = "↺";
@@ -86,6 +90,10 @@ namespace Datra.Unity.Editor.Components
                 revertButton.AddToClassList("property-revert-button");
                 revertButton.AddToClassList("table-mode");
                 revertButton.style.display = DisplayStyle.None;
+                revertButton.style.width = 20;
+                revertButton.style.height = 18;
+                revertButton.style.fontSize = 12;
+                revertButton.style.marginRight = 4;
                 fieldContainer.Add(revertButton);
             }
             else

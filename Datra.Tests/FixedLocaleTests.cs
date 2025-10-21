@@ -337,6 +337,124 @@ namespace Datra.Tests
             Assert.False(keyData.IsFixedKey);
         }
 
+        [Fact]
+        public async Task DeleteKeyAsync_FixedKey_ThrowsException()
+        {
+            // Arrange
+            var provider = new MockRawDataProvider();
+            var config = new DatraConfigurationValue(
+                enableLocalization: true,
+                localizationKeyDataPath: "Localizations/LocalizationKeys.csv",
+                localizationDataPath: "Localizations",
+                defaultLanguage: "en"
+            );
+
+            var context = CreateTestContext(provider, config);
+            await context.InitializeAsync();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await context.DeleteKeyAsync("Character_Hero_Name");
+            });
+        }
+
+        [Fact]
+        public async Task DeleteKeyAsync_RegularKey_DeletesSuccessfully()
+        {
+            // Arrange
+            var provider = new MockRawDataProvider();
+            var config = new DatraConfigurationValue(
+                enableLocalization: true,
+                localizationKeyDataPath: "Localizations/LocalizationKeys.csv",
+                localizationDataPath: "Localizations",
+                defaultLanguage: "en"
+            );
+
+            var context = CreateTestContext(provider, config);
+            await context.InitializeAsync();
+            await context.LoadLanguageAsync(LanguageCode.En);
+
+            // Act
+            await context.DeleteKeyAsync("Button_Start");
+
+            // Assert
+            Assert.False(context.HasKey("Button_Start"));
+            Assert.Null(context.GetKeyData("Button_Start"));
+        }
+
+        [Fact]
+        public async Task DeleteKeyAsync_NonExistentKey_ThrowsNothing()
+        {
+            // Arrange
+            var provider = new MockRawDataProvider();
+            var config = new DatraConfigurationValue(
+                enableLocalization: true,
+                localizationKeyDataPath: "Localizations/LocalizationKeys.csv",
+                localizationDataPath: "Localizations",
+                defaultLanguage: "en"
+            );
+
+            var context = CreateTestContext(provider, config);
+            await context.InitializeAsync();
+
+            // Act - deleting non-existent key should not throw
+            await context.DeleteKeyAsync("NonExistent_Key");
+
+            // Assert - no exception thrown
+            Assert.True(true);
+        }
+
+        [Fact]
+        public async Task AddKeyAsync_NewKey_AddsSuccessfully()
+        {
+            // Arrange
+            var provider = new MockRawDataProvider();
+            var config = new DatraConfigurationValue(
+                enableLocalization: true,
+                localizationKeyDataPath: "Localizations/LocalizationKeys.csv",
+                localizationDataPath: "Localizations",
+                defaultLanguage: "en"
+            );
+
+            var context = CreateTestContext(provider, config);
+            await context.InitializeAsync();
+            await context.LoadLanguageAsync(LanguageCode.En);
+
+            // Act
+            await context.AddKeyAsync("NewKey_Test", "Test description", "Test", false);
+
+            // Assert
+            var keyData = context.GetKeyData("NewKey_Test");
+            Assert.NotNull(keyData);
+            Assert.Equal("NewKey_Test", keyData.Id);
+            Assert.Equal("Test description", keyData.Description);
+            Assert.Equal("Test", keyData.Category);
+            Assert.False(keyData.IsFixedKey);
+        }
+
+        [Fact]
+        public async Task AddKeyAsync_DuplicateKey_ThrowsException()
+        {
+            // Arrange
+            var provider = new MockRawDataProvider();
+            var config = new DatraConfigurationValue(
+                enableLocalization: true,
+                localizationKeyDataPath: "Localizations/LocalizationKeys.csv",
+                localizationDataPath: "Localizations",
+                defaultLanguage: "en"
+            );
+
+            var context = CreateTestContext(provider, config);
+            await context.InitializeAsync();
+
+            // Act & Assert
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await context.AddKeyAsync("Button_Start", "Duplicate", "UI", false);
+            });
+        }
+
         // Helper classes for generic type testing
         private class ItemInfo { }
         private class CharacterInfo { }
