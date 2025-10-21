@@ -17,6 +17,7 @@ namespace Datra.Unity.Editor.Windows
         private Type dataType;
         private object repository;
         private object dataContext;
+        private IRepositoryChangeTracker changeTracker;
         private string windowTitle;
         
         private VisualElement contentContainer;
@@ -27,12 +28,13 @@ namespace Datra.Unity.Editor.Windows
         private DatraDataManager dataManager;
         private Dictionary<Type, object> repositories;
         
-        public static DatraDataWindow CreateWindow(Type dataType, object repository, object dataContext, string title = null)
+        public static DatraDataWindow CreateWindow(Type dataType, object repository, object dataContext, IRepositoryChangeTracker changeTracker, string title = null)
         {
             var window = CreateInstance<DatraDataWindow>();
             window.dataType = dataType;
             window.repository = repository;
             window.dataContext = dataContext;
+            window.changeTracker = changeTracker;
             window.windowTitle = title ?? dataType.Name;
             
             window.titleContent = new GUIContent(window.windowTitle, EditorGUIUtility.IconContent("d_ScriptableObject Icon").image);
@@ -99,7 +101,7 @@ namespace Datra.Unity.Editor.Windows
             viewModeController.OnViewModeChanged += OnViewModeChanged;
             viewModeController.OnSaveRequested += HandleSaveRequest;
             viewModeController.OnDataModified += HandleDataModified;
-            viewModeController.SetData(dataType, repository, dataContext);
+            viewModeController.SetData(dataType, repository, dataContext, changeTracker);
             
             // Create toolbar
             var toolbar = CreateToolbar();
@@ -215,7 +217,7 @@ namespace Datra.Unity.Editor.Windows
             
             if (viewModeController != null)
             {
-                viewModeController.SetData(type, repo, context);
+                viewModeController.SetData(type, repo, context, changeTracker);
             }
         }
         
@@ -277,9 +279,16 @@ namespace Datra.Unity.Editor.Windows
             await dataManager.SaveAsync(type, repo);
         }
         
-        private void HandleDataModified(Type type)
+        private void HandleDataModified(Type type, bool isModified)
         {
-            dataManager.MarkAsModified(type);
+            if (isModified)
+            {
+                dataManager.MarkAsModified(type);
+            }
+            else
+            {
+                dataManager.ClearModifiedState(type);
+            }
         }
         
         private async System.Threading.Tasks.Task SaveData()
@@ -292,7 +301,7 @@ namespace Datra.Unity.Editor.Windows
             if (await dataManager.ReloadAllAsync())
             {
                 // Refresh the view
-                viewModeController.SetData(dataType, repository, dataContext);
+                viewModeController.SetData(dataType, repository, dataContext, changeTracker);
             }
         }
         

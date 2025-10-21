@@ -4,6 +4,8 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Unity.Editor.Views;
 using Datra.Unity.Editor.Panels;
+using Datra.Interfaces;
+using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Controllers
 {
@@ -18,21 +20,27 @@ namespace Datra.Unity.Editor.Controllers
             Table,
             Split
         }
-        
+
         private ViewMode currentViewMode = ViewMode.Form;
         private VisualElement contentContainer;
         private VisualElement headerContainer;
         private DatraDataView currentView;
-        
+
+        // Cache views to preserve modification state when switching modes
+        private DatraFormView cachedFormView;
+        private DatraTableView cachedTableView;
+        private SplitViewWrapper cachedSplitView;
+
         private Type dataType;
         private object repository;
         private object dataContext;
         private bool isReadOnly;
+        private IRepositoryChangeTracker changeTracker;
         
         // Events
         public event Action<ViewMode> OnViewModeChanged;
         public event Action<Type, object> OnSaveRequested;
-        public event Action<Type> OnDataModified;
+        public event Action<Type, bool> OnDataModified;  // Type, isModified
         
         // Properties
         public ViewMode CurrentMode => currentViewMode;
@@ -43,14 +51,31 @@ namespace Datra.Unity.Editor.Controllers
             this.headerContainer = headerContainer;
         }
         
-        public void SetData(Type type, object repo, object context, bool readOnly = false)
+        public void SetData(Type type, object repo, object context, IRepositoryChangeTracker changeTracker, bool readOnly = false)
         {
+            // Clear cached views if data type changed
+            if (this.dataType != type)
+            {
+                ClearCachedViews();
+            }
+
             this.dataType = type;
             this.repository = repo;
             this.dataContext = context;
+            this.changeTracker = changeTracker;
             this.isReadOnly = readOnly;
-            
+
             UpdateView();
+        }
+
+        private void ClearCachedViews()
+        {
+            cachedFormView?.Cleanup();
+            cachedTableView?.Cleanup();
+            cachedSplitView?.Cleanup();
+            cachedFormView = null;
+            cachedTableView = null;
+            cachedSplitView = null;
         }
         
         public void SetViewMode(ViewMode mode)
@@ -100,67 +125,85 @@ namespace Datra.Unity.Editor.Controllers
         
         private void ShowFormView()
         {
-            currentView = new DatraFormView();
-            currentView.SetData(dataType, repository, dataContext);
-            currentView.OnSaveRequested += HandleSaveRequest;
-            currentView.OnDataModified += HandleDataModified;
+            // Reuse cached view if available
+            if (cachedFormView == null)
+            {
+                cachedFormView = new DatraFormView();
+                cachedFormView.OnSaveRequested += HandleSaveRequest;
+                cachedFormView.OnDataModified += HandleDataModified;
+            }
+
+            currentView = cachedFormView;
+            currentView.SetData(dataType, repository, dataContext, changeTracker);
             currentView.IsReadOnly = isReadOnly;
+
             contentContainer.Add(currentView);
         }
         
         private void ShowTableView()
         {
-            currentView = new DatraTableView();
-            currentView.SetData(dataType, repository, dataContext);
-            currentView.OnSaveRequested += HandleSaveRequest;
-            currentView.OnDataModified += HandleDataModified;
+            // Reuse cached view if available
+            if (cachedTableView == null)
+            {
+                cachedTableView = new DatraTableView();
+                cachedTableView.OnSaveRequested += HandleSaveRequest;
+                cachedTableView.OnDataModified += HandleDataModified;
+            }
+
+            currentView = cachedTableView;
+            currentView.SetData(dataType, repository, dataContext, changeTracker);
             currentView.IsReadOnly = isReadOnly;
+
             contentContainer.Add(currentView);
         }
         
         private void ShowSplitView()
         {
-            var splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
-            
-            // Left pane - Table
-            var leftPane = new VisualElement();
-            leftPane.style.minWidth = 200;
-            
-            var tableView = new DatraTableView();
-            tableView.ShowActionsColumn = false; // Simplified for split view
-            tableView.SetData(dataType, repository, dataContext);
-            tableView.OnDataModified += HandleDataModified;
-            tableView.IsReadOnly = isReadOnly;
-            leftPane.Add(tableView);
-            
-            // Right pane - Form
-            var rightPane = new VisualElement();
-            rightPane.style.minWidth = 300;
-            
-            var formView = new DatraFormView();
-            formView.SetData(dataType, repository, dataContext);
-            formView.OnSaveRequested += HandleSaveRequest;
-            formView.OnDataModified += HandleDataModified;
-            formView.IsReadOnly = isReadOnly;
-            rightPane.Add(formView);
-            
-            splitView.Add(leftPane);
-            splitView.Add(rightPane);
-            
-            contentContainer.Add(splitView);
-            
-            // Store both views for cleanup
-            currentView = new SplitViewWrapper(tableView, formView, splitView);
+            // Reuse cached split view if available
+            if (cachedSplitView == null)
+            {
+                var splitView = new TwoPaneSplitView(0, 300, TwoPaneSplitViewOrientation.Horizontal);
+
+                // Left pane - Table
+                var leftPane = new VisualElement();
+                leftPane.style.minWidth = 200;
+
+                var tableView = new DatraTableView();
+                tableView.ShowActionsColumn = false; // Simplified for split view
+                tableView.OnDataModified += HandleDataModified;
+                leftPane.Add(tableView);
+
+                // Right pane - Form
+                var rightPane = new VisualElement();
+                rightPane.style.minWidth = 300;
+
+                var formView = new DatraFormView();
+                formView.OnSaveRequested += HandleSaveRequest;
+                formView.OnDataModified += HandleDataModified;
+                rightPane.Add(formView);
+
+                splitView.Add(leftPane);
+                splitView.Add(rightPane);
+
+                cachedSplitView = new SplitViewWrapper(tableView, formView, splitView);
+            }
+
+            // Update data for both views
+            cachedSplitView.tableView.SetData(dataType, repository, dataContext, changeTracker);
+            cachedSplitView.tableView.IsReadOnly = isReadOnly;
+            cachedSplitView.formView.SetData(dataType, repository, dataContext, changeTracker);
+            cachedSplitView.formView.IsReadOnly = isReadOnly;
+
+            contentContainer.Add(cachedSplitView.splitView);
+
+            currentView = cachedSplitView;
         }
         
         private void CleanupCurrentView()
         {
             if (currentView != null)
             {
-                currentView.OnSaveRequested -= HandleSaveRequest;
-                currentView.OnDataModified -= HandleDataModified;
-                currentView.Cleanup();
-                
+                // Don't cleanup or unsubscribe from cached views - just remove from UI
                 // Safely remove from parent
                 if (currentView.parent == contentContainer)
                 {
@@ -173,10 +216,10 @@ namespace Datra.Unity.Editor.Controllers
                         contentContainer.Remove(wrapper.splitView);
                     }
                 }
-                
+
                 currentView = null;
             }
-            
+
             contentContainer.Clear();
         }
         
@@ -185,14 +228,15 @@ namespace Datra.Unity.Editor.Controllers
             OnSaveRequested?.Invoke(type, repo);
         }
         
-        private void HandleDataModified(Type type)
+        private void HandleDataModified(Type type, bool isModified)
         {
-            OnDataModified?.Invoke(type);
+            OnDataModified?.Invoke(type, isModified);
         }
         
         public void Cleanup()
         {
             CleanupCurrentView();
+            ClearCachedViews();
         }
         
         // Wrapper class to handle split view cleanup
@@ -212,11 +256,6 @@ namespace Datra.Unity.Editor.Controllers
             protected override void InitializeView()
             {
                 // Not needed for wrapper - views are already initialized
-            }
-            
-            public override void SetData(Type dataType, object repository, object dataContext)
-            {
-                // Not used, just for compatibility
             }
             
             public override void RefreshContent()

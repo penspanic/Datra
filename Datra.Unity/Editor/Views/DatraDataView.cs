@@ -7,6 +7,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Unity.Editor.Components;
+using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Views
@@ -19,13 +20,9 @@ namespace Datra.Unity.Editor.Views
         protected object dataContext;
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
-        // Tracking collections
-        protected HashSet<object> newItems = new HashSet<object>();
-        protected HashSet<object> deletedItems = new HashSet<object>();
+        // External change tracker (IRepositoryChangeTracker)
+        protected IRepositoryChangeTracker changeTracker;
 
-        // Baseline storage for revert functionality
-        protected Dictionary<object, Dictionary<string, object>> baselineValues = new Dictionary<object, Dictionary<string, object>>();
-        
         // Common UI elements
         protected VisualElement searchField;  // Base type to support both TextField and ToolbarSearchField
         
@@ -42,7 +39,7 @@ namespace Datra.Unity.Editor.Views
         protected bool isReadOnly = false;
         
         // Events
-        public event Action<Type> OnDataModified;
+        public event Action<Type, bool> OnDataModified;  // Type, isModified
         public event Action<Type, object> OnSaveRequested;
         public event Action<object> OnItemDeleted;
         public event Action OnAddNewItem;
@@ -139,13 +136,21 @@ namespace Datra.Unity.Editor.Views
             footerContainer.Add(actionArea);
         }
         
-        public virtual void SetData(Type type, object repo, object context)
+        public virtual void SetData(Type type, object repo, object context, IRepositoryChangeTracker tracker)
         {
+            // Only reset modification state if switching to a different data type
+            bool isDifferentType = dataType != type;
+
             dataType = type;
             repository = repo;
             dataContext = context;
-            hasUnsavedChanges = false;
-            
+            changeTracker = tracker;
+
+            if (isDifferentType)
+            {
+                hasUnsavedChanges = false;
+            }
+
             CleanupFields();
             RefreshContent();
             UpdateFooter();
@@ -170,14 +175,46 @@ namespace Datra.Unity.Editor.Views
             activeFields.Clear();
         }
 
+        /// <summary>
+        /// Get baseline value from tracker (if available)
+        /// </summary>
+        protected object GetTrackerBaselineValue(object key)
+        {
+            return changeTracker.GetBaselineValue(key);
+        }
+
+        /// <summary>
+        /// Virtual method to check if there are actual modifications in derived classes
+        /// </summary>
+        protected virtual bool HasActualModifications()
+        {
+            return changeTracker.HasModifications;
+        }
+
+        /// <summary>
+        /// Updates the modified state based on actual modification check
+        /// </summary>
+        protected void UpdateModifiedState()
+        {
+            bool actuallyModified = HasActualModifications();
+
+            Debug.Log($"[UpdateModifiedState] DataType: {dataType?.Name}, Tracker: {(changeTracker != null ? "exists" : "null")}, ActuallyModified: {actuallyModified}, HasUnsavedChanges: {hasUnsavedChanges}");
+
+            if (hasUnsavedChanges != actuallyModified)
+            {
+                hasUnsavedChanges = actuallyModified;
+                UpdateFooter();
+                OnDataModified?.Invoke(dataType, actuallyModified);
+                Debug.Log($"[UpdateModifiedState] Fired OnDataModified event: {dataType?.Name}, isModified: {actuallyModified}");
+            }
+        }
+
+        /// <summary>
+        /// Legacy method for backward compatibility - now calls UpdateModifiedState
+        /// </summary>
         protected void MarkAsModified()
         {
-            if (!hasUnsavedChanges)
-            {
-                hasUnsavedChanges = true;
-                UpdateFooter();
-                OnDataModified?.Invoke(dataType);
-            }
+            UpdateModifiedState();
         }
         
         protected virtual void UpdateFooter()
@@ -210,15 +247,11 @@ namespace Datra.Unity.Editor.Views
         protected virtual void SaveChanges()
         {
             if (isReadOnly) return;
-            
+
             OnSaveRequested?.Invoke(dataType, repository);
 
-            // Clear tracking collections
-            newItems.Clear();
-            deletedItems.Clear();
-
-            hasUnsavedChanges = false;
-            UpdateFooter();
+            // Update state based on actual modifications
+            UpdateModifiedState();
             UpdateStatus("Changes saved successfully");
         }
 
@@ -230,9 +263,7 @@ namespace Datra.Unity.Editor.Views
                 "Are you sure you want to revert all changes?",
                 "Revert", "Cancel"))
             {
-                // Clear tracking collections
-                newItems.Clear();
-                deletedItems.Clear();
+                changeTracker.RevertAll();
 
                 // Refresh all fields
                 foreach (var field in activeFields)
@@ -240,8 +271,8 @@ namespace Datra.Unity.Editor.Views
                     field.RefreshField();
                 }
 
-                hasUnsavedChanges = false;
-                UpdateFooter();
+                // Update state based on actual modifications
+                UpdateModifiedState();
                 UpdateStatus("Changes reverted");
             }
         }
@@ -277,21 +308,28 @@ namespace Datra.Unity.Editor.Views
         protected object GetKeyFromItem(object item)
         {
             if (item == null) return null;
-            
+
             var itemType = item.GetType();
             if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
             {
                 var keyProperty = itemType.GetProperty("Key");
                 return keyProperty?.GetValue(item);
             }
-            
-            // For non-KeyValuePair items, try to get the ID property
+
+            // For non-KeyValuePair items (single data or table items)
+            // If this is single data (not table data), use fixed key
+            if (!IsTableData(dataType))
+            {
+                return "single";
+            }
+
+            // For table data items, try to get the ID property
             var idProperty = item.GetType().GetProperty("Id");
             if (idProperty != null)
             {
                 return idProperty.GetValue(item);
             }
-            
+
             return item;
         }
         
@@ -464,12 +502,15 @@ namespace Datra.Unity.Editor.Views
             {
                 try
                 {
-                    // Mark item as deleted before actually deleting
-                    deletedItems.Add(item);
-                    OnItemMarkedForDeletion(item);
-                    
                     // Extract actual data from KeyValuePair if needed
                     object keyToRemove = GetKeyFromItem(item);
+
+                    // Track deletion in change tracker
+                    if (keyToRemove != null)
+                        changeTracker.TrackDelete(keyToRemove);
+
+                    // Mark item as deleted before actually deleting
+                    OnItemMarkedForDeletion(item);
                     
                     // Find the Remove method on the repository
                     var removeMethod = repository.GetType().GetMethod("Remove");
@@ -598,7 +639,9 @@ namespace Datra.Unity.Editor.Views
         
         protected virtual void OnNewItemAdded(object newItem)
         {
-            newItems.Add(newItem);
+            var itemKey = GetKeyFromItem(newItem);
+            if (itemKey != null)
+                changeTracker.TrackAdd(itemKey, newItem);
         }
         
         protected virtual void OnItemMarkedForDeletion(object item)
@@ -614,84 +657,9 @@ namespace Datra.Unity.Editor.Views
         public virtual void Cleanup()
         {
             CleanupFields();
-            newItems.Clear();
-            deletedItems.Clear();
-            baselineValues.Clear();
         }
 
         #region Baseline Management for Revert Functionality
-
-        /// <summary>
-        /// Store baseline values for all items and their properties
-        /// </summary>
-        protected void StoreBaselineValues(IEnumerable<object> items, IEnumerable<PropertyInfo> properties)
-        {
-            baselineValues.Clear();
-
-            if (items == null || properties == null) return;
-
-            foreach (var item in items)
-            {
-                var itemBaseline = new Dictionary<string, object>();
-                foreach (var property in properties)
-                {
-                    try
-                    {
-                        var value = property.GetValue(item);
-                        itemBaseline[property.Name] = CloneValue(value);
-                    }
-                    catch
-                    {
-                        // Skip properties that can't be read
-                    }
-                }
-                baselineValues[item] = itemBaseline;
-            }
-        }
-
-        /// <summary>
-        /// Get baseline value for a specific item and property
-        /// </summary>
-        protected object GetBaselineValue(object item, string propertyName)
-        {
-            if (baselineValues.TryGetValue(item, out var itemBaseline))
-            {
-                if (itemBaseline.TryGetValue(propertyName, out var value))
-                {
-                    return CloneValue(value);
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Simple clone for baseline values
-        /// </summary>
-        protected object CloneValue(object value)
-        {
-            if (value == null) return null;
-
-            var type = value.GetType();
-
-            // For value types and strings, direct assignment works
-            if (type.IsValueType || type == typeof(string))
-            {
-                return value;
-            }
-
-            // For arrays, create a copy
-            if (type.IsArray)
-            {
-                var array = value as Array;
-                var clone = Array.CreateInstance(type.GetElementType(), array.Length);
-                Array.Copy(array, clone, array.Length);
-                return clone;
-            }
-
-            // For other reference types, return as-is (basic implementation)
-            // In production, you might want deep cloning via serialization
-            return value;
-        }
 
         #endregion
 

@@ -17,12 +17,12 @@ namespace Datra.Unity.Editor.Views
         private VisualElement itemsContainer;
         private ScrollView scrollView;
         private VisualElement scrollContent;
-        
+
         public DatraFormView() : base()
         {
             AddToClassList("datra-form-view");
         }
-        
+
         protected override void InitializeView()
         {
             // Header already created by base class
@@ -46,25 +46,22 @@ namespace Datra.Unity.Editor.Views
         
         public override void RefreshContent()
         {
-            // Store current state before clearing
-            var previousNewItems = new HashSet<object>(this.newItems);
-            
             // Clear the scroll content, not the main container
             scrollContent.Clear();
-            
+
             if (repository == null || dataType == null) return;
-            
+
             if (IsTableData(dataType))
             {
                 DisplayTableDataAsForm();
-
-                // Restore state for table data items
-                RestoreTableDataState(previousNewItems);
             }
             else
             {
                 DisplaySingleDataForm();
             }
+
+            // Update modification state after refresh (to show orange dot if there are modifications)
+            UpdateModifiedState();
         }
         
         private void DisplaySingleDataForm()
@@ -81,7 +78,16 @@ namespace Datra.Unity.Editor.Views
                 var fields = DatraFieldFactory.CreateFieldsForObject(data, DatraFieldLayoutMode.Form, false);
                 foreach (var field in fields)
                 {
-                    field.OnValueChanged += (propName, value) => MarkAsModified();
+                    field.OnValueChanged += (propName, value) => {
+                        // Track in external change tracker
+                        var dataKey = GetKeyFromItem(data);
+                        if (dataKey != null)
+                        {
+                            changeTracker.TrackChange(dataKey, data);
+                        }
+
+                        UpdateModifiedState();
+                    };
                     formContainer.Add(field);
                     activeFields.Add(field);
                 }
@@ -109,13 +115,6 @@ namespace Datra.Unity.Editor.Views
                 foreach (var item in items)
                 {
                     var itemElement = CreateTableItemElement(item, index++);
-                    
-                    // Mark as new if it was just added
-                    if (this.newItems.Contains(item))
-                    {
-                        itemElement.AddToClassList("new-item");
-                    }
-                    
                     itemsContainer.Add(itemElement);
                 }
                 
@@ -228,7 +227,16 @@ namespace Datra.Unity.Editor.Views
                 var fields = DatraFieldFactory.CreateFieldsForObject(actualData, DatraFieldLayoutMode.Form, true);
                 foreach (var field in fields)
                 {
-                    field.OnValueChanged += (propName, value) => MarkAsModified();
+                    field.OnValueChanged += (propName, value) => {
+                        // Track in external change tracker
+                        var itemKey = GetKeyFromItem(actualData);
+                        if (itemKey != null)
+                        {
+                            changeTracker.TrackChange(itemKey, actualData);
+                        }
+
+                        UpdateModifiedState();
+                    };
                     field.SetEnabled(!isReadOnly);
                     fieldsContainer.Add(field);
                     activeFields.Add(field);
@@ -317,26 +325,6 @@ namespace Datra.Unity.Editor.Views
             }
         }
         
-        private void RestoreTableDataState(HashSet<object> previousNewItems)
-        {
-            if (itemsContainer == null) return;
-
-            var items = itemsContainer.Query<VisualElement>(className: "table-item").ToList();
-            foreach (var itemElement in items)
-            {
-                var item = itemElement.userData;
-                if (item != null)
-                {
-                    // Restore new item state
-                    if (previousNewItems.Contains(item))
-                    {
-                        this.newItems.Add(item);
-                        itemElement.AddToClassList("new-item");
-                    }
-                }
-            }
-        }
-        
         protected override void OnItemMarkedForDeletion(object item)
         {
             var itemElements = itemsContainer?.Query<VisualElement>(className: "table-item").ToList();
@@ -356,7 +344,7 @@ namespace Datra.Unity.Editor.Views
         protected override void SaveChanges()
         {
             base.SaveChanges();
-            
+
             // Clear visual indicators
             if (itemsContainer != null)
             {
@@ -372,7 +360,7 @@ namespace Datra.Unity.Editor.Views
         protected override void RevertChanges()
         {
             base.RevertChanges();
-            
+
             // Clear visual indicators
             if (itemsContainer != null)
             {

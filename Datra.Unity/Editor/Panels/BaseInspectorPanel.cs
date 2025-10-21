@@ -14,7 +14,7 @@ namespace Datra.Unity.Editor.Panels
         protected Label subtitleLabel;
         
         // Events
-        public event Action<Type> OnDataModified;
+        public event Action<Type, bool> OnDataModified;  // Type, isModified
         public event Action<Type, object> OnSaveRequested;
         
         protected BaseInspectorPanel()
@@ -114,9 +114,9 @@ namespace Datra.Unity.Editor.Panels
             return "Inspector";
         }
         
-        protected void InvokeDataModified(Type type)
+        protected void InvokeDataModified(Type type, bool isModified)
         {
-            OnDataModified?.Invoke(type);
+            OnDataModified?.Invoke(type, isModified);
         }
         
         protected void InvokeSaveRequested(Type type, object repository)

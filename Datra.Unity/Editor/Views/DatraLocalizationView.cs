@@ -22,7 +22,7 @@ namespace Datra.Unity.Editor.Views
     public class DatraLocalizationView : DatraDataView
     {
         private LocalizationContext localizationContext;
-        private LocalizationChangeTracker changeTracker;  // External change tracker
+        private new LocalizationChangeTracker changeTracker;  // External change tracker (hides base class field)
         private DropdownField languageDropdown;
         private VisualElement tableContainer;
         private VisualElement headerRow;
@@ -43,6 +43,14 @@ namespace Datra.Unity.Editor.Views
             AddToClassList("datra-localization-view");
             cellElements = new Dictionary<LocalizationKeyWrapper, Dictionary<string, VisualElement>>();
             rowElements = new Dictionary<LocalizationKeyWrapper, VisualElement>();
+        }
+
+        /// <summary>
+        /// Override to check modifications from external LocalizationChangeTracker
+        /// </summary>
+        protected override bool HasActualModifications()
+        {
+            return changeTracker?.HasModifications() ?? false;
         }
 
         protected override void InitializeView()
@@ -334,9 +342,8 @@ namespace Datra.Unity.Editor.Views
 
             bodyScrollView?.Add(bodyContainer);
 
-            // Update footer based on changeTracker
-            hasUnsavedChanges = changeTracker?.HasModifications() ?? false;
-            UpdateFooter();
+            // Update modification state after restoring (to show orange dot if there are modifications)
+            UpdateModifiedState();
         }
 
         private void CreateHeaderCells()
@@ -463,9 +470,8 @@ namespace Datra.Unity.Editor.Views
                                 textCell.RemoveFromClassList("modified-cell");
                             }
 
-                            // Check if there are any remaining modifications
-                            hasUnsavedChanges = changeTracker.HasModifications();
-                            UpdateFooter();
+                            // Update modification state (fires OnDataModified with correct state)
+                            UpdateModifiedState();
                         }
                     }
                 };
@@ -765,9 +771,6 @@ namespace Datra.Unity.Editor.Views
                 // Update external change tracker baseline
                 changeTracker?.UpdateBaseline();
 
-                hasUnsavedChanges = false;
-                UpdateFooter();
-
                 // Clear visual modifications from all cells
                 foreach (var (wrapper, cells) in cellElements)
                 {
@@ -788,6 +791,9 @@ namespace Datra.Unity.Editor.Views
                 {
                     row.style.backgroundColor = Color.clear;
                 }
+
+                // Update modification state (should be false after save)
+                UpdateModifiedState();
 
                 AssetDatabase.Refresh();
                 UpdateStatus($"Localization saved for '{languageDropdown.value}'");

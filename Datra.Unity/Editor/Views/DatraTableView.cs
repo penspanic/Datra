@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Datra.Unity.Editor.Components;
 using Datra.DataTypes;
+using Datra.Unity.Editor.Utilities;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -20,7 +21,6 @@ namespace Datra.Unity.Editor.Views
         private List<object> items;
         private Dictionary<object, Dictionary<string, VisualElement>> cellElements;
         private Dictionary<object, VisualElement> rowElements;
-        private HashSet<(object item, string property)> modifiedCells;
         private ScrollView bodyScrollView;
 
         // Events
@@ -42,7 +42,6 @@ namespace Datra.Unity.Editor.Views
             AddToClassList("datra-table-view");
             cellElements = new Dictionary<object, Dictionary<string, VisualElement>>();
             rowElements = new Dictionary<object, VisualElement>();
-            modifiedCells = new HashSet<(object, string)>();
         }
         
         protected override void InitializeView()
@@ -132,21 +131,29 @@ namespace Datra.Unity.Editor.Views
             return toolbar;
         }
         
-        public override void SetData(Type type, object repo, object context)
+        public override void SetData(Type type, object repo, object context, IRepositoryChangeTracker tracker)
         {
-            // Don't call base.SetData yet - we need to initialize columns first
+            // Only reset modification state if switching to a different data type
+            bool isDifferentType = dataType != type;
+
+            // Don't call base.SetData - we need to initialize columns first
             dataType = type;
             repository = repo;
             dataContext = context;
-            hasUnsavedChanges = false;
-            
+            changeTracker = tracker;
+
+            if (isDifferentType)
+            {
+                hasUnsavedChanges = false;
+                // Clear modification tracking when switching to different type is handled by changeTracker
+            }
+
             // Get columns (properties) BEFORE calling RefreshContent
             // Filter out properties with DatraIgnore attribute
             columns = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
                 .ToList();
-                
-            
+
             // Now cleanup and refresh
             CleanupFields();
             RefreshContent();
@@ -162,26 +169,22 @@ namespace Datra.Unity.Editor.Views
         public override void RefreshContent()
         {
             if (tableContainer == null) return;
-            
-            // Store current modified state before clearing
-            var previousModifiedCells = new HashSet<(object, string)>(modifiedCells);
-            var previousNewItems = new HashSet<object>(newItems);
-            
+
             // Clear body content (keep header intact)
             bodyScrollView?.Clear();
             headerRow?.Clear();
             cellElements.Clear();
             rowElements.Clear();
-            
+
             if (dataType == null || repository == null) return;
-            
+
             // Get items from repository
             if (IsTableData(dataType))
             {
                 var getAllMethod = repository.GetType().GetMethod("GetAll");
-                
+
                 var data = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
-                
+
                 if (data != null)
                 {
                     items = new List<object>();
@@ -206,12 +209,9 @@ namespace Datra.Unity.Editor.Views
                     items = new List<object> { singleData };
                 }
             }
-            
-            
-            if (columns == null || columns.Count == 0 || items == null) return;
 
-            // Store baseline values for revert functionality (use base class method)
-            StoreBaselineValues(items, columns);
+
+            if (columns == null || columns.Count == 0 || items == null) return;
 
             // Create header cells
             CreateHeaderCells();
@@ -224,32 +224,38 @@ namespace Datra.Unity.Editor.Views
             foreach (var item in items)
             {
                 CreateDataRow(item, bodyContainer);
-                
-                // Restore modified cells
-                foreach (var (modItem, prop) in previousModifiedCells)
+
+                // Restore modified cells from changeTracker
+                if (changeTracker != null)
                 {
-                    if (modItem.Equals(item))
+                    var itemKey = GetKeyFromItem(item);
+                    if (itemKey != null)
                     {
-                        modifiedCells.Add((item, prop));
-                        if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(prop, out var cell))
+                        var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                        foreach (var propName in modifiedProps)
                         {
-                            cell.AddToClassList("modified-cell");
+                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var cell))
+                            {
+                                cell.AddToClassList("modified-cell");
+
+                                // Also restore modified state on the field itself (for revert button)
+                                var field = cell.Q<DatraPropertyField>();
+                                if (field != null)
+                                {
+                                    field.SetModified(true);
+                                }
+
+                                Debug.Log($"[RefreshContent] Restored modified state for key={itemKey}, property={propName}");
+                            }
                         }
                     }
                 }
-                
-                // Restore new items
-                if (previousNewItems.Contains(item))
-                {
-                    newItems.Add(item);
-                    if (rowElements.TryGetValue(item, out var row))
-                    {
-                        row.AddToClassList("new-row");
-                    }
-                }
             }
-            
+
             bodyScrollView?.Add(bodyContainer);
+
+            // Update modification state after restoring (to show orange dot if there are modifications)
+            UpdateModifiedState();
         }
         
         private void CreateHeaderCells()
@@ -473,10 +479,14 @@ namespace Datra.Unity.Editor.Views
                 var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table);
                 field.OnValueChanged += (propName, newValue) => {
                     OnCellValueChanged?.Invoke(item, propName, newValue);
-                    MarkAsModified();
 
-                    // Track modified cell
-                    modifiedCells.Add((item, propName));
+                    // Track in change tracker at property level
+                    var itemKey = GetKeyFromItem(item);
+                    if (itemKey != null)
+                    {
+                        changeTracker.TrackPropertyChange(itemKey, propName, newValue);
+                        Debug.Log($"[CreateEditableCell] Tracked property change: key={itemKey}, property={propName}");
+                    }
 
                     // Update field's modified state to show revert button
                     field.SetModified(true);
@@ -486,21 +496,34 @@ namespace Datra.Unity.Editor.Views
                     {
                         modCell.AddToClassList("modified-cell");
                     }
+
+                    // Update modification state (checks changeTracker)
+                    UpdateModifiedState();
                 };
 
                 field.OnRevertRequested += (propName) => {
-                    // Get baseline value from repository
-                    var baselineValue = GetBaselineValue(item, propName);
+                    // Get baseline value from tracker at property level
+                    var itemKey = GetKeyFromItem(item);
+                    if (itemKey == null) return;
+
+                    // Get baseline value for this specific property
+                    var baselineValue = changeTracker.GetPropertyBaselineValue(itemKey, propName);
+                    if (baselineValue == null && !property.PropertyType.IsValueType)
+                    {
+                        // Property might be null in baseline - that's valid
+                    }
 
                     // Update property value in the item object
                     property.SetValue(item, baselineValue);
 
-                    // Update UI element directly (like LocalizationView does)
+                    // Update UI element directly
                     UpdateFieldValue(field, property.PropertyType, baselineValue);
+
+                    // Track the property change again to remove it from changes (back to baseline)
+                    changeTracker.TrackPropertyChange(itemKey, propName, baselineValue);
 
                     // Clear modified state
                     field.SetModified(false);
-                    modifiedCells.Remove((item, propName));
 
                     // Clear visual indicator
                     if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
@@ -508,9 +531,10 @@ namespace Datra.Unity.Editor.Views
                         modCell.RemoveFromClassList("modified-cell");
                     }
 
-                    // Check if there are any remaining modifications
-                    hasUnsavedChanges = modifiedCells.Count > 0 || newItems.Count > 0 || deletedItems.Count > 0;
-                    UpdateFooter();
+                    // Update modification state (fires OnDataModified with correct state)
+                    UpdateModifiedState();
+
+                    Debug.Log($"[OnRevertRequested] Reverted property: key={itemKey}, property={propName}");
                 };
 
                 field.style.flexGrow = 1;
@@ -700,16 +724,21 @@ namespace Datra.Unity.Editor.Views
                         var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table);
                         field.OnValueChanged += (propName, newValue) => {
                             OnCellValueChanged?.Invoke(item, propName, newValue);
-                            MarkAsModified();
-                            
-                            // Track modified cell
-                            modifiedCells.Add((item, propName));
-                            
+
+                            // Track in change tracker at property level
+                            var itemKey = GetKeyFromItem(item);
+                            if (itemKey != null)
+                            {
+                                changeTracker.TrackPropertyChange(itemKey, propName, newValue);
+                            }
+
                             // Update cell visual state
                             if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
                             {
                                 modCell.AddToClassList("modified-cell");
                             }
+
+                            UpdateModifiedState();
                         };
                         field.style.flexGrow = 1;
                         cell.Add(field);
@@ -749,7 +778,7 @@ namespace Datra.Unity.Editor.Views
         protected override void SaveChanges()
         {
             base.SaveChanges();
-            
+
             // Clear visual modifications from all cells after save
             foreach (var (item, cells) in cellElements)
             {
@@ -758,21 +787,24 @@ namespace Datra.Unity.Editor.Views
                     cell.RemoveFromClassList("modified-cell");
                 }
             }
-            
+
             // Clear new row indicators
             foreach (var row in rowElements.Values)
             {
                 row.RemoveFromClassList("new-row");
                 row.RemoveFromClassList("deleted-row");
             }
-            
-            modifiedCells.Clear();
+
+            // modifiedCells tracking removed - using changeTracker only
+
+            // Update modification state (should be false after save)
+            UpdateModifiedState();
         }
-        
+
         protected override void RevertChanges()
         {
             base.RevertChanges();
-            
+
             // Clear visual modifications from all cells
             foreach (var (item, cells) in cellElements)
             {
@@ -781,15 +813,18 @@ namespace Datra.Unity.Editor.Views
                     cell.RemoveFromClassList("modified-cell");
                 }
             }
-            
+
             // Clear new row indicators
             foreach (var row in rowElements.Values)
             {
                 row.RemoveFromClassList("new-row");
                 row.RemoveFromClassList("deleted-row");
             }
-            
-            modifiedCells.Clear();
+
+            // modifiedCells tracking removed - using changeTracker only
+
+            // Update modification state (should be false after revert)
+            UpdateModifiedState();
         }
 
         // Baseline management and field update methods are now inherited from DatraDataView

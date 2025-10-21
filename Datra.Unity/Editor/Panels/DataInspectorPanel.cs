@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -7,6 +8,7 @@ using UnityEditor.UIElements;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
+using Datra.Unity.Editor.Views;
 
 namespace Datra.Unity.Editor.Panels
 {
@@ -15,6 +17,7 @@ namespace Datra.Unity.Editor.Panels
         private Type currentType;
         private object currentRepository;
         private object currentDataContext;
+        private IRepositoryChangeTracker currentChangeTracker;
         
         // View mode controller
         private DatraViewModeController viewModeController;
@@ -68,7 +71,7 @@ namespace Datra.Unity.Editor.Panels
             viewModeController = new DatraViewModeController(contentContainer, headerContainer);
             viewModeController.OnViewModeChanged += OnViewModeChanged;
             viewModeController.OnSaveRequested += (type, repo) => InvokeSaveRequested(type, repo);
-            viewModeController.OnDataModified += (type) => InvokeDataModified(type);
+            viewModeController.OnDataModified += (type, isModified) => InvokeDataModified(type, isModified);
             
             // Update view mode toggle buttons to use controller
             var formButton = headerContainer.Q<Button>("form-view-button");
@@ -87,18 +90,19 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        public void SetDataContext(object dataContext, object repository, Type dataType)
+        public void SetDataContext(object dataContext, object repository, Type dataType, IRepositoryChangeTracker changeTracker)
         {
             currentDataContext = dataContext;
             currentRepository = repository;
+            currentChangeTracker = changeTracker;
             currentType = dataType;
-            
+
             // Determine the default view mode based on data type
             if (dataType != null)
             {
                 var isTableData = IsTableData(dataType);
                 var defaultMode = isTableData ? DatraViewModeController.ViewMode.Table : DatraViewModeController.ViewMode.Form;
-                
+
                 // Get user's preferred view mode for this type
                 var savedMode = DatraUserPreferences.GetViewMode(dataType);
                 if (!string.IsNullOrEmpty(savedMode))
@@ -117,13 +121,13 @@ namespace Datra.Unity.Editor.Panels
                     viewModeController.SetViewMode(defaultMode);
                 }
             }
-            
+
             UpdateDataHeader();
-            
+
             // Set data in controller
-            viewModeController.SetData(dataType, repository, dataContext);
+            viewModeController.SetData(dataType, repository, dataContext, changeTracker);
         }
-        
+
         private void UpdateDataHeader()
         {
             if (currentType == null)
@@ -200,7 +204,7 @@ namespace Datra.Unity.Editor.Panels
             }
             
             // Let the controller handle the view refresh
-            viewModeController.SetData(currentType, currentRepository, currentDataContext);
+            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentChangeTracker);
         }
         
         protected override string GetEmptyStateMessage()
@@ -230,7 +234,7 @@ namespace Datra.Unity.Editor.Panels
             {
                 viewModeController.OnViewModeChanged -= OnViewModeChanged;
                 viewModeController.OnSaveRequested -= ((type, repo) => InvokeSaveRequested(type, repo));
-                viewModeController.OnDataModified -= ((type) => InvokeDataModified(type));
+                viewModeController.OnDataModified -= ((type, isModified) => InvokeDataModified(type, isModified));
                 viewModeController.Cleanup();
             }
         }

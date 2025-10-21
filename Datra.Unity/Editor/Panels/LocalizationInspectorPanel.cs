@@ -77,7 +77,7 @@ namespace Datra.Unity.Editor.Panels
             localizationView.SetLocalizationContext(context);
 
             // DatraLocalizationView now extends DatraDataView, so use its events
-            localizationView.OnDataModified += (type) => InvokeDataModified(type);
+            localizationView.OnDataModified += (type, isModified) => InvokeDataModified(type, isModified);
             localizationView.OnSaveRequested += (type, repo) => InvokeSaveRequested(type, repo);
 
             contentContainer.Add(localizationView);

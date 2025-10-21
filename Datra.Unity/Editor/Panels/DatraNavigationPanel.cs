@@ -493,7 +493,7 @@ namespace Datra.Unity.Editor.Panels
                 var repository = GetRepositoryForType(window, dataType);
                 if (repository != null)
                 {
-                    Windows.DatraDataWindow.CreateWindow(dataType, repository, GetDataContext(window), dataType.Name);
+                    Windows.DatraDataWindow.CreateWindow(dataType, repository, GetDataContext(window), GetChangeTracker(window, dataType), dataType.Name);
                 }
             }
         }
@@ -519,8 +519,8 @@ namespace Datra.Unity.Editor.Panels
                 var repository = GetRepositoryForType(window, dataType);
                 if (repository != null)
                 {
-                    var dataWindow = Windows.DatraDataWindow.CreateWindow(dataType, repository, 
-                        GetDataContext(window), dataType.Name + " - Table View");
+                    var dataWindow = Windows.DatraDataWindow.CreateWindow(dataType, repository,
+                        GetDataContext(window), GetChangeTracker(window, dataType), dataType.Name + " - Table View");
                     dataWindow.SetInitialViewMode(Controllers.DatraViewModeController.ViewMode.Table);
                 }
             }
@@ -601,6 +601,11 @@ namespace Datra.Unity.Editor.Panels
                 return repository;
             }
             return null;
+        }
+
+        private IRepositoryChangeTracker GetChangeTracker(DatraEditorWindow window, Type dataType)
+        {
+            return window.changeTrackers[dataType];
         }
         
         private object GetDataContext(DatraEditorWindow window)

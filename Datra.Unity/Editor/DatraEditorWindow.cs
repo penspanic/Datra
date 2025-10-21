@@ -49,7 +49,10 @@ namespace Datra.Unity.Editor
         private DatraDataManager dataManager;
         private LocalizationContext localizationContext;
         private LocalizationChangeTracker localizationChangeTracker;
-        
+
+        // Change trackers for each data type
+        internal Dictionary<Type, IRepositoryChangeTracker> changeTrackers = new Dictionary<Type, IRepositoryChangeTracker>();
+
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
         public IReadOnlyDictionary<Type, object> Repositories => repositories;
@@ -180,7 +183,7 @@ namespace Datra.Unity.Editor
                 {
                     // Initialize data manager
                     dataManager = new DatraDataManager(dataContext);
-                    dataManager.OnDataModified += OnDataModified;
+                    // Note: OnDataModified events come from inspector panels, not from dataManager
                     dataManager.OnModifiedStateChanged += (hasModified) => {
                         toolbar.SetModifiedState(hasModified);
                     };
@@ -210,10 +213,116 @@ namespace Datra.Unity.Editor
             }
         }
         
+        private void CreateChangeTrackerForRepository(Type dataType, object repository)
+        {
+            try
+            {
+                // Get repository type
+                var repoType = repository.GetType();
+
+                // Check if it's a SingleDataRepository<TData> FIRST (more specific)
+                if (repoType.IsGenericType && repoType.GetGenericTypeDefinition().Name == "SingleDataRepository`1")
+                {
+                    var genericArgs = repoType.GetGenericArguments();
+                    if (genericArgs.Length == 1)
+                    {
+                        var valueType = genericArgs[0];
+
+                        // For single data, use string "single" as key
+                        var keyType = typeof(string);
+
+                        // Create RepositoryChangeTracker<string, TValue>
+                        var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
+                        var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+
+                        if (tracker != null)
+                        {
+                            // Get the single data item
+                            var getMethod = repoType.GetMethod("Get");
+                            if (getMethod != null)
+                            {
+                                var data = getMethod.Invoke(repository, null);
+
+                                // Create a dictionary with single item using "single" as key
+                                var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
+                                var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
+
+                                if (dict != null && data != null)
+                                {
+                                    dict.Add("single", data);
+
+                                    // Initialize baseline using interface method
+                                    tracker.InitializeBaseline(dict);
+                                }
+                            }
+
+                            // Store tracker
+                            changeTrackers[dataType] = tracker;
+                        }
+
+                        // Register with data manager
+                        var registerMethod = typeof(DatraDataManager).GetMethod("RegisterChangeTracker");
+                        if (registerMethod != null)
+                        {
+                            var genericRegister = registerMethod.MakeGenericMethod(keyType, valueType);
+                            genericRegister.Invoke(dataManager, new object[] { dataType, tracker });
+                        }
+
+                        Debug.Log($"Created and registered RepositoryChangeTracker<string, {valueType.Name}> for Single Data {dataType.Name}");
+                    }
+                }
+                // Check if it's a DataRepository<TKey, TValue> (Table Data)
+                else if (repoType.IsGenericType && repoType.GetGenericTypeDefinition().Name == "DataRepository`2")
+                {
+                    var genericArgs = repoType.GetGenericArguments();
+                    if (genericArgs.Length == 2)
+                    {
+                        var keyType = genericArgs[0];
+                        var valueType = genericArgs[1];
+
+                        // Create RepositoryChangeTracker<TKey, TValue>
+                        var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
+                        var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+
+                        if (tracker != null)
+                        {
+                            // Get GetAll method to get repository data
+                            var getAllMethod = repoType.GetMethod("GetAll");
+                            if (getAllMethod != null)
+                            {
+                                var data = getAllMethod.Invoke(repository, null);
+
+                                // Initialize baseline using interface method
+                                tracker.InitializeBaseline(data);
+                            }
+
+                            // Store tracker
+                            changeTrackers[dataType] = tracker;
+                        }
+
+                        // Register with data manager
+                        var registerMethod = typeof(DatraDataManager).GetMethod("RegisterChangeTracker");
+                        if (registerMethod != null)
+                        {
+                            var genericRegister = registerMethod.MakeGenericMethod(keyType, valueType);
+                            genericRegister.Invoke(dataManager, new object[] { dataType, tracker });
+                        }
+
+                        Debug.Log($"Created and registered RepositoryChangeTracker<{keyType.Name}, {valueType.Name}> for Table Data {dataType.Name}");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Failed to create change tracker for {dataType.Name}: {e.Message}");
+            }
+        }
+
         private void LoadDataTypes()
         {
             repositories.Clear();
             dataTypeInfoMap.Clear();
+            changeTrackers.Clear();
             
             // Get data type infos from context
             var dataTypeInfos = dataContext.GetDataTypeInfos();
@@ -246,6 +355,9 @@ namespace Datra.Unity.Editor
                     {
                         repositories[dataTypeInfo.DataType] = repository;
                         dataTypeInfoMap[dataTypeInfo.DataType] = dataTypeInfo;
+
+                        // Create RepositoryChangeTracker for this data type
+                        CreateChangeTrackerForRepository(dataTypeInfo.DataType, repository);
                     }
                 }
             }
@@ -296,7 +408,13 @@ namespace Datra.Unity.Editor
             if (repositories.TryGetValue(dataType, out var repository))
             {
                 ShowDataInspector();
-                dataInspectorPanel.SetDataContext(dataContext, repository, dataType);
+
+                // Get change tracker for this data type
+                changeTrackers.TryGetValue(dataType, out var tracker);
+                Debug.Log($"[OnDataTypeSelected] DataType: {dataType.Name}, Tracker: {(tracker != null ? "exists" : "null")}");
+
+                // Pass tracker to inspector panel
+                dataInspectorPanel.SetDataContext(dataContext, repository, dataType, tracker);
                 UpdateCurrentDataModifiedState();
             }
         }
@@ -360,7 +478,7 @@ namespace Datra.Unity.Editor
             
             // Update inspector with tab data
             ShowDataInspector();
-            dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType);
+            dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType, changeTrackers.GetValueOrDefault(tab.DataType));
         }
         
         private void CloseTab(DataTab tab)
@@ -391,10 +509,17 @@ namespace Datra.Unity.Editor
             }
         }
         
-        private void OnDataModified(Type dataType)
+        private void OnDataModified(Type dataType, bool isModified)
         {
-            dataManager.MarkAsModified(dataType);
-            navigationPanel.MarkTypeAsModified(dataType, true);
+            if (isModified)
+            {
+                dataManager.MarkAsModified(dataType);
+            }
+            else
+            {
+                dataManager.ClearModifiedState(dataType);
+            }
+            navigationPanel.MarkTypeAsModified(dataType, isModified);
         }
         
         private async void SaveAllData()
@@ -610,7 +735,7 @@ namespace Datra.Unity.Editor
                     // Refresh current view if data inspector is active
                     if (currentInspectorPanel == dataInspectorPanel)
                     {
-                        dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType);
+                        dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType, changeTrackers.GetValueOrDefault(dataInspectorPanel.CurrentType));
                     }
                 }
             }
