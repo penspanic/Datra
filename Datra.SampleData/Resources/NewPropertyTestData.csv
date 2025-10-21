@@ -1,4 +1,4 @@
-Id,Name,Level
-char_001,Warrior,10
-char_002,Mage,15
-char_003,Archer,12
+Id,Category,Name,Health,Level,Attack
+char_001,,Warrior,0,10,0
+char_002,,Mage,0,15,0
+char_003,,Archer,0,12,0

@@ -1,37 +1,102 @@
 [
   {
     "Id": 1001,
+    "Name": {
+      "Key": "ItemData.1001.name",
+      "HasValue": true
+    },
+    "Description": {
+      "Key": "ItemData.1001.description",
+      "HasValue": true
+    },
     "Price": 100,
     "Type": "Weapon",
     "Attack": 10,
-    "Defense": 0
+    "Defense": 0,
+    "IconSpritePath": "",
+    "DroppedItemPrefabPath": "",
+    "UseSoundPath": "",
+    "EffectPrefabPath": "",
+    "Ref": 1001
   },
   {
     "Id": 1002,
+    "Name": {
+      "Key": "ItemData.1002.name",
+      "HasValue": true
+    },
+    "Description": {
+      "Key": "ItemData.1002.description",
+      "HasValue": true
+    },
     "Price": 150,
     "Type": "Armor",
     "Attack": 0,
-    "Defense": 5
+    "Defense": 5,
+    "IconSpritePath": "",
+    "DroppedItemPrefabPath": "",
+    "UseSoundPath": "",
+    "EffectPrefabPath": "",
+    "Ref": 1002
   },
   {
     "Id": 2001,
+    "Name": {
+      "Key": "ItemData.2001.name",
+      "HasValue": true
+    },
+    "Description": {
+      "Key": "ItemData.2001.description",
+      "HasValue": true
+    },
     "Price": 50,
     "Type": "Consumable",
     "Attack": 0,
-    "Defense": 0
+    "Defense": 0,
+    "IconSpritePath": "",
+    "DroppedItemPrefabPath": "",
+    "UseSoundPath": "",
+    "EffectPrefabPath": "",
+    "Ref": 2001
   },
   {
     "Id": 3001,
+    "Name": {
+      "Key": "ItemData.3001.name",
+      "HasValue": true
+    },
+    "Description": {
+      "Key": "ItemData.3001.description",
+      "HasValue": true
+    },
     "Price": 500,
     "Type": "Weapon",
     "Attack": 15,
-    "Defense": 0
+    "Defense": 0,
+    "IconSpritePath": "",
+    "DroppedItemPrefabPath": "",
+    "UseSoundPath": "",
+    "EffectPrefabPath": "",
+    "Ref": 3001
   },
   {
     "Id": 3002,
+    "Name": {
+      "Key": "ItemData.3002.name",
+      "HasValue": true
+    },
+    "Description": {
+      "Key": "ItemData.3002.description",
+      "HasValue": true
+    },
     "Price": 1000,
     "Type": "Armor",
     "Attack": 0,
-    "Defense": 20
+    "Defense": 20,
+    "IconSpritePath": "",
+    "DroppedItemPrefabPath": "",
+    "UseSoundPath": "",
+    "EffectPrefabPath": "",
+    "Ref": 3002
   }
 ]
