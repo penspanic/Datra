@@ -1,28 +1,28 @@
 Id,Text,Context
-Button_Start,Start,Main menu
-Button_Exit,Exit,Main menu
-Button_Settings,Settings,Main menu
 Button_Cancel,Cancel,Dialog
+Button_Exit,Exit,Main menu
 Button_OK,OK,Dialog
-Message_Welcome,Welcome!,First login
-Message_Goodbye,Goodbye!,Logout
-Message_Loading,Loading...,Data loading
-Message_SaveComplete,Save completed,Save notification
-Error_NetworkDisconnected,Network connection lost,Error popup
-Error_InvalidInput,Invalid input,Input validation
-Error_FileNotFound,File not found,File error
+Button_Settings,Settings,Main menu
+Button_Start,Start,Main menu
 CharacterData.hero_001.name,Arthur,Character name
 CharacterData.hero_002.name,Marin,Character name
 CharacterData.hero_003.name,Lena,Character name
 CharacterData.hero_004.name,Thor,Character name
 CharacterData.hero_005.name,Luna,Character name
-ItemData.1001.name,Iron Sword,Item name
+Error_FileNotFound,File not found,File error
+Error_InvalidInput,Invalid input,Input validation
+Error_NetworkDisconnected,Network connection lost,Error popup
 ItemData.1001.description,Basic sword made of iron,Item description
-ItemData.1002.name,Leather Armor,Item name
+ItemData.1001.name,Iron Sword,Item name
 ItemData.1002.description,Light armor made of leather,Item description
-ItemData.2001.name,Health Potion,Item name
+ItemData.1002.name,Leather Armor,Item name
 ItemData.2001.description,Restores 50 HP,Item description
-ItemData.3001.name,Magic Staff,Item name
+ItemData.2001.name,Health Potion,Item name
 ItemData.3001.description,Staff imbued with magical power,Item description
-ItemData.3002.name,Mithril Armor,Item name
+ItemData.3001.name,Magic Staff,Item name
 ItemData.3002.description,Premium armor made of mithril,Item description
+ItemData.3002.name,Mithril Armor,Item name
+Message_Goodbye,Goodbye!,Logout
+Message_Loading,Loading...,Data loading
+Message_SaveComplete,Save completed,Save notification
+Message_Welcome,Welcome!,First login

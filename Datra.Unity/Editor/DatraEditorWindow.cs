@@ -453,7 +453,21 @@ namespace Datra.Unity.Editor
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                await SaveLocalizationData();
+                // Check if there are modifications in localization
+                if (!localizationInspectorPanel.HasUnsavedChanges)
+                {
+                    // No modifications - suggest Force Save
+                    if (EditorUtility.DisplayDialog("No Changes",
+                        "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
+                        "Force Save", "Cancel"))
+                    {
+                        ForceSaveLocalizationData();
+                    }
+                }
+                else
+                {
+                    await SaveLocalizationData();
+                }
             }
         }
 
@@ -523,21 +537,21 @@ namespace Datra.Unity.Editor
 
         private async Task SaveLocalizationData()
         {
-            // TODO: Implement localization saving
-            if (localizationContext != null)
+            if (localizationContext != null && localizationInspectorPanel != null)
             {
-                // For now, just mark as saved
+                // Trigger save from the panel which delegates to the view
+                localizationInspectorPanel.SaveData();
                 navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
-                await Task.CompletedTask; // Placeholder for async operation
+                await Task.CompletedTask;
             }
         }
 
         private void ForceSaveLocalizationData()
         {
-            // TODO: Implement force localization saving
-            if (localizationContext != null)
+            if (localizationContext != null && localizationInspectorPanel != null)
             {
-                // For now, just mark as saved
+                // Force save - trigger save even without changes
+                localizationInspectorPanel.SaveData();
                 navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
             }
         }

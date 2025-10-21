@@ -47,6 +47,7 @@ namespace Datra.Unity.Editor.Views
 
         protected void InvokeOnItemDeleted(object item) => OnItemDeleted?.Invoke(item);
         protected void InvokeOnAddNewItem() => OnAddNewItem?.Invoke();
+        protected void InvokeOnSaveRequested(Type type, object repo) => OnSaveRequested?.Invoke(type, repo);
         
         // Properties
         public Type DataType => dataType;
@@ -284,7 +285,7 @@ namespace Datra.Unity.Editor.Views
         {
             statusLabel.text = message;
         }
-        
+
         protected void MarkAsModified()
         {
             if (!hasUnsavedChanges && !isReadOnly)
@@ -293,6 +294,22 @@ namespace Datra.Unity.Editor.Views
                 UpdateFooter();
                 OnDataModified?.Invoke(dataType);
             }
+        }
+
+        /// <summary>
+        /// Public method to trigger save from external code (e.g., toolbar buttons)
+        /// </summary>
+        public void SaveData()
+        {
+            SaveChanges();
+        }
+
+        /// <summary>
+        /// Public method to trigger revert from external code
+        /// </summary>
+        public void RevertData()
+        {
+            RevertChanges();
         }
         
         protected bool IsTableData(Type type)

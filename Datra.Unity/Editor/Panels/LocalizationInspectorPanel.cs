@@ -11,7 +11,9 @@ namespace Datra.Unity.Editor.Panels
     {
         private LocalizationContext localizationContext;
         private DatraLocalizationView localizationView;
-        
+
+        public bool HasUnsavedChanges => localizationView?.HasUnsavedChanges ?? false;
+
         public LocalizationInspectorPanel() : base()
         {
             AddToClassList("datra-localization-inspector-panel");
@@ -82,12 +84,17 @@ namespace Datra.Unity.Editor.Panels
                 ShowEmptyState();
                 return;
             }
-            
+
             // Refresh the localization view
             if (localizationView != null)
             {
                 localizationView.RefreshContent();
             }
+        }
+
+        public void SaveData()
+        {
+            localizationView?.SaveData();
         }
         
         protected override string GetEmptyStateMessage()

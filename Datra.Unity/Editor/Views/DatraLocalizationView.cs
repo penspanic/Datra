@@ -206,7 +206,8 @@ namespace Datra.Unity.Editor.Views
         {
             if (isLoading) return;
 
-            if (Enum.TryParse<LanguageCode>(evt.newValue, out var languageCode))
+            var languageCode = LanguageCodeExtensions.TryParse(evt.newValue);
+            if (languageCode.HasValue)
             {
                 // Check for unsaved changes
                 if (hasUnsavedChanges)
@@ -220,8 +221,12 @@ namespace Datra.Unity.Editor.Views
                     }
                 }
 
-                currentLanguageCode = languageCode;
-                await LoadLanguageDataAsync(languageCode);
+                currentLanguageCode = languageCode.Value;
+                await LoadLanguageDataAsync(languageCode.Value);
+            }
+            else
+            {
+                Debug.LogError($"Failed to parse language code: {evt.newValue}");
             }
         }
 
@@ -557,6 +562,11 @@ namespace Datra.Unity.Editor.Views
         {
             if (localizationContext == null || isReadOnly) return;
 
+            PerformSave();
+        }
+
+        private void PerformSave()
+        {
             try
             {
                 // Save all modified text values to LocalizationContext
@@ -573,8 +583,15 @@ namespace Datra.Unity.Editor.Views
                 var saveTask = localizationContext.SaveCurrentLanguageAsync();
                 saveTask.Wait();
 
-                // Call base to update baselines
-                base.SaveChanges();
+                // Update baselines
+                propertyTracker.UpdateBaseline();
+                foreach (var tracker in itemTrackers.Values)
+                {
+                    tracker.UpdateBaseline();
+                }
+
+                hasUnsavedChanges = false;
+                UpdateFooter();
 
                 // Clear visual modifications from all cells
                 foreach (var (wrapper, cells) in cellElements)
