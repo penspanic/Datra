@@ -31,10 +31,15 @@ namespace Datra.Interfaces
         where TData : class
     {
         /// <summary>
-        /// Get data
+        /// Get the single data object
         /// </summary>
         TData Get();
-        
+
+        /// <summary>
+        /// Set the single data object
+        /// </summary>
+        void Set(TData data);
+
         /// <summary>
         /// Whether data is loaded
         /// </summary>

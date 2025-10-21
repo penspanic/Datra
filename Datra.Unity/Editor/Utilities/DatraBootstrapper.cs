@@ -92,7 +92,6 @@ namespace Datra.Unity.Editor.Utilities
                 
                 if (result is IDataContext dataContext)
                 {
-                    Debug.Log($"[Datra] Successfully initialized DataContext using {initializer.DisplayName}");
                     _currentDataContext = dataContext;
                     return dataContext;
                 }

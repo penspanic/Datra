@@ -249,7 +249,7 @@ namespace Datra
             
             var data = loadMethod.Invoke(serializer, new object[] { rawData });
             
-            var repositoryType = typeof(DataRepository<,>).MakeGenericType(keyType, dataType);
+            var repositoryType = typeof(KeyValueDataRepository<,>).MakeGenericType(keyType, dataType);
             return Activator.CreateInstance(repositoryType, data);
         }
         

@@ -35,9 +35,6 @@ namespace Datra.Interfaces
     public interface IEditableSingleDataRepository<TData> : ISingleDataRepository<TData>
         where TData : class
     {
-        /// <summary>
-        /// Set data
-        /// </summary>
-        void Set(TData data);
+        // Set() is already defined in ISingleDataRepository<TData>
     }
 }

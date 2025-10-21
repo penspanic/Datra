@@ -185,15 +185,12 @@ namespace Datra.Unity.Editor.Views
         {
             bool actuallyModified = HasActualModifications();
 
-            Debug.Log($"[UpdateModifiedState] DataType: {dataType?.Name}, Tracker: {(changeTracker != null ? "exists" : "null")}, ActuallyModified: {actuallyModified}, HasUnsavedChanges: {hasUnsavedChanges}");
-
             bool wasModified = hasUnsavedChanges;
             if (hasUnsavedChanges != actuallyModified)
             {
                 hasUnsavedChanges = actuallyModified;
                 UpdateFooter();
                 OnDataModified?.Invoke(dataType, actuallyModified);
-                Debug.Log($"[UpdateModifiedState] Fired OnDataModified event: {dataType?.Name}, isModified: {actuallyModified}");
 
                 // If changed from modified to not modified, clear UI modifications
                 if (wasModified && !actuallyModified)
@@ -303,8 +300,18 @@ namespace Datra.Unity.Editor.Views
         protected bool IsTableData(Type type)
         {
             var interfaces = type.GetInterfaces();
-            return interfaces.Any(i => i.IsGenericType && 
+            return interfaces.Any(i => i.IsGenericType &&
                 i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ITableData<>));
+        }
+
+        /// <summary>
+        /// Get filtered properties for a type, excluding properties with DatraIgnoreAttribute
+        /// </summary>
+        protected List<PropertyInfo> GetFilteredProperties(Type type)
+        {
+            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
+                .ToList();
         }
         
         protected object GetKeyFromItem(object item)

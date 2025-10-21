@@ -28,7 +28,7 @@ namespace Datra.Services
         private readonly DatraConfigurationValue _config;
         private readonly ITranslationProvider _translationProvider;
         private readonly Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>> _languageData;
-        private DataRepository<string, LocalizationKeyData>? _keyRepository;
+        private KeyValueDataRepository<string, LocalizationKeyData>? _keyRepository;
         private Dictionary<string, object> _languageRepositories; // Will be IDataRepository<string, LocalizationData> at runtime
         private LanguageCode _currentLanguageCode;
         private List<LanguageCode> _availableLanguages;
@@ -43,8 +43,8 @@ namespace Datra.Services
         /// </summary>
         public LanguageCode CurrentLanguageCode => _currentLanguageCode;
         
-        public DataRepository<string, LocalizationKeyData> KeyRepository => _keyRepository ?? throw new InvalidOperationException("KeyRepository is not set. Make sure to call SetKeyRepository from generated code.");
-        
+        public KeyValueDataRepository<string, LocalizationKeyData> KeyRepository => _keyRepository ?? throw new InvalidOperationException("KeyRepository is not set. Make sure to call SetKeyRepository from generated code.");
+
         /// <summary>
         /// Creates a new LocalizationContext
         /// </summary>
@@ -68,7 +68,7 @@ namespace Datra.Services
             // Parse default language from config
             _currentLanguageCode = LanguageCodeExtensions.TryParse(_config.DefaultLanguage) ?? LanguageCode.En;
         }
-        
+
         /// <summary>
         /// Initializes the localization context by loading master keys
         /// </summary>
@@ -76,15 +76,15 @@ namespace Datra.Services
         {
             // Load LocalizationKeys.csv
             await LoadMasterKeysAsync();
-            
+
             // Detect available languages
             DetectAvailableLanguages();
         }
-        
+
         /// <summary>
         /// Sets the key repository (called from generated code)
         /// </summary>
-        public void SetKeyRepository(DataRepository<string, LocalizationKeyData> keyRepository)
+        public void SetKeyRepository(KeyValueDataRepository<string, LocalizationKeyData> keyRepository)
         {
             _keyRepository = keyRepository;
         }

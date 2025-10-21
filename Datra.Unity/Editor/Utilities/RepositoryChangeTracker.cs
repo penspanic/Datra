@@ -81,8 +81,6 @@ namespace Datra.Unity.Editor.Utilities
 
                 TrackPropertyChange(key, prop.Name, newPropValue, out bool isModified);
             }
-
-            Debug.Log($"[TrackChange] key={key}, total property changes: {_propertyChanges.Count}, HasModifications={HasModifications}");
         }
 
         /// <summary>
@@ -94,7 +92,6 @@ namespace Datra.Unity.Editor.Utilities
             if (!_baseline.TryGetValue(key, out var baselineEntity))
             {
                 // Key doesn't exist in baseline - it's an added entity
-                Debug.Log($"[TrackPropertyChange] key={key}, property={propertyName} - entity is added, not tracking property-level changes");
                 return;
             }
 
@@ -112,7 +109,6 @@ namespace Datra.Unity.Editor.Utilities
             bool isEqual = DeepEqualsValues(baselineValue, newValue);
             var changeKey = (key, propertyName);
 
-            Debug.Log($"[TrackPropertyChange] key={key}, property={propertyName}, baseline={baselineValue}, new={newValue}, equal={isEqual}");
             isModified = !isEqual;
 
             if (!isEqual)
@@ -122,13 +118,11 @@ namespace Datra.Unity.Editor.Utilities
                     BaselineValue = baselineValue,
                     CurrentValue = newValue
                 };
-                Debug.Log($"[TrackPropertyChange] Added property change. Total property changes: {_propertyChanges.Count}");
             }
             else
             {
                 // Back to baseline - remove change
                 _propertyChanges.Remove(changeKey);
-                Debug.Log($"[TrackPropertyChange] Removed property change (back to baseline). Total: {_propertyChanges.Count}");
             }
 
             // Also update current entity snapshot
@@ -149,7 +143,6 @@ namespace Datra.Unity.Editor.Utilities
             {
                 _addedKeys.Add(key);
                 _deletedKeys.Remove(key);
-                Debug.Log($"[TrackAdd] key={key}, _addedKeys.Count={_addedKeys.Count}");
             }
             else
             {
@@ -182,8 +175,6 @@ namespace Datra.Unity.Editor.Utilities
                     _propertyChanges.Remove(k);
                 }
             }
-
-            Debug.Log($"[TrackDelete] key={key}, _deletedKeys.Count={_deletedKeys.Count}");
         }
 
         /// <summary>
@@ -413,8 +404,6 @@ namespace Datra.Unity.Editor.Utilities
                 var jsonA = JsonConvert.SerializeObject(a);
                 var jsonB = JsonConvert.SerializeObject(b);
                 bool areEqual = jsonA == jsonB;
-
-                Debug.Log($"[DeepEquals] Type={typeof(TValue).Name}\nbaselineJson={jsonA}\ncurrentJson={jsonB}\nequal={areEqual}");
 
                 return areEqual;
             }

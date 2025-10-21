@@ -108,7 +108,7 @@ namespace Datra.Generators.Generators
             builder.AppendLine("var keySerializer = _serializerFactory.GetSerializer(DataFormat.Csv);");
             builder.AppendLine("var keyRawData = await _rawDataProvider.LoadTextAsync(keyDataPath);");
             builder.AppendLine("var keyDataList = keySerializer.Deserialize<LocalizationKeyData[]>(keyRawData);");
-            builder.AppendLine("_keyRepository = new DataRepository<string, LocalizationKeyData>();");
+            builder.AppendLine("_keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>();");
             builder.AppendLine("foreach (var item in keyDataList)");
             builder.BeginBlock();
             builder.AppendLine("_keyRepository.Add(item);");
@@ -140,7 +140,7 @@ namespace Datra.Generators.Generators
             builder.AppendLine("var serializer = _serializerFactory.GetSerializer(DataFormat.Csv);");
             builder.AppendLine("var rawData = await _rawDataProvider.LoadTextAsync(dataPath);");
             builder.AppendLine("var dataList = serializer.Deserialize<LocalizationData[]>(rawData);");
-            builder.AppendLine("var repository = new DataRepository<string, LocalizationData>();");
+            builder.AppendLine("var repository = new KeyValueDataRepository<string, LocalizationData>();");
             builder.AppendLine("foreach (var item in dataList)");
             builder.BeginBlock();
             builder.AppendLine("repository.Add(item);");

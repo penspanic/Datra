@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using UnityEngine.UIElements;
 
@@ -10,8 +11,7 @@ namespace Datra.Unity.Editor.Components
     /// </summary>
     public static class DatraFieldFactory
     {
-        private static Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>> customFieldCreators =
-            new Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>>();
+        private static Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>> customFieldCreators = new();
 
         /// <summary>
         /// Register a custom field creator for a specific type
@@ -42,7 +42,9 @@ namespace Datra.Unity.Editor.Components
         public static List<DatraPropertyField> CreateFieldsForObject(object target, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form, bool skipId = true)
         {
             var fields = new List<DatraPropertyField>();
-            var properties = target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            // Filter out properties with DatraIgnore attribute
+            var properties = target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any());
 
             foreach (var property in properties)
             {

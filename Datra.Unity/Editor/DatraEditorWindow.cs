@@ -222,93 +222,74 @@ namespace Datra.Unity.Editor
                 // Get repository type
                 var repoType = repository.GetType();
 
-                // Check if it's a SingleDataRepository<TData> FIRST (more specific)
-                if (repoType.IsGenericType && repoType.GetGenericTypeDefinition().Name == "SingleDataRepository`1")
+                // Check for ISingleDataRepository<TData>
+                var singleRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ISingleDataRepository<>));
+
+                if (singleRepoInterface != null)
                 {
-                    var genericArgs = repoType.GetGenericArguments();
-                    if (genericArgs.Length == 1)
+                    var valueType = singleRepoInterface.GetGenericArguments()[0];
+                    var keyType = typeof(string);
+
+                    // Create RepositoryChangeTracker<string, TValue>
+                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
+                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+
+                    if (tracker != null)
                     {
-                        var valueType = genericArgs[0];
+                        // Use interface to get data
+                        var singleRepo = repository as dynamic;
+                        var data = singleRepo.Get();
 
-                        // For single data, use string "single" as key
-                        var keyType = typeof(string);
+                        // Create a dictionary with single item using "single" as key
+                        var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
+                        var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
 
-                        // Create RepositoryChangeTracker<string, TValue>
-                        var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
-                        var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
-
-                        if (tracker != null)
+                        if (dict != null && data != null)
                         {
-                            // Get the single data item
-                            var getMethod = repoType.GetMethod("Get");
-                            if (getMethod != null)
-                            {
-                                var data = getMethod.Invoke(repository, null);
-
-                                // Create a dictionary with single item using "single" as key
-                                var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
-                                var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
-
-                                if (dict != null && data != null)
-                                {
-                                    dict.Add("single", data);
-
-                                    // Initialize baseline using interface method
-                                    tracker.InitializeBaseline(dict);
-                                }
-                            }
-
-                            // Store tracker
-                            changeTrackers[dataType] = tracker;
+                            dict.Add("single", data);
+                            tracker.InitializeBaseline(dict);
                         }
+
+                        // Store tracker
+                        changeTrackers[dataType] = tracker;
 
                         // Register with data manager
-                        var registerMethod = typeof(DatraDataManager).GetMethod("RegisterChangeTracker");
-                        if (registerMethod != null)
-                        {
-                            var genericRegister = registerMethod.MakeGenericMethod(keyType, valueType);
-                            genericRegister.Invoke(dataManager, new object[] { dataType, tracker });
-                        }
+                        dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
 
-                        Debug.Log($"Created and registered RepositoryChangeTracker<string, {valueType.Name}> for Single Data {dataType.Name}");
+                        Debug.Log($"Created and registered RepositoryChangeTracker<{keyType.Name}, {valueType.Name}> for Single Data {dataType.Name}");
                     }
+                    return;
                 }
-                // Check if it's a DataRepository<TKey, TValue> (Table Data)
-                else if (repoType.IsGenericType && repoType.GetGenericTypeDefinition().Name == "DataRepository`2")
+
+                // Check for IKeyValueDataRepository<TKey, TValue>
+                var keyValueRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IKeyValueDataRepository<,>));
+
+                if (keyValueRepoInterface != null)
                 {
-                    var genericArgs = repoType.GetGenericArguments();
-                    if (genericArgs.Length == 2)
+                    var genericArgs = keyValueRepoInterface.GetGenericArguments();
+                    var keyType = genericArgs[0];
+                    var valueType = genericArgs[1];
+
+                    // Create RepositoryChangeTracker<TKey, TValue>
+                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
+                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+
+                    if (tracker != null)
                     {
-                        var keyType = genericArgs[0];
-                        var valueType = genericArgs[1];
+                        // Use interface to get data
+                        var keyValueRepo = repository as dynamic;
+                        var data = keyValueRepo.GetAll();
 
-                        // Create RepositoryChangeTracker<TKey, TValue>
-                        var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
-                        var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+                        // Initialize baseline
+                        tracker.InitializeBaseline(data);
 
-                        if (tracker != null)
-                        {
-                            // Get GetAll method to get repository data
-                            var getAllMethod = repoType.GetMethod("GetAll");
-                            if (getAllMethod != null)
-                            {
-                                var data = getAllMethod.Invoke(repository, null);
-
-                                // Initialize baseline using interface method
-                                tracker.InitializeBaseline(data);
-                            }
-
-                            // Store tracker
-                            changeTrackers[dataType] = tracker;
-                        }
+                        // Store tracker
+                        changeTrackers[dataType] = tracker;
 
                         // Register with data manager
-                        var registerMethod = typeof(DatraDataManager).GetMethod("RegisterChangeTracker");
-                        if (registerMethod != null)
-                        {
-                            var genericRegister = registerMethod.MakeGenericMethod(keyType, valueType);
-                            genericRegister.Invoke(dataManager, new object[] { dataType, tracker });
-                        }
+                        dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
 
                         Debug.Log($"Created and registered RepositoryChangeTracker<{keyType.Name}, {valueType.Name}> for Table Data {dataType.Name}");
                     }
@@ -413,7 +394,6 @@ namespace Datra.Unity.Editor
 
                 // Get change tracker for this data type
                 changeTrackers.TryGetValue(dataType, out var tracker);
-                Debug.Log($"[OnDataTypeSelected] DataType: {dataType.Name}, Tracker: {(tracker != null ? "exists" : "null")}");
 
                 // Pass tracker to inspector panel
                 dataInspectorPanel.SetDataContext(dataContext, repository, dataType, tracker);

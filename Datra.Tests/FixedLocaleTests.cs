@@ -134,7 +134,7 @@ namespace Datra.Tests
             var context = new LocalizationContext(provider, null, config);
 
             // Create and set key repository
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 config.LocalizationKeyDataPath,
                 provider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),

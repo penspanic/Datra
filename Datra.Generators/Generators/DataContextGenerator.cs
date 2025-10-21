@@ -159,7 +159,7 @@ namespace Datra.Generators.Generators
             if (isCsvFormat)
             {
                 // Use CSV-specific constructor
-                builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
+                builder.AppendLine($"{model.PropertyName} = new KeyValueDataRepository<{model.KeyType}, {model.TypeName}>(");
                 builder.AppendLine($"    \"{model.FilePath}\",");
                 builder.AppendLine($"    RawDataProvider,");
                 builder.AppendLine($"    (data) => {simpleTypeName}Serializer.DeserializeCsv(data, _config, _logger),");
@@ -170,7 +170,7 @@ namespace Datra.Generators.Generators
             else
             {
                 // Use standard constructor with serializer
-                builder.AppendLine($"{model.PropertyName} = new DataRepository<{model.KeyType}, {model.TypeName}>(");
+                builder.AppendLine($"{model.PropertyName} = new KeyValueDataRepository<{model.KeyType}, {model.TypeName}>(");
                 builder.AppendLine($"    \"{model.FilePath}\",");
                 builder.AppendLine($"    RawDataProvider,");
                 builder.AppendLine($"    SerializerFactory,");
@@ -219,7 +219,7 @@ namespace Datra.Generators.Generators
             if (_enableLocalization)
             {
                 builder.AppendLine("// Initialize LocalizationContext");
-                builder.AppendLine("var keyRepository = new DataRepository<string, Datra.Models.LocalizationKeyData>(");
+                builder.AppendLine("var keyRepository = new KeyValueDataRepository<string, Datra.Models.LocalizationKeyData>(");
                 builder.AppendLine("    _config.LocalizationKeyDataPath,");
                 builder.AppendLine("    RawDataProvider,");
                 builder.AppendLine("    (data) => LocalizationKeyDataSerializer.DeserializeCsv(data, _config, _logger),");

@@ -44,6 +44,14 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
+        /// Register a change tracker for a data type (non-generic version for reflection-free usage)
+        /// </summary>
+        public void RegisterChangeTracker(Type dataType, IRepositoryChangeTracker tracker, Type keyType, Type valueType)
+        {
+            changeTrackers[dataType] = tracker;
+        }
+
+        /// <summary>
         /// Register a localization change tracker
         /// </summary>
         public void RegisterLocalizationChangeTracker(Type dataType, LocalizationChangeTracker tracker)
@@ -81,11 +89,10 @@ namespace Datra.Unity.Editor.Utilities
             if (!changeTrackers.TryGetValue(dataType, out var tracker))
                 return false;
 
-            // Try RepositoryChangeTracker
-            var hasModsProp = tracker.GetType().GetProperty("HasModifications");
-            if (hasModsProp != null)
+            // Use interface
+            if (tracker is IRepositoryChangeTracker changeTracker)
             {
-                return (bool)hasModsProp.GetValue(tracker);
+                return changeTracker.HasModifications;
             }
 
             return false;
@@ -296,7 +303,29 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         private async Task<bool> SaveRepositoryAsync(object repository, Type dataType)
         {
-            // Try to find SaveAsync method on the repository
+            // Check if it's IKeyValueDataRepository<TKey, TData>
+            var keyValueRepoInterface = repository.GetType().GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "IKeyValueDataRepository`2");
+
+            if (keyValueRepoInterface != null)
+            {
+                var keyValueRepo = repository as dynamic;
+                await keyValueRepo.SaveAsync();
+                return true;
+            }
+
+            // Check if it's ISingleDataRepository<TData>
+            var singleRepoInterface = repository.GetType().GetInterfaces()
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "ISingleDataRepository`1");
+
+            if (singleRepoInterface != null)
+            {
+                var singleRepo = repository as dynamic;
+                await singleRepo.SaveAsync();
+                return true;
+            }
+
+            // Fallback: Try to find SaveAsync method on the repository (for backward compatibility)
             var saveMethod = repository.GetType().GetMethod("SaveAsync");
             if (saveMethod != null)
             {
@@ -307,21 +336,9 @@ namespace Datra.Unity.Editor.Utilities
                     return true;
                 }
             }
-            
-            // Fallback: Try to save through context with specific type
-            var contextType = dataContext.GetType();
-            var saveSpecificMethod = contextType.GetMethod("SaveAsync", new[] { typeof(Type) });
-            if (saveSpecificMethod != null)
-            {
-                var task = saveSpecificMethod.Invoke(dataContext, new object[] { dataType }) as Task;
-                if (task != null)
-                {
-                    await task;
-                    return true;
-                }
-            }
-            
+
             // Last resort: Try generic SaveAsync method
+            var contextType = dataContext.GetType();
             var genericSaveMethod = contextType.GetMethods()
                 .FirstOrDefault(m => m.Name == "SaveAsync" && m.IsGenericMethodDefinition);
             if (genericSaveMethod != null)
@@ -347,17 +364,45 @@ namespace Datra.Unity.Editor.Utilities
 
             try
             {
-                // Try to get GetAll method from repository
-                var getAllMethod = repository.GetType().GetMethod("GetAll");
-                if (getAllMethod != null)
+                // Check if it's IKeyValueDataRepository<TKey, TData>
+                var keyValueRepoInterface = repository.GetType().GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "IKeyValueDataRepository`2");
+
+                if (keyValueRepoInterface != null)
                 {
-                    var currentData = getAllMethod.Invoke(repository, null);
+                    // Use interface to get data
+                    var keyValueRepo = repository as dynamic;
+                    var currentData = keyValueRepo.GetAll();
 
                     // Call UpdateBaseline on the tracker
-                    var updateMethod = tracker.GetType().GetMethod("UpdateBaseline");
-                    if (updateMethod != null)
+                    var changeTracker = tracker as IRepositoryChangeTracker;
+                    changeTracker?.UpdateBaseline(currentData);
+                    return;
+                }
+
+                // Check if it's ISingleDataRepository<TData>
+                var singleRepoInterface = repository.GetType().GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "ISingleDataRepository`1");
+
+                if (singleRepoInterface != null)
+                {
+                    var valueType = singleRepoInterface.GetGenericArguments()[0];
+
+                    // Use interface to get data
+                    var singleRepo = repository as dynamic;
+                    var data = singleRepo.Get();
+
+                    // Create a dictionary with single item using "single" as key
+                    var dictType = typeof(Dictionary<,>).MakeGenericType(typeof(string), valueType);
+                    var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
+
+                    if (dict != null && data != null)
                     {
-                        updateMethod.Invoke(tracker, new[] { currentData });
+                        dict.Add("single", data);
+
+                        // Call UpdateBaseline on the tracker
+                        var changeTracker = tracker as IRepositoryChangeTracker;
+                        changeTracker?.UpdateBaseline(dict);
                     }
                 }
             }

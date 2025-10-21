@@ -164,7 +164,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var context = new LocalizationContext(rawDataProvider);
             
             // Create and set key repository
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -196,7 +196,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -223,7 +223,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -247,7 +247,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -274,7 +274,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -310,7 +310,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -349,7 +349,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
@@ -375,7 +375,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
             
-            var keyRepository = new DataRepository<string, LocalizationKeyData>(
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),

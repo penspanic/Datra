@@ -26,7 +26,6 @@ namespace Datra.Unity.Editor.Views
         // Properties
         public bool ShowIdColumn { get; set; } = true;
         public bool ShowActionsColumn { get; set; } = true;
-        public float RowHeight { get; set; } = 28f;
         
         // Column resize tracking
         private bool isResizing = false;
@@ -126,10 +125,8 @@ namespace Datra.Unity.Editor.Views
             }
 
             // Get columns (properties) BEFORE calling RefreshContent
-            // Filter out properties with DatraIgnore attribute
-            columns = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
-                .ToList();
+            // Use base method to filter out properties with DatraIgnore attribute
+            columns = GetFilteredProperties(type);
 
             // Now cleanup and refresh
             CleanupFields();
@@ -193,17 +190,14 @@ namespace Datra.Unity.Editor.Views
                 CreateDataRow(item, bodyContainer);
 
                 // Restore modified cells from changeTracker
-                if (changeTracker != null)
+                var itemKey = GetKeyFromItem(item);
+                if (itemKey != null)
                 {
-                    var itemKey = GetKeyFromItem(item);
-                    if (itemKey != null)
+                    var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                    foreach (var propName in modifiedProps)
                     {
-                        var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
-                        foreach (var propName in modifiedProps)
-                        {
-                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var cell))
-                                cell.Q<DatraPropertyField>().SetModified(true);
-                        }
+                        if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var cell))
+                            cell.Q<DatraPropertyField>().SetModified(true);
                     }
                 }
             }
@@ -433,10 +427,7 @@ namespace Datra.Unity.Editor.Views
                     changeTracker.TrackPropertyChange(itemKey, propName, baselineValue, out bool isModified);
                     field.SetModified(isModified);
 
-                    // Update modification state (fires OnDataModified with correct state)
                     UpdateModifiedState();
-
-                    Debug.Log($"[OnRevertRequested] Reverted property: key={itemKey}, property={propName}");
                 };
 
                 cell.Add(field);
