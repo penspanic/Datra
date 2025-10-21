@@ -7,6 +7,7 @@ using Datra.Localization;
 using Datra.Services;
 using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Models;
+using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
 using UnityEditor;
 using UnityEditor.UIElements;
@@ -21,6 +22,7 @@ namespace Datra.Unity.Editor.Views
     public class DatraLocalizationView : DatraDataView
     {
         private LocalizationContext localizationContext;
+        private LocalizationChangeTracker changeTracker;  // External change tracker
         private DropdownField languageDropdown;
         private VisualElement tableContainer;
         private VisualElement headerRow;
@@ -179,6 +181,14 @@ namespace Datra.Unity.Editor.Views
                 searchField.SetEnabled(!show);
         }
 
+        /// <summary>
+        /// Set change tracker (must be called before or with SetLocalizationContext)
+        /// </summary>
+        public void SetChangeTracker(LocalizationChangeTracker tracker)
+        {
+            changeTracker = tracker;
+        }
+
         public async void SetLocalizationContext(LocalizationContext context)
         {
             localizationContext = context;
@@ -237,6 +247,14 @@ namespace Datra.Unity.Editor.Views
             try
             {
                 await localizationContext.LoadLanguageAsync(languageCode);
+
+                // Initialize change tracker for this language (only if not already initialized)
+                // This prevents clearing existing change tracking when switching tabs
+                if (changeTracker != null && !changeTracker.IsLanguageInitialized(languageCode))
+                {
+                    changeTracker.InitializeLanguage(languageCode);
+                }
+
                 RefreshContent();
                 UpdateStatus($"Loaded language: {languageCode.GetDisplayName()}");
             }
@@ -255,16 +273,6 @@ namespace Datra.Unity.Editor.Views
         public override void RefreshContent()
         {
             if (tableContainer == null || localizationContext == null) return;
-
-            // Store current modified state before clearing
-            var previousModifiedCells = new HashSet<(object, string)>();
-            foreach (var kvp in itemTrackers)
-            {
-                if (kvp.Value.HasAnyModifications())
-                {
-                    previousModifiedCells.Add((kvp.Key, "Text"));
-                }
-            }
 
             // Clear body content (keep header intact)
             bodyScrollView?.Clear();
@@ -289,15 +297,6 @@ namespace Datra.Unity.Editor.Views
                 var keyData = localizationContext.GetKeyData(key);
                 var wrapper = new LocalizationKeyWrapper(key, text, keyData);
                 wrappers.Add(wrapper);
-
-                // Create tracker for this wrapper
-                if (!itemTrackers.ContainsKey(wrapper))
-                {
-                    var tracker = new DatraPropertyTracker();
-                    tracker.StartTracking(wrapper);
-                    tracker.OnAnyPropertyModified += OnTrackerModified;
-                    itemTrackers[wrapper] = tracker;
-                }
             }
 
             // Create header cells
@@ -312,9 +311,32 @@ namespace Datra.Unity.Editor.Views
             foreach (var wrapper in wrappers)
             {
                 CreateDataRow(wrapper, bodyContainer);
+
+                // Restore modification indicators from ChangeTracker
+                if (changeTracker != null && changeTracker.IsModified(wrapper.Id))
+                {
+                    if (cellElements.TryGetValue(wrapper, out var cells))
+                    {
+                        if (cells.TryGetValue("Text", out var textCell))
+                        {
+                            // Set modified state on the field
+                            if (textCell is DatraPropertyField field)
+                            {
+                                field.SetModified(true);
+                            }
+
+                            // Add visual indicator
+                            textCell.AddToClassList("modified-cell");
+                        }
+                    }
+                }
             }
 
             bodyScrollView?.Add(bodyContainer);
+
+            // Update footer based on changeTracker
+            hasUnsavedChanges = changeTracker?.HasModifications() ?? false;
+            UpdateFooter();
         }
 
         private void CreateHeaderCells()
@@ -379,19 +401,25 @@ namespace Datra.Unity.Editor.Views
 
             // 3. Text column (editable with DatraPropertyField)
             var textProperty = typeof(LocalizationKeyWrapper).GetProperty("Text");
-            if (textProperty != null && itemTrackers.ContainsKey(wrapper))
+            if (textProperty != null)
             {
                 var textField = new DatraPropertyField(
                     wrapper,
                     textProperty,
-                    itemTrackers[wrapper],
                     DatraFieldLayoutMode.Table
                 );
 
                 textField.OnValueChanged += (propName, newValue) => {
                     // Update LocalizationContext
                     localizationContext.SetText(wrapper.Id, newValue as string);
+
+                    // Track change in external tracker
+                    changeTracker?.TrackTextChange(wrapper.Id, newValue as string);
+
                     MarkAsModified();
+
+                    // Update field's modified state
+                    textField.SetModified(changeTracker?.IsModified(wrapper.Id) ?? false);
 
                     // Add visual indicator to the cell
                     if (cells.TryGetValue("Text", out var textCell))
@@ -402,6 +430,42 @@ namespace Datra.Unity.Editor.Views
                         if (rowElements.TryGetValue(wrapper, out var modifiedRow))
                         {
                             modifiedRow.style.backgroundColor = new Color(0.4f, 0.3f, 0.2f, 0.3f);
+                        }
+                    }
+                };
+
+                textField.OnRevertRequested += (propName) => {
+                    // Revert using external tracker
+                    if (changeTracker != null)
+                    {
+                        var baselineText = changeTracker.GetBaselineText(wrapper.Id);
+                        if (baselineText != null)
+                        {
+                            // Update LocalizationContext
+                            localizationContext.SetText(wrapper.Id, baselineText);
+
+                            // Update wrapper
+                            wrapper.Text = baselineText;
+
+                            // Update the TextField value
+                            var textFieldElement = textField.Q<TextField>();
+                            if (textFieldElement != null)
+                            {
+                                textFieldElement.SetValueWithoutNotify(baselineText);
+                            }
+
+                            // Update field's modified state
+                            textField.SetModified(false);
+
+                            // Clear visual indicator
+                            if (cells.TryGetValue("Text", out var textCell))
+                            {
+                                textCell.RemoveFromClassList("modified-cell");
+                            }
+
+                            // Check if there are any remaining modifications
+                            hasUnsavedChanges = changeTracker.HasModifications();
+                            UpdateFooter();
                         }
                     }
                 };
@@ -481,12 +545,8 @@ namespace Datra.Unity.Editor.Views
                     var translatedText = localizationContext.GetText(wrapper.Id);
                     wrapper.Text = translatedText;
 
-                    // Get the tracker for this wrapper and track the change
-                    if (itemTrackers.TryGetValue(wrapper, out var tracker))
-                    {
-                        // Force the tracker to recognize this as a modification
-                        tracker.TrackChange(wrapper, "Text", translatedText);
-                    }
+                    // Track change in external tracker
+                    changeTracker?.TrackTextChange(wrapper.Id, translatedText);
 
                     // Mark as modified
                     MarkAsModified();
@@ -502,6 +562,12 @@ namespace Datra.Unity.Editor.Views
                         {
                             if (cells.TryGetValue("Text", out var textCell))
                             {
+                                // Update DatraPropertyField's modified state
+                                if (textCell is DatraPropertyField field)
+                                {
+                                    field.SetModified(true);
+                                }
+
                                 // Find the TextField and update its value
                                 var textField = textCell.Q<TextField>();
                                 if (textField != null)
@@ -608,12 +674,8 @@ namespace Datra.Unity.Editor.Views
                 {
                     await localizationContext.DeleteKeyAsync(wrapper.Id);
 
-                    // Remove from tracking
-                    if (itemTrackers.ContainsKey(wrapper))
-                    {
-                        itemTrackers[wrapper].OnAnyPropertyModified -= OnTrackerModified;
-                        itemTrackers.Remove(wrapper);
-                    }
+                    // Track deletion in external tracker
+                    changeTracker?.TrackKeyDelete(wrapper.Id);
 
                     RefreshContent();
                     UpdateStatus($"Key '{wrapper.Id}' deleted successfully");
@@ -638,6 +700,10 @@ namespace Datra.Unity.Editor.Views
                         try
                         {
                             await localizationContext.AddKeyAsync(input);
+
+                            // Track addition in external tracker
+                            changeTracker?.TrackKeyAdd(input);
+
                             RefreshContent();
                             UpdateStatus($"Key '{input}' added successfully");
                             MarkAsModified();
@@ -689,26 +755,15 @@ namespace Datra.Unity.Editor.Views
         {
             try
             {
-                // Save all modified text values to LocalizationContext
-                foreach (var kvp in itemTrackers)
-                {
-                    var wrapper = kvp.Key as LocalizationKeyWrapper;
-                    if (wrapper != null && kvp.Value.IsPropertyModified(wrapper, "Text"))
-                    {
-                        localizationContext.SetText(wrapper.Id, wrapper.Text);
-                    }
-                }
+                // All modified values are already in LocalizationContext
+                // (tracked by changeTracker, updated in real-time)
 
                 // Save to file
                 var saveTask = localizationContext.SaveCurrentLanguageAsync();
                 saveTask.Wait();
 
-                // Update baselines
-                propertyTracker.UpdateBaseline();
-                foreach (var tracker in itemTrackers.Values)
-                {
-                    tracker.UpdateBaseline();
-                }
+                // Update external change tracker baseline
+                changeTracker?.UpdateBaseline();
 
                 hasUnsavedChanges = false;
                 UpdateFooter();
@@ -718,6 +773,12 @@ namespace Datra.Unity.Editor.Views
                 {
                     foreach (var (property, cell) in cells)
                     {
+                        // Clear modified state on fields
+                        if (cell is DatraPropertyField field)
+                        {
+                            field.SetModified(false);
+                        }
+
                         cell.RemoveFromClassList("modified-cell");
                     }
                 }
@@ -741,33 +802,17 @@ namespace Datra.Unity.Editor.Views
 
         protected override void RevertChanges()
         {
-            // Base handles tracker revert and UI refresh
+            if (localizationContext == null || changeTracker == null) return;
+
+            // Revert using external change tracker (applies baseline to LocalizationContext)
+            changeTracker.RevertAll();
+
+            // Base handles tracker revert
             base.RevertChanges();
 
-            // Additional: reload data from LocalizationContext
-            foreach (var kvp in itemTrackers)
-            {
-                var wrapper = kvp.Key as LocalizationKeyWrapper;
-                if (wrapper != null)
-                {
-                    wrapper.Text = localizationContext.GetText(wrapper.Id);
-                }
-            }
-
-            // Clear visual modifications from all cells
-            foreach (var (wrapper, cells) in cellElements)
-            {
-                foreach (var (property, cell) in cells)
-                {
-                    cell.RemoveFromClassList("modified-cell");
-                }
-            }
-
-            // Clear row backgrounds
-            foreach (var row in rowElements.Values)
-            {
-                row.style.backgroundColor = Color.clear;
-            }
+            // Refresh entire UI to reflect reverted values
+            // This recreates all TextFields with the baseline values from LocalizationContext
+            RefreshContent();
 
             UpdateStatus("Changes reverted");
         }

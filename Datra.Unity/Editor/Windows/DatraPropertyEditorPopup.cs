@@ -11,17 +11,17 @@ namespace Datra.Unity.Editor.Windows
     {
         private PropertyInfo property;
         private object target;
-        private DatraPropertyTracker tracker;
+        
         private Action onValueChanged;
         private DatraPropertyField propertyField;
         
-        public static void ShowEditor(PropertyInfo property, object target, DatraPropertyTracker tracker, Action onValueChanged)
+        public static void ShowEditor(PropertyInfo property, object target,  Action onValueChanged)
         {
             var window = CreateInstance<DatraPropertyEditorPopup>();
             window.titleContent = new GUIContent($"Edit {ObjectNames.NicifyVariableName(property.Name)}");
             window.property = property;
             window.target = target;
-            window.tracker = tracker;
+            
             window.onValueChanged = onValueChanged;
             
             // Set window size based on property type
@@ -65,7 +65,7 @@ namespace Datra.Unity.Editor.Windows
             root.Add(header);
             
             // Create property field in Form mode
-            propertyField = new DatraPropertyField(target, property, tracker, DatraFieldLayoutMode.Form);
+            propertyField = new DatraPropertyField(target, property, DatraFieldLayoutMode.Form);
             propertyField.OnValueChanged += (propName, newValue) => {
                 onValueChanged?.Invoke();
             };
@@ -87,11 +87,6 @@ namespace Datra.Unity.Editor.Windows
             footer.Add(closeButton);
             
             root.Add(footer);
-        }
-        
-        private void OnDestroy()
-        {
-            propertyField?.Cleanup();
         }
     }
 }

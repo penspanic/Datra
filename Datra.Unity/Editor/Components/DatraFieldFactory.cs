@@ -10,49 +10,49 @@ namespace Datra.Unity.Editor.Components
     /// </summary>
     public static class DatraFieldFactory
     {
-        private static Dictionary<Type, Func<object, PropertyInfo, DatraPropertyTracker, DatraPropertyField>> customFieldCreators = 
-            new Dictionary<Type, Func<object, PropertyInfo, DatraPropertyTracker, DatraPropertyField>>();
-        
+        private static Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>> customFieldCreators =
+            new Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>>();
+
         /// <summary>
         /// Register a custom field creator for a specific type
         /// </summary>
-        public static void RegisterCustomField<T>(Func<object, PropertyInfo, DatraPropertyTracker, DatraPropertyField> creator)
+        public static void RegisterCustomField<T>(Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField> creator)
         {
             customFieldCreators[typeof(T)] = creator;
         }
-        
+
         /// <summary>
         /// Create a property field for the given property
         /// </summary>
-        public static DatraPropertyField CreateField(object target, PropertyInfo property, DatraPropertyTracker tracker)
+        public static DatraPropertyField CreateField(object target, PropertyInfo property, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
         {
             // Check for custom field creators
             if (customFieldCreators.TryGetValue(property.PropertyType, out var creator))
             {
-                return creator(target, property, tracker);
+                return creator(target, property, layoutMode);
             }
-            
+
             // Default field creation
-            return new DatraPropertyField(target, property, tracker);
+            return new DatraPropertyField(target, property, layoutMode);
         }
-        
+
         /// <summary>
         /// Create fields for all writable properties of an object
         /// </summary>
-        public static List<DatraPropertyField> CreateFieldsForObject(object target, DatraPropertyTracker tracker, bool skipId = true)
+        public static List<DatraPropertyField> CreateFieldsForObject(object target, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form, bool skipId = true)
         {
             var fields = new List<DatraPropertyField>();
             var properties = target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            
+
             foreach (var property in properties)
             {
                 if (property.CanWrite && (!skipId || property.Name != "Id"))
                 {
-                    var field = CreateField(target, property, tracker);
+                    var field = CreateField(target, property, layoutMode);
                     fields.Add(field);
                 }
             }
-            
+
             return fields;
         }
         

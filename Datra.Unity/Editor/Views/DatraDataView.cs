@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
+using UnityEditor.UIElements;
 using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Windows;
 
@@ -16,13 +17,14 @@ namespace Datra.Unity.Editor.Views
         protected Type dataType;
         protected object repository;
         protected object dataContext;
-        protected DatraPropertyTracker propertyTracker;
-        protected Dictionary<object, DatraPropertyTracker> itemTrackers = new Dictionary<object, DatraPropertyTracker>();
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
-        
+
         // Tracking collections
         protected HashSet<object> newItems = new HashSet<object>();
         protected HashSet<object> deletedItems = new HashSet<object>();
+
+        // Baseline storage for revert functionality
+        protected Dictionary<object, Dictionary<string, object>> baselineValues = new Dictionary<object, Dictionary<string, object>>();
         
         // Common UI elements
         protected VisualElement searchField;  // Base type to support both TextField and ToolbarSearchField
@@ -65,12 +67,9 @@ namespace Datra.Unity.Editor.Views
         
         protected DatraDataView()
         {
-            propertyTracker = new DatraPropertyTracker();
-            propertyTracker.OnAnyPropertyModified += OnTrackerModified;
-            
             style.flexGrow = 1;
             style.flexDirection = FlexDirection.Column;
-            
+
             InitializeBase();
         }
         
@@ -168,36 +167,16 @@ namespace Datra.Unity.Editor.Views
         
         protected void CleanupFields()
         {
-            foreach (var field in activeFields)
-            {
-                field.Cleanup();
-            }
             activeFields.Clear();
-            
-            foreach (var tracker in itemTrackers.Values)
-            {
-                tracker.OnAnyPropertyModified -= OnTrackerModified;
-            }
-            itemTrackers.Clear();
         }
-        
-        protected void OnTrackerModified()
+
+        protected void MarkAsModified()
         {
-            var hasChanges = propertyTracker.HasAnyModifications();
-            
-            if (!hasChanges)
+            if (!hasUnsavedChanges)
             {
-                hasChanges = itemTrackers.Values.Any(tracker => tracker.HasAnyModifications());
-            }
-            
-            if (hasChanges != hasUnsavedChanges)
-            {
-                hasUnsavedChanges = hasChanges;
+                hasUnsavedChanges = true;
                 UpdateFooter();
-                if (hasChanges)
-                {
-                    OnDataModified?.Invoke(dataType);
-                }
+                OnDataModified?.Invoke(dataType);
             }
         }
         
@@ -233,67 +212,43 @@ namespace Datra.Unity.Editor.Views
             if (isReadOnly) return;
             
             OnSaveRequested?.Invoke(dataType, repository);
-            
-            // Update baselines after save
-            propertyTracker.UpdateBaseline();
-            foreach (var tracker in itemTrackers.Values)
-            {
-                tracker.UpdateBaseline();
-            }
-            
+
             // Clear tracking collections
             newItems.Clear();
             deletedItems.Clear();
-            
+
             hasUnsavedChanges = false;
             UpdateFooter();
             UpdateStatus("Changes saved successfully");
         }
-        
+
         protected virtual void RevertChanges()
         {
             if (isReadOnly) return;
-            
-            if (EditorUtility.DisplayDialog("Revert Changes", 
-                "Are you sure you want to revert all changes?", 
+
+            if (EditorUtility.DisplayDialog("Revert Changes",
+                "Are you sure you want to revert all changes?",
                 "Revert", "Cancel"))
             {
-                // Revert all trackers
-                propertyTracker.RevertAll();
-                foreach (var tracker in itemTrackers.Values)
-                {
-                    tracker.RevertAll();
-                }
-                
                 // Clear tracking collections
                 newItems.Clear();
                 deletedItems.Clear();
-                
+
                 // Refresh all fields
                 foreach (var field in activeFields)
                 {
                     field.RefreshField();
                 }
-                
+
                 hasUnsavedChanges = false;
                 UpdateFooter();
                 UpdateStatus("Changes reverted");
             }
         }
-        
+
         protected void UpdateStatus(string message)
         {
             statusLabel.text = message;
-        }
-
-        protected void MarkAsModified()
-        {
-            if (!hasUnsavedChanges && !isReadOnly)
-            {
-                hasUnsavedChanges = true;
-                UpdateFooter();
-                OnDataModified?.Invoke(dataType);
-            }
         }
 
         /// <summary>
@@ -521,14 +476,7 @@ namespace Datra.Unity.Editor.Views
                     if (removeMethod != null && keyToRemove != null)
                     {
                         var result = removeMethod.Invoke(repository, new[] { keyToRemove });
-                        
-                        // Remove from our tracking
-                        if (itemTrackers.ContainsKey(item))
-                        {
-                            itemTrackers[item].OnAnyPropertyModified -= OnTrackerModified;
-                            itemTrackers.Remove(item);
-                        }
-                        
+
                         // Refresh the display
                         RefreshContent();
                         MarkAsModified();
@@ -666,9 +614,150 @@ namespace Datra.Unity.Editor.Views
         public virtual void Cleanup()
         {
             CleanupFields();
-            propertyTracker.OnAnyPropertyModified -= OnTrackerModified;
             newItems.Clear();
             deletedItems.Clear();
+            baselineValues.Clear();
         }
+
+        #region Baseline Management for Revert Functionality
+
+        /// <summary>
+        /// Store baseline values for all items and their properties
+        /// </summary>
+        protected void StoreBaselineValues(IEnumerable<object> items, IEnumerable<PropertyInfo> properties)
+        {
+            baselineValues.Clear();
+
+            if (items == null || properties == null) return;
+
+            foreach (var item in items)
+            {
+                var itemBaseline = new Dictionary<string, object>();
+                foreach (var property in properties)
+                {
+                    try
+                    {
+                        var value = property.GetValue(item);
+                        itemBaseline[property.Name] = CloneValue(value);
+                    }
+                    catch
+                    {
+                        // Skip properties that can't be read
+                    }
+                }
+                baselineValues[item] = itemBaseline;
+            }
+        }
+
+        /// <summary>
+        /// Get baseline value for a specific item and property
+        /// </summary>
+        protected object GetBaselineValue(object item, string propertyName)
+        {
+            if (baselineValues.TryGetValue(item, out var itemBaseline))
+            {
+                if (itemBaseline.TryGetValue(propertyName, out var value))
+                {
+                    return CloneValue(value);
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Simple clone for baseline values
+        /// </summary>
+        protected object CloneValue(object value)
+        {
+            if (value == null) return null;
+
+            var type = value.GetType();
+
+            // For value types and strings, direct assignment works
+            if (type.IsValueType || type == typeof(string))
+            {
+                return value;
+            }
+
+            // For arrays, create a copy
+            if (type.IsArray)
+            {
+                var array = value as Array;
+                var clone = Array.CreateInstance(type.GetElementType(), array.Length);
+                Array.Copy(array, clone, array.Length);
+                return clone;
+            }
+
+            // For other reference types, return as-is (basic implementation)
+            // In production, you might want deep cloning via serialization
+            return value;
+        }
+
+        #endregion
+
+        #region Field Value Update Helpers
+
+        /// <summary>
+        /// Update the UI field value directly (needed for revert to work properly)
+        /// </summary>
+        protected void UpdateFieldValue(DatraPropertyField field, Type propertyType, object value)
+        {
+            // Find the actual UI element inside DatraPropertyField and update it
+            if (propertyType == typeof(string))
+            {
+                var textField = field.Q<TextField>();
+                if (textField != null)
+                {
+                    textField.SetValueWithoutNotify(value as string ?? "");
+                }
+            }
+            else if (propertyType == typeof(int))
+            {
+                var intField = field.Q<IntegerField>();
+                if (intField != null)
+                {
+                    intField.SetValueWithoutNotify(value != null ? (int)value : 0);
+                }
+            }
+            else if (propertyType == typeof(float))
+            {
+                var floatField = field.Q<FloatField>();
+                if (floatField != null)
+                {
+                    floatField.SetValueWithoutNotify(value != null ? (float)value : 0f);
+                }
+            }
+            else if (propertyType == typeof(double))
+            {
+                var doubleField = field.Q<DoubleField>();
+                if (doubleField != null)
+                {
+                    doubleField.SetValueWithoutNotify(value != null ? (double)value : 0.0);
+                }
+            }
+            else if (propertyType == typeof(bool))
+            {
+                var toggle = field.Q<Toggle>();
+                if (toggle != null)
+                {
+                    toggle.SetValueWithoutNotify(value != null && (bool)value);
+                }
+            }
+            else if (propertyType.IsEnum)
+            {
+                var enumField = field.Q<EnumField>();
+                if (enumField != null && value != null)
+                {
+                    enumField.SetValueWithoutNotify((Enum)value);
+                }
+            }
+            else
+            {
+                // For other types, try to refresh the field
+                field.RefreshField();
+            }
+        }
+
+        #endregion
     }
 }

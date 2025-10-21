@@ -16,18 +16,79 @@ namespace Datra.Unity.Editor.Utilities
     {
         private readonly IDataContext dataContext;
         private readonly HashSet<Type> modifiedTypes = new HashSet<Type>();
-        
+
+        // Change tracking storage
+        private readonly Dictionary<Type, object> changeTrackers = new Dictionary<Type, object>();
+
         public event Action<Type> OnDataModified;
         public event Action<bool> OnModifiedStateChanged;
         public event Action<string> OnOperationCompleted;
         public event Action<string> OnOperationFailed;
-        
+
         public IReadOnlyCollection<Type> ModifiedTypes => modifiedTypes;
         public bool HasModifiedData => modifiedTypes.Count > 0;
-        
+
         public DatraDataManager(IDataContext context)
         {
             dataContext = context ?? throw new ArgumentNullException(nameof(context));
+        }
+
+        /// <summary>
+        /// Register a change tracker for a data type
+        /// </summary>
+        public void RegisterChangeTracker<TKey, TData>(Type dataType, RepositoryChangeTracker<TKey, TData> tracker)
+            where TKey : notnull
+            where TData : class
+        {
+            changeTrackers[dataType] = tracker;
+        }
+
+        /// <summary>
+        /// Register a localization change tracker
+        /// </summary>
+        public void RegisterLocalizationChangeTracker(Type dataType, LocalizationChangeTracker tracker)
+        {
+            changeTrackers[dataType] = tracker;
+        }
+
+        /// <summary>
+        /// Get change tracker for a data type
+        /// </summary>
+        public RepositoryChangeTracker<TKey, TData> GetChangeTracker<TKey, TData>(Type dataType)
+            where TKey : notnull
+            where TData : class
+        {
+            if (changeTrackers.TryGetValue(dataType, out var tracker))
+                return tracker as RepositoryChangeTracker<TKey, TData>;
+            return null;
+        }
+
+        /// <summary>
+        /// Get localization change tracker
+        /// </summary>
+        public LocalizationChangeTracker GetLocalizationChangeTracker(Type dataType)
+        {
+            if (changeTrackers.TryGetValue(dataType, out var tracker))
+                return tracker as LocalizationChangeTracker;
+            return null;
+        }
+
+        /// <summary>
+        /// Check if a type has modifications based on its change tracker
+        /// </summary>
+        public bool HasModificationsFromTracker(Type dataType)
+        {
+            if (!changeTrackers.TryGetValue(dataType, out var tracker))
+                return false;
+
+            // Try RepositoryChangeTracker
+            var hasModsProp = tracker.GetType().GetProperty("HasModifications");
+            if (hasModsProp != null)
+            {
+                return (bool)hasModsProp.GetValue(tracker);
+            }
+
+            return false;
         }
         
         /// <summary>
@@ -104,10 +165,16 @@ namespace Datra.Unity.Editor.Utilities
                     }
                 }
                 
-                // Clear modified states for successfully saved types
+                // Clear modified states and update trackers for successfully saved types
                 foreach (var type in savedTypes)
                 {
                     ClearModifiedState(type);
+
+                    // Update change tracker baseline
+                    if (repositories.TryGetValue(type, out var repository))
+                    {
+                        UpdateChangeTrackerBaseline(type, repository);
+                    }
                 }
                 
                 // Report results
@@ -159,6 +226,10 @@ namespace Datra.Unity.Editor.Utilities
                 if (await SaveRepositoryAsync(repository, dataType))
                 {
                     ClearModifiedState(dataType);
+
+                    // Update change tracker baseline
+                    UpdateChangeTrackerBaseline(dataType, repository);
+
                     var message = forceSave
                         ? $"{dataType.Name} force saved successfully!"
                         : $"{dataType.Name} saved successfully!";
@@ -265,7 +336,37 @@ namespace Datra.Unity.Editor.Utilities
             
             return false;
         }
-        
+
+        /// <summary>
+        /// Update change tracker baseline after successful save
+        /// </summary>
+        private void UpdateChangeTrackerBaseline(Type dataType, object repository)
+        {
+            if (!changeTrackers.TryGetValue(dataType, out var tracker))
+                return;
+
+            try
+            {
+                // Try to get GetAll method from repository
+                var getAllMethod = repository.GetType().GetMethod("GetAll");
+                if (getAllMethod != null)
+                {
+                    var currentData = getAllMethod.Invoke(repository, null);
+
+                    // Call UpdateBaseline on the tracker
+                    var updateMethod = tracker.GetType().GetMethod("UpdateBaseline");
+                    if (updateMethod != null)
+                    {
+                        updateMethod.Invoke(tracker, new[] { currentData });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to update change tracker baseline for {dataType.Name}: {ex.Message}");
+            }
+        }
+
         /// <summary>
         /// Check if user wants to save before closing/switching
         /// </summary>

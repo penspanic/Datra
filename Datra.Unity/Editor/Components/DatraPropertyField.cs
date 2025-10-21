@@ -29,33 +29,30 @@ namespace Datra.Unity.Editor.Components
     {
         private PropertyInfo property;
         private object target;
-        private DatraPropertyTracker tracker;
         private DatraFieldLayoutMode layoutMode;
-        
+        private bool isModified = false;
+
         private VisualElement fieldContainer;
         private Label propertyLabel;
         private VisualElement inputField;
         private Button revertButton;
         private VisualElement modifiedIndicator;
-        
+
         public event Action<string, object> OnValueChanged;
-        
-        public DatraPropertyField(object target, PropertyInfo property, DatraPropertyTracker tracker, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
+        public event Action<string> OnRevertRequested;
+
+        public DatraPropertyField(object target, PropertyInfo property, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
         {
             this.target = target;
             this.property = property;
-            this.tracker = tracker;
             this.layoutMode = layoutMode;
-            
+
             AddToClassList("datra-property-field");
             AddToClassList($"layout-{layoutMode.ToString().ToLower()}");
-            
+
             Initialize();
             CreateField();
             UpdateModifiedState();
-            
-            // Subscribe to tracker events
-            tracker.OnPropertyModified += OnTrackerPropertyModified;
         }
         
         private void Initialize()
@@ -342,32 +339,26 @@ namespace Datra.Unity.Editor.Components
         
         private void OnFieldValueChanged(object newValue)
         {
-            tracker.TrackChange(target, property.Name, newValue);
             OnValueChanged?.Invoke(property.Name, newValue);
         }
-        
-        private void OnTrackerPropertyModified(string key, bool isModified)
+
+        /// <summary>
+        /// Set modified state externally (controlled by parent view's change tracker)
+        /// </summary>
+        public void SetModified(bool modified)
         {
-            var expectedKey = $"{target.GetHashCode()}_{property.Name}";
-            if (key == expectedKey)
-            {
-                UpdateModifiedState();
-            }
+            isModified = modified;
+            UpdateModifiedState();
         }
-        
+
         private void UpdateModifiedState()
         {
-            var isModified = tracker.IsPropertyModified(target, property.Name);
-            
             if (isModified)
             {
                 AddToClassList("field-modified");
                 modifiedIndicator.style.display = DisplayStyle.Flex;
                 revertButton.style.display = DisplayStyle.Flex;
-                
-                // Update tooltip with original value
-                var originalValue = tracker.GetOriginalValue(target, property.Name);
-                modifiedIndicator.tooltip = $"Modified (Original: {originalValue?.ToString() ?? "null"})";
+                modifiedIndicator.tooltip = "Modified";
             }
             else
             {
@@ -376,11 +367,11 @@ namespace Datra.Unity.Editor.Components
                 revertButton.style.display = DisplayStyle.None;
             }
         }
-        
+
         private void RevertValue()
         {
-            tracker.RevertProperty(target, property.Name);
-            RefreshField();
+            // Notify parent view to handle revert with external tracker
+            OnRevertRequested?.Invoke(property.Name);
         }
         
         public void RefreshField()
@@ -411,15 +402,6 @@ namespace Datra.Unity.Editor.Components
             }
             
             UpdateModifiedState();
-        }
-        
-        public void Cleanup()
-        {
-            // Unsubscribe from tracker events
-            if (tracker != null)
-            {
-                tracker.OnPropertyModified -= OnTrackerPropertyModified;
-            }
         }
         
         private VisualElement CreateArrayField<T>(T[] array, Func<int, T, VisualElement> createElement)
@@ -689,7 +671,7 @@ namespace Datra.Unity.Editor.Components
         
         private void OpenPropertyEditor()
         {
-            DatraPropertyEditorPopup.ShowEditor(property, target, tracker, () => {
+            DatraPropertyEditorPopup.ShowEditor(property, target, () => {
                 RefreshField();
                 OnValueChanged?.Invoke(property.Name, property.GetValue(target));
             });

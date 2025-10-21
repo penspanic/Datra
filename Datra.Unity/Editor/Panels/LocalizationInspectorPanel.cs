@@ -4,12 +4,14 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Services;
 using Datra.Unity.Editor.Views;
+using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
 {
     public class LocalizationInspectorPanel : BaseInspectorPanel
     {
         private LocalizationContext localizationContext;
+        private LocalizationChangeTracker changeTracker;
         private DatraLocalizationView localizationView;
 
         public bool HasUnsavedChanges => localizationView?.HasUnsavedChanges ?? false;
@@ -29,27 +31,49 @@ namespace Datra.Unity.Editor.Panels
         {
             // Localization panel doesn't need any special initialization
         }
-        
+
+        /// <summary>
+        /// Set change tracker for localization (must be called before SetLocalizationContext)
+        /// </summary>
+        public void SetChangeTracker(LocalizationChangeTracker tracker)
+        {
+            changeTracker = tracker;
+        }
+
         public void SetLocalizationContext(LocalizationContext context)
         {
+            // If already set to the same context and view exists, do nothing
+            // This prevents recreating the view and losing change tracking
+            if (localizationContext == context && localizationView != null && context != null)
+            {
+                return;
+            }
+
             localizationContext = context;
-            
+
             if (context == null)
             {
                 ShowEmptyState();
                 return;
             }
-            
+
             // Update header
             UpdateHeader("Localization", "Manage localization keys and translations");
-            
+
             // Clear breadcrumbs
             breadcrumbContainer.Clear();
             UpdateBreadcrumb();
-            
-            // Create localization-specific view
+
+            // Create localization-specific view (only if not already created)
             contentContainer.Clear();
             localizationView = new DatraLocalizationView();
+
+            // Set change tracker before setting context
+            if (changeTracker != null)
+            {
+                localizationView.SetChangeTracker(changeTracker);
+            }
+
             localizationView.SetLocalizationContext(context);
 
             // DatraLocalizationView now extends DatraDataView, so use its events

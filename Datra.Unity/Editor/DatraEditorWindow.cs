@@ -48,6 +48,7 @@ namespace Datra.Unity.Editor
         private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new Dictionary<Type, DataTypeInfo>();
         private DatraDataManager dataManager;
         private LocalizationContext localizationContext;
+        private LocalizationChangeTracker localizationChangeTracker;
         
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
@@ -225,6 +226,13 @@ namespace Datra.Unity.Editor
             if (localizationProperty != null)
             {
                 localizationContext = localizationProperty.GetValue(dataContext) as LocalizationContext;
+
+                // Create and register LocalizationChangeTracker
+                if (localizationContext != null)
+                {
+                    localizationChangeTracker = new LocalizationChangeTracker(localizationContext);
+                    dataManager.RegisterLocalizationChangeTracker(typeof(LocalizationContext), localizationChangeTracker);
+                }
             }
             
             foreach (var dataTypeInfo in dataTypeInfos)
@@ -252,6 +260,13 @@ namespace Datra.Unity.Editor
             if (localizationContext != null)
             {
                 ShowLocalizationInspector();
+
+                // Set change tracker before setting context
+                if (localizationChangeTracker != null)
+                {
+                    localizationInspectorPanel.SetChangeTracker(localizationChangeTracker);
+                }
+
                 localizationInspectorPanel.SetLocalizationContext(localizationContext);
             }
         }

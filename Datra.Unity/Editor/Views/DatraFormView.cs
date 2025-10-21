@@ -48,7 +48,6 @@ namespace Datra.Unity.Editor.Views
         {
             // Store current state before clearing
             var previousNewItems = new HashSet<object>(this.newItems);
-            var previousTrackers = new Dictionary<object, DatraPropertyTracker>(itemTrackers);
             
             // Clear the scroll content, not the main container
             scrollContent.Clear();
@@ -58,9 +57,9 @@ namespace Datra.Unity.Editor.Views
             if (IsTableData(dataType))
             {
                 DisplayTableDataAsForm();
-                
+
                 // Restore state for table data items
-                RestoreTableDataState(previousNewItems, previousTrackers);
+                RestoreTableDataState(previousNewItems);
             }
             else
             {
@@ -77,19 +76,16 @@ namespace Datra.Unity.Editor.Views
             {
                 formContainer = new VisualElement();
                 formContainer.AddToClassList("single-data-form");
-                
-                // Start tracking the data
-                propertyTracker.StartTracking(data, false);
-                
+
                 // Create fields using the field factory
-                var fields = DatraFieldFactory.CreateFieldsForObject(data, propertyTracker, false);
+                var fields = DatraFieldFactory.CreateFieldsForObject(data, DatraFieldLayoutMode.Form, false);
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => MarkAsModified();
                     formContainer.Add(field);
                     activeFields.Add(field);
                 }
-                
+
                 scrollContent.Add(formContainer);
             }
         }
@@ -228,14 +224,8 @@ namespace Datra.Unity.Editor.Views
             
             if (actualData != null)
             {
-                // Create a tracker for this item
-                var itemTracker = new DatraPropertyTracker();
-                itemTracker.StartTracking(actualData, false);
-                itemTracker.OnAnyPropertyModified += OnTrackerModified;
-                itemTrackers[item] = itemTracker;
-                
                 // Create fields (skip ID since we handle it in header)
-                var fields = DatraFieldFactory.CreateFieldsForObject(actualData, itemTracker, true);
+                var fields = DatraFieldFactory.CreateFieldsForObject(actualData, DatraFieldLayoutMode.Form, true);
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => MarkAsModified();
@@ -327,22 +317,16 @@ namespace Datra.Unity.Editor.Views
             }
         }
         
-        private void RestoreTableDataState(HashSet<object> previousNewItems, Dictionary<object, DatraPropertyTracker> previousTrackers)
+        private void RestoreTableDataState(HashSet<object> previousNewItems)
         {
             if (itemsContainer == null) return;
-            
+
             var items = itemsContainer.Query<VisualElement>(className: "table-item").ToList();
             foreach (var itemElement in items)
             {
                 var item = itemElement.userData;
                 if (item != null)
                 {
-                    // Restore tracker state
-                    if (previousTrackers.ContainsKey(item))
-                    {
-                        itemTrackers[item] = previousTrackers[item];
-                    }
-                    
                     // Restore new item state
                     if (previousNewItems.Contains(item))
                     {
