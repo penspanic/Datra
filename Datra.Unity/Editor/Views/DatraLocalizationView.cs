@@ -254,14 +254,50 @@ namespace Datra.Unity.Editor.Views
             row.style.SetPadding(new StyleLength(4));
             row.style.borderBottomWidth = 1;
             row.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
-            
-            // Key label
-            var keyLabel = new Label(key);
-            keyLabel.style.width = 300;
-            keyLabel.style.alignSelf = Align.Center;
-            keyLabel.tooltip = key;
-            row.Add(keyLabel);
-            
+
+            // Check if this is a fixed key
+            var keyData = localizationContext.GetKeyData(key);
+            bool isFixedKey = keyData != null && keyData.IsFixedKey;
+
+            // Key label or container
+            if (isFixedKey)
+            {
+                // Fixed keys: use a styled container with label
+                var keyContainer = new VisualElement();
+                keyContainer.style.width = 300;
+                keyContainer.style.flexDirection = FlexDirection.Row;
+                keyContainer.style.alignItems = Align.Center;
+                keyContainer.style.backgroundColor = new Color(0.25f, 0.25f, 0.28f);
+                keyContainer.style.borderLeftWidth = 3;
+                keyContainer.style.borderLeftColor = new Color(0.4f, 0.6f, 0.8f); // Blue accent
+                keyContainer.style.SetPadding(new StyleLength(4));
+
+                var keyLabel = new Label(key);
+                keyLabel.style.color = new Color(0.7f, 0.8f, 0.9f); // Lighter text
+                keyLabel.style.unityFontStyleAndWeight = FontStyle.Italic;
+                keyLabel.tooltip = $"{key}\n(Fixed key - cannot be edited)";
+
+                // Add a lock icon using Unicode
+                var lockIcon = new Label("🔒"); // 
+                lockIcon.style.marginRight = 4;
+                lockIcon.style.fontSize = 12;
+                lockIcon.tooltip = "Fixed key";
+
+                keyContainer.Add(lockIcon);
+                keyContainer.Add(keyLabel);
+                row.Add(keyContainer);
+            }
+            else
+            {
+                // Regular keys: simple label
+                var keyLabel = new Label(key);
+                keyLabel.style.width = 300;
+                keyLabel.style.alignSelf = Align.Center;
+                keyLabel.style.SetPadding(new StyleLength(4));
+                keyLabel.tooltip = key;
+                row.Add(keyLabel);
+            }
+
             // Value text field
             var valueField = new TextField();
             valueField.style.flexGrow = 1;
@@ -270,10 +306,10 @@ namespace Datra.Unity.Editor.Views
             valueField.RegisterValueChangedCallback(evt => {
                 OnDataModified?.Invoke();
             });
-            
+
             textFields[key] = valueField;
             row.Add(valueField);
-            
+
             return row;
         }
         

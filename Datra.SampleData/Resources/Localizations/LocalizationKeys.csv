@@ -1,21 +1,21 @@
-Id,Description,Category
-Button_Start,Start button text,UI
-Button_Exit,Exit button text,UI
-Button_Settings,Settings button text,UI
-Button_Cancel,Cancel button text,UI
-Button_OK,OK button text,UI
-Message_Welcome,Welcome message shown on first login,Dialog
-Message_Goodbye,Goodbye message shown on logout,Dialog
-Message_Loading,Loading message,Dialog
-Message_SaveComplete,Save complete notification,Dialog
-Error_NetworkDisconnected,Network disconnection error message,System
-Error_InvalidInput,Invalid input error message,System
-Error_FileNotFound,File not found error message,System
-Character_Hero_Name,Hero character name,Character
-Character_Hero_Desc,Hero character description,Character
-Character_Mage_Name,Mage character name,Character
-Character_Mage_Desc,Mage character description,Character
-Item_Sword_Name,Sword item name,Item
-Item_Sword_Desc,Sword item description,Item
-Item_Shield_Name,Shield item name,Item
-Item_Shield_Desc,Shield item description,Item
+Id,Description,Category,IsFixedKey
+Button_Start,Start button text,UI,false
+Button_Exit,Exit button text,UI,false
+Button_Settings,Settings button text,UI,false
+Button_Cancel,Cancel button text,UI,false
+Button_OK,OK button text,UI,false
+Message_Welcome,Welcome message shown on first login,Dialog,false
+Message_Goodbye,Goodbye message shown on logout,Dialog,false
+Message_Loading,Loading message,Dialog,false
+Message_SaveComplete,Save complete notification,Dialog,false
+Error_NetworkDisconnected,Network disconnection error message,System,false
+Error_InvalidInput,Invalid input error message,System,false
+Error_FileNotFound,File not found error message,System,false
+Character_Hero_Name,Hero character name,Character,true
+Character_Hero_Desc,Hero character description,Character,true
+Character_Mage_Name,Mage character name,Character,true
+Character_Mage_Desc,Mage character description,Character,true
+Item_Sword_Name,Sword item name,Item,true
+Item_Sword_Desc,Sword item description,Item,true
+Item_Shield_Name,Shield item name,Item,true
+Item_Shield_Desc,Shield item description,Item,true

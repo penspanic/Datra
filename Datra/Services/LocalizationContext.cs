@@ -95,8 +95,19 @@ namespace Datra.Services
         {
             if (_keyRepository == null || string.IsNullOrEmpty(key))
                 return null;
-                
+
             return _keyRepository.GetValueOrDefault(key);
+        }
+
+        /// <summary>
+        /// Checks if a localization key is marked as fixed (non-editable key)
+        /// </summary>
+        /// <param name="key">The localization key to check</param>
+        /// <returns>True if the key is fixed, false otherwise</returns>
+        public bool IsFixedKey(string key)
+        {
+            var keyData = GetKeyData(key);
+            return keyData != null && keyData.IsFixedKey;
         }
         
         private async Task LoadMasterKeysAsync()
@@ -181,25 +192,27 @@ namespace Datra.Services
         }
         
         /// <summary>
-        /// Sets localized text for the specified key
+        /// Sets localized text for the specified key.
+        /// Note: This method allows updating locale values even for fixed keys.
+        /// Fixed keys only prevent modification of the key itself, not its values.
         /// </summary>
         public void SetText(string key, string value)
         {
             if (string.IsNullOrEmpty(key))
                 return;
-            
+
             if (!_languageData.ContainsKey(_currentLanguageCode))
             {
                 _languageData[_currentLanguageCode] = new Dictionary<string, LocalizationEntry>();
             }
-            
+
             // Preserve existing context if available
             var context = "";
             if (_languageData[_currentLanguageCode].TryGetValue(key, out var existingEntry))
             {
                 context = existingEntry.Context;
             }
-            
+
             _languageData[_currentLanguageCode][key] = new LocalizationEntry { Text = value, Context = context };
         }
         

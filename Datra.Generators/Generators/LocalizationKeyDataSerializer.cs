@@ -36,6 +36,7 @@ namespace Datra.Generators.Generators
             builder.AppendLine("var idIndex = Array.FindIndex(headers, h => h.Equals(\"Id\", StringComparison.OrdinalIgnoreCase));");
             builder.AppendLine("var descIndex = Array.FindIndex(headers, h => h.Equals(\"Description\", StringComparison.OrdinalIgnoreCase));");
             builder.AppendLine("var categoryIndex = Array.FindIndex(headers, h => h.Equals(\"Category\", StringComparison.OrdinalIgnoreCase));");
+            builder.AppendLine("var isFixedKeyIndex = Array.FindIndex(headers, h => h.Equals(\"IsFixedKey\", StringComparison.OrdinalIgnoreCase));");
             builder.AppendLine();
             builder.AppendLine("// Parse data rows");
             builder.AppendLine("for (int i = 1; i < lines.Length; i++)");
@@ -47,7 +48,8 @@ namespace Datra.Generators.Generators
             builder.BeginBlock();
             builder.AppendLine("Id = values[idIndex],");
             builder.AppendLine("Description = descIndex >= 0 && values.Length > descIndex ? values[descIndex] : null,");
-            builder.AppendLine("Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : null");
+            builder.AppendLine("Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : null,");
+            builder.AppendLine("IsFixedKey = isFixedKeyIndex >= 0 && values.Length > isFixedKeyIndex && bool.TryParse(values[isFixedKeyIndex], out var isFixed) ? isFixed : false");
             builder.EndBlock(";");
             builder.AppendLine("result[data.Id] = data;");
             builder.EndBlock();
@@ -61,11 +63,11 @@ namespace Datra.Generators.Generators
             // Serialize CSV method
             builder.BeginMethod("public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, DatraConfigurationValue config, global::Datra.Interfaces.ISerializationLogger logger = null)");
             builder.AppendLine("var lines = new List<string>();");
-            builder.AppendLine("lines.Add(\"Id,Description,Category\");");
+            builder.AppendLine("lines.Add(\"Id,Description,Category,IsFixedKey\");");
             builder.AppendLine();
             builder.AppendLine("foreach (var item in data.Values.OrderBy(x => x.Id))");
             builder.BeginBlock();
-            builder.AppendLine("lines.Add($\"{EscapeCsvValue(item.Id)},{EscapeCsvValue(item.Description)},{EscapeCsvValue(item.Category)}\");");
+            builder.AppendLine("lines.Add($\"{EscapeCsvValue(item.Id)},{EscapeCsvValue(item.Description)},{EscapeCsvValue(item.Category)},{item.IsFixedKey.ToString().ToLower()}\");");
             builder.EndBlock();
             builder.AppendLine();
             builder.AppendLine("return string.Join(\"\\n\", lines);");
