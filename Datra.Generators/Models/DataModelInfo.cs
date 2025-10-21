@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Datra.Generators.Models
 {
@@ -11,6 +12,24 @@ namespace Datra.Generators.Models
         public string FilePath { get; set; }
         public string Format { get; set; }
         public List<PropertyInfo> Properties { get; set; } = new List<PropertyInfo>();
+
+        /// <summary>
+        /// Get properties that should be included in serialization.
+        /// Excludes: FixedLocale (computed properties that cannot be serialized)
+        /// </summary>
+        public IEnumerable<PropertyInfo> GetSerializableProperties()
+        {
+            return Properties.Where(p => !p.IsFixedLocale);
+        }
+
+        /// <summary>
+        /// Get properties that should be included in constructor parameters.
+        /// Excludes: FixedLocale (computed properties that cannot be assigned)
+        /// </summary>
+        public IEnumerable<PropertyInfo> GetConstructorProperties()
+        {
+            return Properties.Where(p => !p.IsFixedLocale);
+        }
     }
 
     internal class PropertyInfo
@@ -31,6 +50,17 @@ namespace Datra.Generators.Models
         public bool IsValueType { get; set; }
         public bool ElementIsEnum { get; set; } // For array elements
         public bool ElementIsValueType { get; set; } // For array elements
+
+        /// <summary>
+        /// Property marked with [FixedLocale] attribute.
+        /// These are computed properties and should be EXCLUDED from:
+        /// - Constructor parameters (cannot be assigned)
+        /// - Serialization/Deserialization (computed at runtime)
+        /// - CSV column generation (not stored in files)
+        ///
+        /// Example: public LocaleRef Name => LocaleRef.CreateFixed(nameof(CharacterData), Id, nameof(Name));
+        /// </summary>
+        public bool IsFixedLocale { get; set; }
 
         // For backward compatibility
         public bool IsStringDataRef => IsDataRef && DataRefKeyType == "string";

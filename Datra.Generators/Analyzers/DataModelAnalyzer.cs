@@ -226,6 +226,18 @@ namespace Datra.Generators.Analyzers
                     isEnum = propertyType.TypeKind == TypeKind.Enum;
                     isValueType = propertyType.IsValueType;
 
+                    // Check for FixedLocale attribute
+                    bool isFixedLocale = false;
+                    foreach (var attr in property.GetAttributes())
+                    {
+                        var attrName = attr.AttributeClass?.Name;
+                        if (attrName == "FixedLocaleAttribute" || attrName == "FixedLocale")
+                        {
+                            isFixedLocale = true;
+                            break;
+                        }
+                    }
+
                     properties.Add(new PropertyInfo
                     {
                         Name = property.Name,
@@ -242,7 +254,8 @@ namespace Datra.Generators.Analyzers
                         IsEnum = isEnum,
                         IsValueType = isValueType,
                         ElementIsEnum = elementIsEnum,
-                        ElementIsValueType = elementIsValueType
+                        ElementIsValueType = elementIsValueType,
+                        IsFixedLocale = isFixedLocale
                     });
                 }
             }

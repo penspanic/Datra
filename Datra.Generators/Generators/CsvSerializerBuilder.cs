@@ -63,8 +63,8 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine($"const string fileName = \"{model.FilePath}\";");
             codeBuilder.AddBlankLine();
 
-            // Parse each property value
-            foreach (var prop in model.Properties)
+            // Parse each property value (only serializable properties - excludes computed FixedLocale properties)
+            foreach (var prop in model.GetSerializableProperties())
             {
                 var varName = CodeBuilder.ToCamelCase(prop.Name);
                 GetCsvPropertyParseCodeWithLogging(codeBuilder, prop, "values", "headerIndex", varName, "config", "logger", "lineNumber + 1", "fileName");
@@ -74,10 +74,11 @@ namespace Datra.Generators.Generators
                 }
             }
 
-            // Create object using constructor
+            // Create object using constructor (only constructor properties)
+            var constructorProps = model.GetConstructorProperties().ToList();
             codeBuilder.AppendLine($"var item = new {typeName}(");
-            for (int i = 0; i < model.Properties.Count; i++)
-                codeBuilder.AppendLine($"    {CodeBuilder.ToCamelCase(model.Properties[i].Name)}{(i == model.Properties.Count - 1 ? "" : ",")}");
+            for (int i = 0; i < constructorProps.Count; i++)
+                codeBuilder.AppendLine($"    {CodeBuilder.ToCamelCase(constructorProps[i].Name)}{(i == constructorProps.Count - 1 ? "" : ",")}");
             codeBuilder.AppendLine(");");
 
             // Store ALL column indices and values in CsvMetadata
@@ -167,9 +168,9 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("// This preserves the exact order and metadata positions");
             codeBuilder.AppendLine("var originalColumns = firstItem.CsvMetadata.OrderBy(kvp => kvp.Value.columnIndex).ToList();");
 
-            codeBuilder.AppendLine("// Get class properties for finding new ones");
+            codeBuilder.AppendLine("// Get class properties for finding new ones (only serializable properties)");
             codeBuilder.AppendLine("var classProperties = new global::System.Collections.Generic.HashSet<string>();");
-            foreach (var prop in model.Properties)
+            foreach (var prop in model.GetSerializableProperties())
             {
                 codeBuilder.AppendLine($"classProperties.Add(\"{prop.Name}\");");
             }
@@ -183,9 +184,9 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("// Then, add any new properties that weren't in the original CSV");
             codeBuilder.AppendLine("// Add them in class definition order");
 
-            // Create a list of properties to add
+            // Create a list of properties to add (only serializable properties)
             codeBuilder.AppendLine("var propertiesToAdd = new global::System.Collections.Generic.List<string>();");
-            foreach (var prop in model.Properties)
+            foreach (var prop in model.GetSerializableProperties())
             {
                 codeBuilder.AppendLine($"if (!columnList.Contains(\"{prop.Name}\"))");
                 codeBuilder.BeginBlock();
@@ -250,8 +251,8 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock(); // if CsvMetadata populated
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// No metadata - just use class properties in order");
-            foreach (var prop in model.Properties)
+            codeBuilder.AppendLine("// No metadata - just use class properties in order (only serializable properties)");
+            foreach (var prop in model.GetSerializableProperties())
             {
                 codeBuilder.AppendLine($"columnList.Add(\"{prop.Name}\");");
             }
@@ -277,10 +278,10 @@ namespace Datra.Generators.Generators
             codeBuilder.EndBlock();
             codeBuilder.AppendLine("else");
             codeBuilder.BeginBlock();
-            codeBuilder.AppendLine("// Regular property column - get property value");
+            codeBuilder.AppendLine("// Regular property column - get property value (only serializable properties)");
             codeBuilder.AppendLine("switch (columnName)");
             codeBuilder.BeginBlock();
-            foreach (var prop in model.Properties)
+            foreach (var prop in model.GetSerializableProperties())
             {
                 var serializeCode = GetCsvSerializeCode(prop, "item", "config");
                 codeBuilder.AppendLine($"case \"{prop.Name}\":");

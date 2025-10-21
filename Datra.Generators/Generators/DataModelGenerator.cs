@@ -114,7 +114,8 @@ namespace Datra.Generators.Generators
             // Default constructor
             codeBuilder.BeginMethod($"public {typeName}()");
 
-            foreach (var prop in model.Properties)
+            // Initialize only serializable properties (excludes computed FixedLocale properties)
+            foreach (var prop in model.GetConstructorProperties())
             {
                 if (prop.IsArray)
                 {
@@ -138,23 +139,22 @@ namespace Datra.Generators.Generators
                     codeBuilder.AppendLine($"{prop.Name} = new {prop.Type}();");
                 }
             }
-            
+
             codeBuilder.EndMethod();
             codeBuilder.AddBlankLine();
-            
-            // Parameterized constructor
-            var parameters = model.Properties.Select(p => 
-                $"{p.Type} {CodeBuilder.ToCamelCase(p.Name)}"
-            );
-            
+
+            // Parameterized constructor (only constructor properties)
+            var parameters = model.GetConstructorProperties()
+                .Select(p => $"{p.Type} {CodeBuilder.ToCamelCase(p.Name)}");
+
             codeBuilder.BeginMethod($"public {typeName}({string.Join(", ", parameters)})");
-            
-            foreach (var prop in model.Properties)
+
+            foreach (var prop in model.GetConstructorProperties())
             {
                 var paramName = CodeBuilder.ToCamelCase(prop.Name);
                 codeBuilder.AppendLine($"this.{prop.Name} = {paramName};");
             }
-            
+
             codeBuilder.EndMethod();
         }
         

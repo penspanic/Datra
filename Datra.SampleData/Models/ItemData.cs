@@ -1,4 +1,5 @@
 using Datra.Attributes;
+using Datra.DataTypes;
 using Datra.Interfaces;
 
 namespace Datra.SampleData.Models
@@ -7,8 +8,12 @@ namespace Datra.SampleData.Models
     public partial class ItemData : ITableData<int>
     {
         public int Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
+
+        [FixedLocale]
+        public LocaleRef Name => LocaleRef.CreateFixed(nameof(ItemData), Id.ToString(), nameof(Name));
+
+        [FixedLocale]
+        public LocaleRef Description => LocaleRef.CreateFixed(nameof(ItemData), Id.ToString(), nameof(Description));
         public int Price { get; set; }
         public ItemType Type { get; set; }
         public int Attack { get; set; }

@@ -81,7 +81,6 @@ namespace Datra.Tests
             // Arrange
             var newCharacter = new CharacterData(
                 "hero_006",
-                "TestHero",
                 5,
                 400,
                 200,
@@ -155,7 +154,6 @@ namespace Datra.Tests
             // Arrange
             var newCharacter = new CharacterData(
                 "hero_007",
-                "LegendaryHero",
                 10,
                 1000,
                 500,
@@ -272,7 +270,6 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
             // Arrange
             var newCharacter = new CharacterData(
                 "hero_008",
-                "TestWarrior",
                 20,
                 2000,
                 1000,

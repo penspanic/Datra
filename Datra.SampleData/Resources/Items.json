@@ -1,8 +1,6 @@
 [
   {
     "Id": 1001,
-    "Name": "Iron Sword",
-    "Description": "Basic sword made of iron",
     "Price": 100,
     "Type": "Weapon",
     "Attack": 10,
@@ -10,8 +8,6 @@
   },
   {
     "Id": 1002,
-    "Name": "Leather Armor",
-    "Description": "Light armor made of leather",
     "Price": 150,
     "Type": "Armor",
     "Attack": 0,
@@ -19,8 +15,6 @@
   },
   {
     "Id": 2001,
-    "Name": "Health Potion",
-    "Description": "Restores 50 HP",
     "Price": 50,
     "Type": "Consumable",
     "Attack": 0,
@@ -28,8 +22,6 @@
   },
   {
     "Id": 3001,
-    "Name": "Magic Staff",
-    "Description": "Staff imbued with magical power",
     "Price": 500,
     "Type": "Weapon",
     "Attack": 15,
@@ -37,8 +29,6 @@
   },
   {
     "Id": 3002,
-    "Name": "Mithril Armor",
-    "Description": "Premium armor made of mithril",
     "Price": 1000,
     "Type": "Armor",
     "Attack": 0,

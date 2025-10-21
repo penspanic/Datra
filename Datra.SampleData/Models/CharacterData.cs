@@ -1,4 +1,5 @@
 using Datra.Attributes;
+using Datra.DataTypes;
 using Datra.Interfaces;
 
 namespace Datra.SampleData.Models
@@ -15,7 +16,9 @@ namespace Datra.SampleData.Models
     public partial class CharacterData : ITableData<string>
     {
         public string Id { get; set; }
-        public string Name { get; set; }
+
+        [FixedLocale]
+        public LocaleRef Name => LocaleRef.CreateFixed(nameof(CharacterData), Id, nameof(Name));
         public int Level { get; set; }
         public int Health { get; set; }
         public int Mana { get; set; }

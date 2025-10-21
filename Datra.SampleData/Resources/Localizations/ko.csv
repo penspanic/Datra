@@ -11,11 +11,18 @@ Message_SaveComplete,저장이 완료되었습니다,저장 알림
 Error_NetworkDisconnected,네트워크 연결이 끊어졌습니다,에러 팝업
 Error_InvalidInput,잘못된 입력입니다,입력 검증
 Error_FileNotFound,파일을 찾을 수 없습니다,파일 에러
-Character_Hero_Name,용사,캐릭터 이름
-Character_Hero_Desc,정의를 수호하는 용감한 전사,캐릭터 설명
-Character_Mage_Name,대마법사,캐릭터 이름
-Character_Mage_Desc,고대의 지혜를 간직한 마법사,캐릭터 설명
-Item_Sword_Name,강철검,아이템 이름
-Item_Sword_Desc,견고한 강철로 만든 검,아이템 설명
-Item_Shield_Name,나무방패,아이템 이름
-Item_Shield_Desc,튼튼한 나무로 만든 방패,아이템 설명
+CharacterData.hero_001.name,아서,캐릭터 이름
+CharacterData.hero_002.name,마린,캐릭터 이름
+CharacterData.hero_003.name,레나,캐릭터 이름
+CharacterData.hero_004.name,토르,캐릭터 이름
+CharacterData.hero_005.name,루나,캐릭터 이름
+ItemData.1001.name,철제 검,아이템 이름
+ItemData.1001.description,철로 만든 기본 검,아이템 설명
+ItemData.1002.name,가죽 갑옷,아이템 이름
+ItemData.1002.description,가죽으로 만든 가벼운 갑옷,아이템 설명
+ItemData.2001.name,체력 물약,아이템 이름
+ItemData.2001.description,체력 50을 회복합니다,아이템 설명
+ItemData.3001.name,마법 지팡이,아이템 이름
+ItemData.3001.description,마법의 힘이 깃든 지팡이,아이템 설명
+ItemData.3002.name,미스릴 갑옷,아이템 이름
+ItemData.3002.description,미스릴로 만든 고급 갑옷,아이템 설명

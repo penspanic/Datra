@@ -11,11 +11,18 @@ Message_SaveComplete,Save complete notification,Dialog,false
 Error_NetworkDisconnected,Network disconnection error message,System,false
 Error_InvalidInput,Invalid input error message,System,false
 Error_FileNotFound,File not found error message,System,false
-Character_Hero_Name,Hero character name,Character,true
-Character_Hero_Desc,Hero character description,Character,true
-Character_Mage_Name,Mage character name,Character,true
-Character_Mage_Desc,Mage character description,Character,true
-Item_Sword_Name,Sword item name,Item,true
-Item_Sword_Desc,Sword item description,Item,true
-Item_Shield_Name,Shield item name,Item,true
-Item_Shield_Desc,Shield item description,Item,true
+CharacterData.hero_001.name,Character name for hero_001 (Arthur),Character,true
+CharacterData.hero_002.name,Character name for hero_002 (Marin),Character,true
+CharacterData.hero_003.name,Character name for hero_003 (Lena),Character,true
+CharacterData.hero_004.name,Character name for hero_004 (Thor),Character,true
+CharacterData.hero_005.name,Character name for hero_005 (Luna),Character,true
+ItemData.1001.name,Item name for 1001 (Iron Sword),Item,true
+ItemData.1001.description,Item description for 1001 (Iron Sword),Item,true
+ItemData.1002.name,Item name for 1002 (Leather Armor),Item,true
+ItemData.1002.description,Item description for 1002 (Leather Armor),Item,true
+ItemData.2001.name,Item name for 2001 (Health Potion),Item,true
+ItemData.2001.description,Item description for 2001 (Health Potion),Item,true
+ItemData.3001.name,Item name for 3001 (Magic Staff),Item,true
+ItemData.3001.description,Item description for 3001 (Magic Staff),Item,true
+ItemData.3002.name,Item name for 3002 (Mithril Armor),Item,true
+ItemData.3002.description,Item description for 3002 (Mithril Armor),Item,true

@@ -11,11 +11,18 @@ Message_SaveComplete,Save completed,Save notification
 Error_NetworkDisconnected,Network connection lost,Error popup
 Error_InvalidInput,Invalid input,Input validation
 Error_FileNotFound,File not found,File error
-Character_Hero_Name,Hero,Character name
-Character_Hero_Desc,A brave warrior who protects justice,Character description
-Character_Mage_Name,Archmage,Character name
-Character_Mage_Desc,A wise wizard with ancient knowledge,Character description
-Item_Sword_Name,Steel Sword,Item name
-Item_Sword_Desc,A sword made of solid steel,Item description
-Item_Shield_Name,Wooden Shield,Item name
-Item_Shield_Desc,A shield made of sturdy wood,Item description
+CharacterData.hero_001.name,Arthur,Character name
+CharacterData.hero_002.name,Marin,Character name
+CharacterData.hero_003.name,Lena,Character name
+CharacterData.hero_004.name,Thor,Character name
+CharacterData.hero_005.name,Luna,Character name
+ItemData.1001.name,Iron Sword,Item name
+ItemData.1001.description,Basic sword made of iron,Item description
+ItemData.1002.name,Leather Armor,Item name
+ItemData.1002.description,Light armor made of leather,Item description
+ItemData.2001.name,Health Potion,Item name
+ItemData.2001.description,Restores 50 HP,Item description
+ItemData.3001.name,Magic Staff,Item name
+ItemData.3001.description,Staff imbued with magical power,Item description
+ItemData.3002.name,Mithril Armor,Item name
+ItemData.3002.description,Premium armor made of mithril,Item description
