@@ -79,7 +79,7 @@ namespace Datra.Unity.Editor.Utilities
                 var baselinePropValue = prop.GetValue(baselineValue);
                 var newPropValue = prop.GetValue(newValue);
 
-                TrackPropertyChange(key, prop.Name, newPropValue);
+                TrackPropertyChange(key, prop.Name, newPropValue, out bool isModified);
             }
 
             Debug.Log($"[TrackChange] key={key}, total property changes: {_propertyChanges.Count}, HasModifications={HasModifications}");
@@ -88,8 +88,9 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Track a property change for specific key and property
         /// </summary>
-        public void TrackPropertyChange(TKey key, string propertyName, object newValue)
+        public void TrackPropertyChange(TKey key, string propertyName, object newValue, out bool isModified)
         {
+            isModified = false;
             if (!_baseline.TryGetValue(key, out var baselineEntity))
             {
                 // Key doesn't exist in baseline - it's an added entity
@@ -112,6 +113,7 @@ namespace Datra.Unity.Editor.Utilities
             var changeKey = (key, propertyName);
 
             Debug.Log($"[TrackPropertyChange] key={key}, property={propertyName}, baseline={baselineValue}, new={newValue}, equal={isEqual}");
+            isModified = !isEqual;
 
             if (!isEqual)
             {
@@ -276,9 +278,9 @@ namespace Datra.Unity.Editor.Utilities
             TrackChange((TKey)key, (TValue)value);
         }
 
-        void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue)
+        void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified)
         {
-            TrackPropertyChange((TKey)key, propertyName, newValue);
+            TrackPropertyChange((TKey)key, propertyName, newValue, out isModified);
         }
 
         void IRepositoryChangeTracker.TrackAdd(object key, object value)

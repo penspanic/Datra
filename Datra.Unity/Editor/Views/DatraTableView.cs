@@ -235,18 +235,7 @@ namespace Datra.Unity.Editor.Views
                         foreach (var propName in modifiedProps)
                         {
                             if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var cell))
-                            {
-                                cell.AddToClassList("modified-cell");
-
-                                // Also restore modified state on the field itself (for revert button)
-                                var field = cell.Q<DatraPropertyField>();
-                                if (field != null)
-                                {
-                                    field.SetModified(true);
-                                }
-
-                                Debug.Log($"[RefreshContent] Restored modified state for key={itemKey}, property={propName}");
-                            }
+                                cell.Q<DatraPropertyField>().SetModified(true);
                         }
                     }
                 }
@@ -480,22 +469,10 @@ namespace Datra.Unity.Editor.Views
                 field.OnValueChanged += (propName, newValue) => {
                     OnCellValueChanged?.Invoke(item, propName, newValue);
 
-                    // Track in change tracker at property level
                     var itemKey = GetKeyFromItem(item);
-                    if (itemKey != null)
-                    {
-                        changeTracker.TrackPropertyChange(itemKey, propName, newValue);
-                        Debug.Log($"[CreateEditableCell] Tracked property change: key={itemKey}, property={propName}");
-                    }
+                    changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
 
-                    // Update field's modified state to show revert button
-                    field.SetModified(true);
-
-                    // Update cell visual state
-                    if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
-                    {
-                        modCell.AddToClassList("modified-cell");
-                    }
+                    field.SetModified(isModified);
 
                     // Update modification state (checks changeTracker)
                     UpdateModifiedState();
@@ -520,16 +497,8 @@ namespace Datra.Unity.Editor.Views
                     UpdateFieldValue(field, property.PropertyType, baselineValue);
 
                     // Track the property change again to remove it from changes (back to baseline)
-                    changeTracker.TrackPropertyChange(itemKey, propName, baselineValue);
-
-                    // Clear modified state
-                    field.SetModified(false);
-
-                    // Clear visual indicator
-                    if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
-                    {
-                        modCell.RemoveFromClassList("modified-cell");
-                    }
+                    changeTracker.TrackPropertyChange(itemKey, propName, baselineValue, out bool isModified);
+                    field.SetModified(isModified);
 
                     // Update modification state (fires OnDataModified with correct state)
                     UpdateModifiedState();
@@ -708,46 +677,6 @@ namespace Datra.Unity.Editor.Views
             return element;
         }
         
-        public void RefreshCell(object item, string propertyName)
-        {
-            if (cellElements.TryGetValue(item, out var cells))
-            {
-                if (cells.TryGetValue(propertyName, out var cell))
-                {
-                    // Refresh the specific cell
-                    var property = columns.FirstOrDefault(c => c.Name == propertyName);
-                    if (property != null && property.CanWrite && !isReadOnly)
-                    {
-                        cell.Clear();
-                        
-                        // Create field using DatraPropertyField in table mode
-                        var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table);
-                        field.OnValueChanged += (propName, newValue) => {
-                            OnCellValueChanged?.Invoke(item, propName, newValue);
-
-                            // Track in change tracker at property level
-                            var itemKey = GetKeyFromItem(item);
-                            if (itemKey != null)
-                            {
-                                changeTracker.TrackPropertyChange(itemKey, propName, newValue);
-                            }
-
-                            // Update cell visual state
-                            if (cellElements.TryGetValue(item, out var cells) && cells.TryGetValue(propName, out var modCell))
-                            {
-                                modCell.AddToClassList("modified-cell");
-                            }
-
-                            UpdateModifiedState();
-                        };
-                        field.style.flexGrow = 1;
-                        cell.Add(field);
-                    }
-                }
-            }
-        }
-        
-        
         protected override void UpdateEditability()
         {
             base.UpdateEditability();
@@ -783,9 +712,7 @@ namespace Datra.Unity.Editor.Views
             foreach (var (item, cells) in cellElements)
             {
                 foreach (var (property, cell) in cells)
-                {
-                    cell.RemoveFromClassList("modified-cell");
-                }
+                    cell.Q<DatraPropertyField>().SetModified(false);
             }
 
             // Clear new row indicators
@@ -810,7 +737,7 @@ namespace Datra.Unity.Editor.Views
             {
                 foreach (var (property, cell) in cells)
                 {
-                    cell.RemoveFromClassList("modified-cell");
+                    cell.Q<DatraPropertyField>().SetModified(false);
                 }
             }
 

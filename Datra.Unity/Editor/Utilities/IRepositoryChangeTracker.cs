@@ -25,7 +25,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Track a property change for a given key, property name, and new value
         /// </summary>
-        void TrackPropertyChange(object key, string propertyName, object newValue);
+        void TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified);
 
         /// <summary>
         /// Track an addition

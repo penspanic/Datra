@@ -355,16 +355,30 @@ namespace Datra.Unity.Editor.Components
         {
             if (isModified)
             {
+                AddToClassList("modified-cell");
                 AddToClassList("field-modified");
                 modifiedIndicator.style.display = DisplayStyle.Flex;
                 revertButton.style.display = DisplayStyle.Flex;
                 modifiedIndicator.tooltip = "Modified";
+
+                // In table mode, also add modified-cell class to parent table-cell
+                if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
+                {
+                    parent.AddToClassList("modified-cell");
+                }
             }
             else
             {
+                RemoveFromClassList("modified-cell");
                 RemoveFromClassList("field-modified");
                 modifiedIndicator.style.display = DisplayStyle.None;
                 revertButton.style.display = DisplayStyle.None;
+
+                // In table mode, also remove modified-cell class from parent table-cell
+                if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
+                {
+                    parent.RemoveFromClassList("modified-cell");
+                }
             }
         }
 

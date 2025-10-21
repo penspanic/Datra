@@ -218,15 +218,6 @@ namespace Datra.Unity.Editor.Panels
             return interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableData<>));
         }
         
-        public void MarkTypeAsModified(Type type, bool isModified)
-        {
-            // Refresh content when modifications are saved
-            if (!isModified && currentType == type)
-            {
-                RefreshContent();
-            }
-        }
-        
         public override void Cleanup()
         {
             // Cleanup view controller
