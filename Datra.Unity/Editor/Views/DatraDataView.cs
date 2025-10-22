@@ -72,22 +72,29 @@ namespace Datra.Unity.Editor.Views
         
         private void InitializeBase()
         {
-            // Header
+            // Header (fixed size, doesn't grow)
             headerContainer = new VisualElement();
             headerContainer.AddToClassList("data-view-header");
+            headerContainer.style.flexShrink = 0; // Don't shrink
+            headerContainer.style.flexGrow = 0;   // Don't grow
             Add(headerContainer);
-            
-            // Content container (no scroll - let subclasses handle scrolling)
+
+            // Content container (grows to fill remaining space)
             contentContainer = new VisualElement();
             contentContainer.AddToClassList("data-view-content");
+            contentContainer.style.flexGrow = 1;  // Take remaining space
+            contentContainer.style.flexShrink = 1; // Allow shrinking
+            contentContainer.style.overflow = Overflow.Hidden; // Prevent overflow
             Add(contentContainer);
 
-            // Footer
+            // Footer (fixed size)
             footerContainer = new VisualElement();
             footerContainer.AddToClassList("data-view-footer");
+            footerContainer.style.flexShrink = 0; // Don't shrink
+            footerContainer.style.flexGrow = 0;   // Don't grow
             InitializeFooter();
             Add(footerContainer);
-            
+
             // Let derived classes initialize their specific UI
             InitializeView();
         }
