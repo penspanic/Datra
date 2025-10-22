@@ -18,10 +18,14 @@ namespace Datra.Unity.Editor.Panels
         private IDataRepository currentRepository;
         private IDataContext currentDataContext;
         private IRepositoryChangeTracker currentChangeTracker;
-        
+
+        // Localization support
+        private Datra.Services.LocalizationContext localizationContext;
+        private LocalizationChangeTracker localizationChangeTracker;
+
         // View mode controller
         private DatraViewModeController viewModeController;
-        
+
         // Properties
         public Type CurrentType => currentType;
         public IDataRepository CurrentRepository => currentRepository;
@@ -125,7 +129,7 @@ namespace Datra.Unity.Editor.Panels
             UpdateDataHeader();
 
             // Set data in controller
-            viewModeController.SetData(dataType, repository, dataContext, changeTracker);
+            viewModeController.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
         }
 
         private void UpdateDataHeader()
@@ -202,9 +206,9 @@ namespace Datra.Unity.Editor.Panels
                 ShowEmptyState();
                 return;
             }
-            
+
             // Let the controller handle the view refresh
-            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentChangeTracker);
+            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentChangeTracker, localizationContext, localizationChangeTracker);
         }
         
         protected override string GetEmptyStateMessage()
@@ -236,6 +240,15 @@ namespace Datra.Unity.Editor.Panels
                 viewModeController.OnDataModified -= ((type, isModified) => InvokeDataModified(type, isModified));
                 viewModeController.Cleanup();
             }
+        }
+
+        /// <summary>
+        /// Sets the localization context for FixedLocale property support
+        /// </summary>
+        public void SetLocalizationContext(Datra.Services.LocalizationContext context, LocalizationChangeTracker tracker)
+        {
+            localizationContext = context;
+            localizationChangeTracker = tracker;
         }
     }
 }

@@ -75,7 +75,7 @@ namespace Datra.Unity.Editor.Views
                 formContainer.AddToClassList("single-data-form");
 
                 // Create fields using the field factory
-                var fields = DatraFieldFactory.CreateFieldsForObject(data, DatraFieldLayoutMode.Form, false);
+                var fields = DatraFieldFactory.CreateFieldsForObject(data, DatraFieldLayoutMode.Form, false, this);
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => {
@@ -214,7 +214,7 @@ namespace Datra.Unity.Editor.Views
             if (actualData != null)
             {
                 // Create fields (skip ID since we handle it in header)
-                var fields = DatraFieldFactory.CreateFieldsForObject(actualData, DatraFieldLayoutMode.Form, true);
+                var fields = DatraFieldFactory.CreateFieldsForObject(actualData, DatraFieldLayoutMode.Form, true, this);
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => {

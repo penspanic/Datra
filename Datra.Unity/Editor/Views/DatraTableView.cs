@@ -42,7 +42,13 @@ namespace Datra.Unity.Editor.Views
             columnWidths = new Dictionary<string, float>();
         }
 
-        public override void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
+        public override void SetData(
+            Type type,
+            IDataRepository repo,
+            IDataContext context,
+            IRepositoryChangeTracker tracker,
+            Datra.Services.LocalizationContext localizationCtx = null,
+            Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
@@ -52,6 +58,8 @@ namespace Datra.Unity.Editor.Views
             repository = repo;
             dataContext = context;
             changeTracker = tracker;
+            localizationContext = localizationCtx;
+            localizationChangeTracker = localizationTracker;
 
             if (isDifferentType)
             {
@@ -224,7 +232,7 @@ namespace Datra.Unity.Editor.Views
         {
             cell.Clear();
 
-            if (isReadOnly || !property.CanWrite)
+            if (isReadOnly || !DatraPropertyField.CanHandle(property, this))
             {
                 // Read-only display
                 var value = property.GetValue(item);
@@ -234,8 +242,8 @@ namespace Datra.Unity.Editor.Views
             }
             else
             {
-                // Create editable field
-                var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table);
+                // Create editable field (pass this as ILocaleProvider for FixedLocale support)
+                var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table, this);
 
                 field.OnValueChanged += (propName, newValue) => {
                     var itemKey = GetKeyFromItem(item);

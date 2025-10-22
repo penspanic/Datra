@@ -186,43 +186,61 @@ namespace Datra.Services
         }
         
         /// <summary>
-        /// Gets localized text for the specified key
+        /// Gets localized text for the specified key in the current language
         /// </summary>
         public string GetText(string key)
         {
+            return GetText(key, _currentLanguageCode);
+        }
+
+        /// <summary>
+        /// Gets localized text for the specified key in a specific language
+        /// </summary>
+        public string GetText(string key, LanguageCode language)
+        {
             if (string.IsNullOrEmpty(key))
                 return string.Empty;
-            
-            if (!_languageData.ContainsKey(_currentLanguageCode))
+
+            if (!_languageData.ContainsKey(language))
                 return $"[{key}]";
-            
-            var languageDict = _languageData[_currentLanguageCode];
+
+            var languageDict = _languageData[language];
             return languageDict.TryGetValue(key, out var entry) ? entry.Text : $"[Missing: {key}]";
         }
         
         /// <summary>
-        /// Sets localized text for the specified key.
+        /// Sets localized text for the specified key in the current language.
         /// Note: This method allows updating locale values even for fixed keys.
         /// Fixed keys only prevent modification of the key itself, not its values.
         /// </summary>
         public void SetText(string key, string value)
         {
+            SetText(key, value, _currentLanguageCode);
+        }
+
+        /// <summary>
+        /// Sets localized text for the specified key in a specific language.
+        /// Note: This method allows updating locale values even for fixed keys.
+        /// Fixed keys only prevent modification of the key itself, not its values.
+        /// </summary>
+        public void SetText(string key, string value, LanguageCode language)
+        {
             if (string.IsNullOrEmpty(key))
                 return;
 
-            if (!_languageData.ContainsKey(_currentLanguageCode))
+            if (!_languageData.ContainsKey(language))
             {
-                _languageData[_currentLanguageCode] = new Dictionary<string, LocalizationEntry>();
+                _languageData[language] = new Dictionary<string, LocalizationEntry>();
             }
 
             // Preserve existing context if available
             var context = "";
-            if (_languageData[_currentLanguageCode].TryGetValue(key, out var existingEntry))
+            if (_languageData[language].TryGetValue(key, out var existingEntry))
             {
                 context = existingEntry.Context;
             }
 
-            _languageData[_currentLanguageCode][key] = new LocalizationEntry { Text = value, Context = context };
+            _languageData[language][key] = new LocalizationEntry { Text = value, Context = context };
         }
         
         /// <summary>
@@ -230,12 +248,20 @@ namespace Datra.Services
         /// </summary>
         public async Task SaveCurrentLanguageAsync()
         {
-            if (!_languageData.ContainsKey(_currentLanguageCode))
+            await SaveLanguageAsync(_currentLanguageCode);
+        }
+
+        /// <summary>
+        /// Saves a specific language data to file
+        /// </summary>
+        public async Task SaveLanguageAsync(LanguageCode language)
+        {
+            if (!_languageData.ContainsKey(language))
                 return;
-            
-            var dataPath = System.IO.Path.Combine(_config.LocalizationDataPath, _currentLanguageCode.GetFileName());
-            var csvContent = BuildCsvContent(_languageData[_currentLanguageCode]);
-            
+
+            var dataPath = System.IO.Path.Combine(_config.LocalizationDataPath, language.GetFileName());
+            var csvContent = BuildCsvContent(_languageData[language]);
+
             await _rawDataProvider.SaveTextAsync(dataPath, csvContent);
         }
         
@@ -293,13 +319,36 @@ namespace Datra.Services
         {
             return _availableLanguages;
         }
-        
+
         /// <summary>
         /// Gets all available languages as ISO codes
         /// </summary>
         public IEnumerable<string> GetAvailableLanguageIsoCodes()
         {
             return _availableLanguages.Select(l => l.ToIsoCode());
+        }
+
+        /// <summary>
+        /// Gets all currently loaded languages
+        /// </summary>
+        public IEnumerable<LanguageCode> GetLoadedLanguages()
+        {
+            return _languageData.Keys;
+        }
+
+        /// <summary>
+        /// Loads all available languages into memory.
+        /// Useful for editor scenarios where all languages need to be accessed without switching.
+        /// </summary>
+        public async Task LoadAllAvailableLanguagesAsync()
+        {
+            foreach (var languageCode in _availableLanguages)
+            {
+                if (!_languageData.ContainsKey(languageCode))
+                {
+                    await LoadLanguageAsync(languageCode);
+                }
+            }
         }
         
         /// <summary>

@@ -6,6 +6,8 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.DataTypes;
+using Datra.Localization;
+using Datra.Unity.Editor.Interfaces;
 using Datra.Unity.Editor.UI;
 using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
@@ -21,7 +23,7 @@ namespace Datra.Unity.Editor.Components
         Table,    // Compact layout for table cells
         Inline    // Inline layout with label on left
     }
-    
+
     /// <summary>
     /// A custom property field component with change tracking and revert functionality
     /// </summary>
@@ -38,14 +40,44 @@ namespace Datra.Unity.Editor.Components
         private Button revertButton;
         private VisualElement modifiedIndicator;
 
+        // Localization support
+        private ILocaleProvider localeProvider;
+
         public event Action<string, object> OnValueChanged;
         public event Action<string> OnRevertRequested;
 
-        public DatraPropertyField(object target, PropertyInfo property, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
+        /// <summary>
+        /// Checks if DatraPropertyField can handle editing this property
+        /// </summary>
+        public static bool CanHandle(PropertyInfo property, ILocaleProvider localeProvider = null)
+        {
+            if (property == null)
+                return false;
+
+            // LocaleRef with FixedLocale attribute - can handle even if CanWrite=false
+            if (property.PropertyType == typeof(LocaleRef))
+            {
+                var hasFixedLocale = property.GetCustomAttribute<Datra.Attributes.FixedLocaleAttribute>() != null;
+                if (hasFixedLocale && localeProvider != null)
+                    return true;
+                // Regular LocaleRef without FixedLocale or no provider - cannot handle
+                return false;
+            }
+
+            // Regular properties - need CanWrite
+            return property.CanWrite;
+        }
+
+        public DatraPropertyField(
+            object target,
+            PropertyInfo property,
+            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            ILocaleProvider localeProvider = null)
         {
             this.target = target;
             this.property = property;
             this.layoutMode = layoutMode;
+            this.localeProvider = localeProvider;
 
             AddToClassList("datra-property-field");
             AddToClassList($"layout-{layoutMode.ToString().ToLower()}");
@@ -187,20 +219,37 @@ namespace Datra.Unity.Editor.Components
         
         private VisualElement CreateInputField(Type propertyType, object value)
         {
-            if (propertyType == typeof(string))
+            // Check for LocaleRef with FixedLocale attribute
+            if (propertyType == typeof(LocaleRef))
+            {
+                var hasFixedLocale = property.GetCustomAttribute<Datra.Attributes.FixedLocaleAttribute>() != null;
+                if (hasFixedLocale && localeProvider != null)
+                {
+                    return CreateLocaleRefField(value as LocaleRef?);
+                }
+                else
+                {
+                    // Regular LocaleRef field (if needed in future)
+                    var textField = new TextField();
+                    textField.value = value?.ToString() ?? "";
+                    textField.isReadOnly = true;
+                    return textField;
+                }
+            }
+            else if (propertyType == typeof(string))
             {
                 // Check for asset attributes
                 if (AttributeFieldHandler.HasAssetAttributes(property))
                 {
                     var assetType = AttributeFieldHandler.GetAssetTypeAttribute(property);
                     var folderPath = AttributeFieldHandler.GetFolderPathAttribute(property);
-                    
+
                     var assetField = new AssetFieldElement(assetType, folderPath, value as string ?? "", (newValue) =>
                     {
                         property.SetValue(target, newValue);
                         OnFieldValueChanged(newValue);
                     }, layoutMode == DatraFieldLayoutMode.Table);
-                    
+
                     return assetField;
                 }
                 else
@@ -1250,6 +1299,71 @@ namespace Datra.Unity.Editor.Components
                 }
             }
         }
-        
+
+        /// <summary>
+        /// Creates a readonly field for LocaleRef with edit button
+        /// </summary>
+        private VisualElement CreateLocaleRefField(LocaleRef? localeRefValue)
+        {
+            var container = new VisualElement();
+            container.AddToClassList("locale-ref-field-container");
+            container.style.flexDirection = FlexDirection.Row;
+            container.style.alignItems = Align.Center;
+            container.style.flexGrow = 1;
+
+            // Edit button (moved to front)
+            var editButton = new Button();
+            editButton.text = "⋯";
+            editButton.AddToClassList("locale-ref-edit-button");
+            editButton.style.marginRight = 4;
+            editButton.style.width = 24;
+            editButton.style.minWidth = 24;
+            editButton.tooltip = "Edit Locale";
+
+            // Readonly text field showing the localized text
+            var textField = new TextField();
+            textField.AddToClassList("locale-ref-text-field");
+            textField.isReadOnly = true;
+            textField.style.flexGrow = 1;
+
+            // Get localized text using provider
+            if (localeRefValue.HasValue && localeProvider != null)
+            {
+                var localeRef = localeRefValue.Value;
+                var localizedText = localeProvider.GetLocaleText(localeRef);
+                textField.value = localizedText ?? "(Missing)";
+                textField.tooltip = $"Key: {localeRef.Key}";
+            }
+            else
+            {
+                textField.value = "(No locale key)";
+            }
+
+            editButton.clicked += () =>
+            {
+                if (localeRefValue.HasValue && localeProvider != null)
+                {
+                    var localeRef = localeRefValue.Value;
+
+                    // Get button's world bounds for popup positioning
+                    var buttonWorldBound = editButton.worldBound;
+
+                    localeProvider.ShowLocaleEditPopup(localeRef, buttonWorldBound, (updatedText) =>
+                    {
+                        // Update the displayed text after editing
+                        textField.value = updatedText ?? "(Missing)";
+
+                        // Notify that something changed
+                        OnFieldValueChanged(localeRefValue);
+                    });
+                }
+            };
+
+            container.Add(editButton);
+            container.Add(textField);
+
+            return container;
+        }
+
     }
 }

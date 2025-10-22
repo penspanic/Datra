@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine.UIElements;
+using Datra.Unity.Editor.Interfaces;
 
 namespace Datra.Unity.Editor.Components
 {
@@ -24,7 +25,11 @@ namespace Datra.Unity.Editor.Components
         /// <summary>
         /// Create a property field for the given property
         /// </summary>
-        public static DatraPropertyField CreateField(object target, PropertyInfo property, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form)
+        public static DatraPropertyField CreateField(
+            object target,
+            PropertyInfo property,
+            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            ILocaleProvider localeProvider = null)
         {
             // Check for custom field creators
             if (customFieldCreators.TryGetValue(property.PropertyType, out var creator))
@@ -33,13 +38,17 @@ namespace Datra.Unity.Editor.Components
             }
 
             // Default field creation
-            return new DatraPropertyField(target, property, layoutMode);
+            return new DatraPropertyField(target, property, layoutMode, localeProvider);
         }
 
         /// <summary>
         /// Create fields for all writable properties of an object
         /// </summary>
-        public static List<DatraPropertyField> CreateFieldsForObject(object target, DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form, bool skipId = true)
+        public static List<DatraPropertyField> CreateFieldsForObject(
+            object target,
+            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            bool skipId = true,
+            ILocaleProvider localeProvider = null)
         {
             var fields = new List<DatraPropertyField>();
             // Filter out properties with DatraIgnore attribute
@@ -48,9 +57,10 @@ namespace Datra.Unity.Editor.Components
 
             foreach (var property in properties)
             {
-                if (property.CanWrite && (!skipId || property.Name != "Id"))
+                // Use DatraPropertyField.CanHandle to check if property can be edited
+                if (DatraPropertyField.CanHandle(property, localeProvider) && (!skipId || property.Name != "Id"))
                 {
-                    var field = CreateField(target, property, layoutMode);
+                    var field = CreateField(target, property, layoutMode, localeProvider);
                     fields.Add(field);
                 }
             }

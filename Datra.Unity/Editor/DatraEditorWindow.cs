@@ -328,6 +328,12 @@ namespace Datra.Unity.Editor
 
                     // Register LocalizationRepository's change tracker with data manager
                     changeTrackers[typeof(LocalizationContext)] = localizationChangeTracker;
+
+                    // Load all available languages for editor (allows editing multiple languages without switching)
+                    localizationContext.LoadAllAvailableLanguagesAsync().Wait();
+
+                    // Pass localizationContext to DataInspectorPanel for FixedLocale property support
+                    dataInspectorPanel.SetLocalizationContext(localizationContext, localizationChangeTracker);
                 }
             }
             

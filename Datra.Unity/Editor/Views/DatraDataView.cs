@@ -2,18 +2,21 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Datra.DataTypes;
 using Datra.Interfaces;
+using Datra.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Unity.Editor.Components;
+using Datra.Unity.Editor.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Views
 {
-    public abstract class DatraDataView : VisualElement
+    public abstract class DatraDataView : VisualElement, ILocaleProvider
     {
         // Core properties
         protected Type dataType;
@@ -23,6 +26,10 @@ namespace Datra.Unity.Editor.Views
 
         // External change tracker (IRepositoryChangeTracker)
         protected IRepositoryChangeTracker changeTracker;
+
+        // Localization support (for FixedLocale properties)
+        protected Datra.Services.LocalizationContext localizationContext;
+        protected Utilities.LocalizationChangeTracker localizationChangeTracker;
 
         // Common UI elements
         protected VisualElement searchField;  // Base type to support both TextField and ToolbarSearchField
@@ -130,7 +137,13 @@ namespace Datra.Unity.Editor.Views
             footerContainer.Add(actionArea);
         }
         
-        public virtual void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
+        public virtual void SetData(
+            Type type,
+            IDataRepository repo,
+            IDataContext context,
+            IRepositoryChangeTracker tracker,
+            Datra.Services.LocalizationContext localizationCtx = null,
+            Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
@@ -139,6 +152,8 @@ namespace Datra.Unity.Editor.Views
             repository = repo;
             dataContext = context;
             changeTracker = tracker;
+            localizationContext = localizationCtx;
+            localizationChangeTracker = localizationTracker;
 
             if (isDifferentType)
             {
@@ -729,6 +744,49 @@ namespace Datra.Unity.Editor.Views
                 // For other types, try to refresh the field
                 field.RefreshField();
             }
+        }
+
+        #endregion
+
+        #region ILocaleProvider Implementation
+
+        /// <summary>
+        /// Gets the localized text for a LocaleRef in the current language
+        /// </summary>
+        public string GetLocaleText(LocaleRef localeRef)
+        {
+            if (localizationContext == null)
+                return $"[{localeRef.Key}]";
+
+            return localeRef.Evaluate(localizationContext);
+        }
+
+        /// <summary>
+        /// Shows a popup to edit the locale across all languages
+        /// </summary>
+        public void ShowLocaleEditPopup(LocaleRef localeRef, Rect buttonWorldBound, Action<string> onUpdated)
+        {
+            if (localizationContext == null)
+            {
+                Debug.LogWarning("LocalizationContext is not available. Cannot edit locale.");
+                return;
+            }
+
+            Components.LocaleEditPopup.ShowWindow(
+                localizationContext,
+                localizationChangeTracker,
+                localeRef.Key,
+                buttonWorldBound,
+                onModified: () =>
+                {
+                    // Get updated text in current language
+                    var updatedText = localeRef.Evaluate(localizationContext);
+                    onUpdated?.Invoke(updatedText);
+
+                    // Mark as modified
+                    MarkAsModified();
+                    UpdateModifiedState();
+                });
         }
 
         #endregion

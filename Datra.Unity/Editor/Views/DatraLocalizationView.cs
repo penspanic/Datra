@@ -22,7 +22,6 @@ namespace Datra.Unity.Editor.Views
     public class DatraLocalizationView : VirtualizedTableView
     {
         // Localization-specific
-        private LocalizationContext localizationContext;
         private LanguageCode currentLanguageCode;
         private DropdownField languageDropdown;
         private bool isLoading = false;
@@ -55,12 +54,6 @@ namespace Datra.Unity.Editor.Views
             if (changeTracker != null)
             {
                 isModified = changeTracker.IsModified(wrapper.Id);
-
-                // Debug log
-                if (isModified)
-                {
-                    Debug.Log($"[GetRowState] Localization key '{wrapper.Id}' is modified");
-                }
             }
             else
             {
@@ -136,12 +129,20 @@ namespace Datra.Unity.Editor.Views
             return toolbar;
         }
 
-        public override void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
+        public override void SetData(
+            Type type,
+            IDataRepository repo,
+            IDataContext context,
+            IRepositoryChangeTracker tracker,
+            Datra.Services.LocalizationContext localizationCtx = null,
+            Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             dataType = type;
             repository = repo;
             dataContext = context;
             changeTracker = tracker;
+            localizationContext = localizationCtx;
+            localizationChangeTracker = localizationTracker;
 
             if (context is LocalizationContext locContext)
             {
@@ -213,19 +214,15 @@ namespace Datra.Unity.Editor.Views
 
             try
             {
-                Debug.Log($"[DatraLocalizationView] Loading language: {languageCode}");
                 await localizationContext.LoadLanguageAsync(languageCode);
-                Debug.Log($"[DatraLocalizationView] Language loaded successfully");
 
                 // Initialize change tracker for this language (only if not already initialized)
                 var localizationChangeTracker = changeTracker as LocalizationChangeTracker;
                 if (!localizationChangeTracker!.IsLanguageInitialized(languageCode))
                 {
-                    Debug.Log($"[DatraLocalizationView] Initializing change tracker for {languageCode}");
                     localizationChangeTracker.InitializeLanguage(languageCode);
                 }
 
-                Debug.Log($"[DatraLocalizationView] Refreshing content...");
                 RefreshContent();
                 UpdateStatus($"Loaded language: {languageCode.GetDisplayName()}");
             }
@@ -250,7 +247,7 @@ namespace Datra.Unity.Editor.Views
 
             foreach (var keyId in keys)
             {
-                var text = localizationContext.GetText(keyId);
+                var text = localizationContext.GetText(keyId, currentLanguageCode);
 
                 // Remove [Missing: prefix for display (we'll show it visually instead)
                 if (!string.IsNullOrEmpty(text) && text.StartsWith("[Missing:"))
@@ -394,13 +391,17 @@ namespace Datra.Unity.Editor.Views
             else
             {
                 var textProperty = typeof(LocalizationKeyWrapper).GetProperty("Text");
-                var field = new DatraPropertyField(wrapper, textProperty, DatraFieldLayoutMode.Table);
+                var field = new DatraPropertyField(
+                    wrapper,
+                    textProperty,
+                    DatraFieldLayoutMode.Table,
+                    this);
 
                 // OnValueChanged: Handle property changes with proper tracking
                 field.OnValueChanged += (propName, newValue) => {
-                    // Update wrapper and localization context
+                    // Update wrapper and localization context for current language
                     wrapper.Text = newValue as string;
-                    localizationContext.SetText(wrapper.Id, newValue as string);
+                    localizationContext.SetText(wrapper.Id, newValue as string, currentLanguageCode);
 
                     // Track property change (not just key-level change)
                     changeTracker.TrackPropertyChange(wrapper.Id, propName, newValue, out bool isModified);
@@ -418,9 +419,9 @@ namespace Datra.Unity.Editor.Views
                     // Get baseline value from change tracker
                     var baselineValue = changeTracker.GetPropertyBaselineValue(wrapper.Id, propName);
 
-                    // Restore to baseline
+                    // Restore to baseline for current language
                     wrapper.Text = baselineValue as string;
-                    localizationContext.SetText(wrapper.Id, baselineValue as string);
+                    localizationContext.SetText(wrapper.Id, baselineValue as string, currentLanguageCode);
 
                     // Re-track with baseline value (should mark as not modified)
                     changeTracker.TrackPropertyChange(wrapper.Id, propName, baselineValue, out bool isModified);
@@ -501,12 +502,23 @@ namespace Datra.Unity.Editor.Views
         {
             if (isLoading) return;
 
-            var languages = localizationContext.GetAvailableLanguages();
-            var newLangCode = languages.FirstOrDefault(lang => lang.ToIsoCode() == newLanguage);
+            Debug.Log($"[OnLanguageChanged] newLanguage string: {newLanguage}");
 
-            if (newLangCode != default)
+            var languages = localizationContext.GetAvailableLanguages().ToList();
+            Debug.Log($"[OnLanguageChanged] Available languages: {string.Join(", ", languages.Select(l => l.ToIsoCode()))}");
+
+            var matchIndex = languages.FindIndex(lang => lang.ToIsoCode() == newLanguage);
+            Debug.Log($"[OnLanguageChanged] Match index: {matchIndex}");
+
+            if (matchIndex >= 0)
             {
+                var newLangCode = languages[matchIndex];
+                Debug.Log($"[OnLanguageChanged] Matched language code: {newLangCode}");
                 await SwitchLanguage(newLangCode);
+            }
+            else
+            {
+                Debug.LogWarning($"[OnLanguageChanged] Could not find language code for: {newLanguage}");
             }
         }
 
@@ -629,7 +641,7 @@ namespace Datra.Unity.Editor.Views
                     var success = await localizationContext.AutoTranslateKeyAsync(wrapper.Id, LanguageCode.En);
                     if (success)
                     {
-                        var translatedText = localizationContext.GetText(wrapper.Id);
+                        var translatedText = localizationContext.GetText(wrapper.Id, currentLanguageCode);
                         wrapper.Text = translatedText;
                         (changeTracker as LocalizationChangeTracker)!.TrackTextChange(wrapper.Id, translatedText);
                     }
