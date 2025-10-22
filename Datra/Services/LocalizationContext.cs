@@ -362,6 +362,9 @@ namespace Datra.Services
         /// </summary>
         public async Task LoadAllAvailableLanguagesAsync()
         {
+            // Preserve the current language code
+            var originalLanguageCode = _currentLanguageCode;
+
             foreach (var languageCode in _availableLanguages)
             {
                 if (!_languageData.ContainsKey(languageCode))
@@ -369,6 +372,9 @@ namespace Datra.Services
                     await LoadLanguageAsync(languageCode);
                 }
             }
+
+            // Restore the original language code after loading all languages
+            _currentLanguageCode = originalLanguageCode;
         }
         
         /// <summary>
