@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using Datra.Unity.Editor.Components;
 using Datra.DataTypes;
+using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -41,7 +42,7 @@ namespace Datra.Unity.Editor.Views
             columnWidths = new Dictionary<string, float>();
         }
 
-        public override void SetData(Type type, object repo, object context, IRepositoryChangeTracker tracker)
+        public override void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
@@ -241,6 +242,9 @@ namespace Datra.Unity.Editor.Views
                     changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
                     field.SetModified(isModified);
                     UpdateModifiedState();
+
+                    // Update row state without rebuilding (to avoid interrupting typing)
+                    UpdateRowStateVisuals(item);
                 };
 
                 field.OnRevertRequested += (propName) => {
@@ -472,14 +476,6 @@ namespace Datra.Unity.Editor.Views
                     button.SetEnabled(!isReadOnly);
                 }
             }
-        }
-
-        protected override void OnModificationsCleared()
-        {
-            base.OnModificationsCleared();
-
-            // Rebuild ListView to clear visual modifications
-            listView.Rebuild();
         }
 
         protected override void SaveChanges()

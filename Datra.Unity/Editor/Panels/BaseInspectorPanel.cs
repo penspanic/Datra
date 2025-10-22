@@ -1,4 +1,5 @@
 using System;
+using Datra.Interfaces;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -15,7 +16,7 @@ namespace Datra.Unity.Editor.Panels
         
         // Events
         public event Action<Type, bool> OnDataModified;  // Type, isModified
-        public event Action<Type, object> OnSaveRequested;
+        public event Action<Type, IDataRepository> OnSaveRequested;
         
         protected BaseInspectorPanel()
         {
@@ -119,7 +120,7 @@ namespace Datra.Unity.Editor.Panels
             OnDataModified?.Invoke(type, isModified);
         }
         
-        protected void InvokeSaveRequested(Type type, object repository)
+        protected void InvokeSaveRequested(Type type, IDataRepository repository)
         {
             OnSaveRequested?.Invoke(type, repository);
         }

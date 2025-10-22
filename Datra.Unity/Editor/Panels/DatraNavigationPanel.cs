@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Interfaces;
 using Datra.Services;
+using Datra.Unity.Editor.Models;
 using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Panels
@@ -307,16 +308,18 @@ namespace Datra.Unity.Editor.Panels
             // Add Localization category if LocalizationContext exists
             if (localizationContext != null)
             {
+                var localizationType = typeof(LocalizationKeyWrapper);
+
                 var localizationItem = new TreeViewItemData<DataTypeItem>(
                     "LocalizationContext".GetHashCode(),
-                    new DataTypeItem 
-                    { 
+                    new DataTypeItem
+                    {
                         Name = "Localization",
-                        DataType = null,
+                        DataType = localizationType,
                         DataTypeInfo = null,
                         IsCategory = false,
                         IsLocalization = true,
-                        IsModified = false
+                        IsModified = modifiedTypes.Contains(localizationType)
                     });
                 
                 var localizationCategory = new TreeViewItemData<DataTypeItem>(
@@ -594,7 +597,7 @@ namespace Datra.Unity.Editor.Panels
             return null;
         }
         
-        private object GetRepositoryForType(DatraEditorWindow window, Type dataType)
+        private IDataRepository GetRepositoryForType(DatraEditorWindow window, Type dataType)
         {
             if (window.Repositories != null && window.Repositories.TryGetValue(dataType, out var repository))
             {
@@ -608,7 +611,7 @@ namespace Datra.Unity.Editor.Panels
             return window.changeTrackers[dataType];
         }
         
-        private object GetDataContext(DatraEditorWindow window)
+        private IDataContext GetDataContext(DatraEditorWindow window)
         {
             return window.DataContext;
         }

@@ -70,8 +70,18 @@ namespace Datra.Unity.Editor.Utilities
             // Update current snapshot
             _current[key] = DeepClone(newValue);
 
+            // For primitive types (string, int, etc.) that have no writable properties,
+            // track the entire value as a single property change
+            var type = typeof(TValue);
+            if (type.IsPrimitive || type == typeof(string) || type.IsValueType)
+            {
+                // Track as a single "Value" property
+                TrackPropertyChange(key, "Value", newValue, out bool isModified);
+                return;
+            }
+
             // Compare all properties
-            var properties = typeof(TValue).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            var properties = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                 .Where(p => p.CanRead && p.CanWrite);
 
             foreach (var prop in properties)
@@ -95,15 +105,26 @@ namespace Datra.Unity.Editor.Utilities
                 return;
             }
 
-            // Get baseline property value using reflection
-            var propInfo = typeof(TValue).GetProperty(propertyName);
-            if (propInfo == null)
-            {
-                Debug.LogWarning($"[TrackPropertyChange] Property '{propertyName}' not found on type {typeof(TValue).Name}");
-                return;
-            }
+            object baselineValue;
 
-            var baselineValue = propInfo.GetValue(baselineEntity);
+            // For primitive types, "Value" is a synthetic property representing the entire value
+            var type = typeof(TValue);
+            if (propertyName == "Value" && (type.IsPrimitive || type == typeof(string) || type.IsValueType))
+            {
+                baselineValue = baselineEntity;
+            }
+            else
+            {
+                // Get baseline property value using reflection
+                var propInfo = type.GetProperty(propertyName);
+                if (propInfo == null)
+                {
+                    Debug.LogWarning($"[TrackPropertyChange] Property '{propertyName}' not found on type {type.Name}");
+                    return;
+                }
+
+                baselineValue = propInfo.GetValue(baselineEntity);
+            }
 
             // Compare values
             bool isEqual = DeepEqualsValues(baselineValue, newValue);
@@ -126,9 +147,19 @@ namespace Datra.Unity.Editor.Utilities
             }
 
             // Also update current entity snapshot
-            if (_current.TryGetValue(key, out var currentEntity))
+            if (propertyName == "Value" && (type.IsPrimitive || type == typeof(string) || type.IsValueType))
             {
-                propInfo.SetValue(currentEntity, newValue);
+                // For primitive types, we can't set a property - the value is immutable
+                // Just update the dictionary entry directly
+                _current[key] = (TValue)newValue;
+            }
+            else if (_current.TryGetValue(key, out var currentEntity))
+            {
+                var propInfo = type.GetProperty(propertyName);
+                if (propInfo != null)
+                {
+                    propInfo.SetValue(currentEntity, newValue);
+                }
             }
         }
 
@@ -245,7 +276,14 @@ namespace Datra.Unity.Editor.Utilities
             if (!_baseline.TryGetValue(key, out var baselineEntity))
                 return null;
 
-            var propInfo = typeof(TValue).GetProperty(propertyName);
+            // For primitive types, "Value" is a synthetic property representing the entire value
+            var type = typeof(TValue);
+            if (propertyName == "Value" && (type.IsPrimitive || type == typeof(string) || type.IsValueType))
+            {
+                return baselineEntity;
+            }
+
+            var propInfo = type.GetProperty(propertyName);
             if (propInfo == null)
                 return null;
 

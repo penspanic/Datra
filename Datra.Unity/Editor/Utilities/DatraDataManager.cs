@@ -134,7 +134,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Save all modified data
         /// </summary>
-        public async Task<bool> SaveAllAsync(Dictionary<Type, object> repositories, bool forceSave = false)
+        public async Task<bool> SaveAllAsync(Dictionary<Type, IDataRepository> repositories, bool forceSave = false)
         {
             if (dataContext == null) return false;
             
@@ -155,8 +155,9 @@ namespace Datra.Unity.Editor.Utilities
                     {
                         try
                         {
-                            if (await SaveRepositoryAsync(repository, type))
+                            if (repository is IDataRepository dataRepository)
                             {
+                                await dataRepository.SaveAsync();
                                 savedTypes.Add(type);
                             }
                             else
@@ -217,7 +218,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Save a specific data type
         /// </summary>
-        public async Task<bool> SaveAsync(Type dataType, object repository, bool forceSave = false)
+        public async Task<bool> SaveAsync(Type dataType, IDataRepository repository, bool forceSave = false)
         {
             if (dataContext == null || repository == null) return false;
 
@@ -230,24 +231,17 @@ namespace Datra.Unity.Editor.Utilities
 
             try
             {
-                if (await SaveRepositoryAsync(repository, dataType))
-                {
-                    ClearModifiedState(dataType);
+                await repository.SaveAsync();
+                ClearModifiedState(dataType);
 
-                    // Update change tracker baseline
-                    UpdateChangeTrackerBaseline(dataType, repository);
+                // Update change tracker baseline
+                UpdateChangeTrackerBaseline(dataType, repository);
 
-                    var message = forceSave
-                        ? $"{dataType.Name} force saved successfully!"
-                        : $"{dataType.Name} saved successfully!";
-                    OnOperationCompleted?.Invoke(message);
-                    return true;
-                }
-                else
-                {
-                    OnOperationFailed?.Invoke($"Failed to save {dataType.Name}: No save method found");
-                    return false;
-                }
+                var message = forceSave
+                    ? $"{dataType.Name} force saved successfully!"
+                    : $"{dataType.Name} saved successfully!";
+                OnOperationCompleted?.Invoke(message);
+                return true;
             }
             catch (Exception e)
             {
@@ -298,61 +292,6 @@ namespace Datra.Unity.Editor.Utilities
             }
         }
         
-        /// <summary>
-        /// Helper method to save a repository
-        /// </summary>
-        private async Task<bool> SaveRepositoryAsync(object repository, Type dataType)
-        {
-            // Check if it's IKeyValueDataRepository<TKey, TData>
-            var keyValueRepoInterface = repository.GetType().GetInterfaces()
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "IKeyValueDataRepository`2");
-
-            if (keyValueRepoInterface != null)
-            {
-                var keyValueRepo = repository as dynamic;
-                await keyValueRepo.SaveAsync();
-                return true;
-            }
-
-            // Check if it's ISingleDataRepository<TData>
-            var singleRepoInterface = repository.GetType().GetInterfaces()
-                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition().Name == "ISingleDataRepository`1");
-
-            if (singleRepoInterface != null)
-            {
-                var singleRepo = repository as dynamic;
-                await singleRepo.SaveAsync();
-                return true;
-            }
-
-            // Fallback: Try to find SaveAsync method on the repository (for backward compatibility)
-            var saveMethod = repository.GetType().GetMethod("SaveAsync");
-            if (saveMethod != null)
-            {
-                var task = saveMethod.Invoke(repository, null) as Task;
-                if (task != null)
-                {
-                    await task;
-                    return true;
-                }
-            }
-
-            // Last resort: Try generic SaveAsync method
-            var contextType = dataContext.GetType();
-            var genericSaveMethod = contextType.GetMethods()
-                .FirstOrDefault(m => m.Name == "SaveAsync" && m.IsGenericMethodDefinition);
-            if (genericSaveMethod != null)
-            {
-                var task = genericSaveMethod.MakeGenericMethod(dataType).Invoke(dataContext, null) as Task;
-                if (task != null)
-                {
-                    await task;
-                    return true;
-                }
-            }
-            
-            return false;
-        }
 
         /// <summary>
         /// Update change tracker baseline after successful save

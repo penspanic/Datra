@@ -64,8 +64,10 @@ namespace Datra.Unity.Editor.Components
             if (layoutMode == DatraFieldLayoutMode.Table)
             {
                 // Table layout: minimal, no label, inline indicators
+                this.style.flexGrow = 1; // Make the field fill the cell
                 fieldContainer.style.flexDirection = FlexDirection.Row;
                 fieldContainer.style.alignItems = Align.Center;
+                fieldContainer.style.flexGrow = 1; // Container also fills the field
                 Add(fieldContainer);
 
                 // No header in table mode - indicators will be inline

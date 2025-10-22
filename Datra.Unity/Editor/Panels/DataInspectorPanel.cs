@@ -15,8 +15,8 @@ namespace Datra.Unity.Editor.Panels
     public class DataInspectorPanel : BaseInspectorPanel
     {
         private Type currentType;
-        private object currentRepository;
-        private object currentDataContext;
+        private IDataRepository currentRepository;
+        private IDataContext currentDataContext;
         private IRepositoryChangeTracker currentChangeTracker;
         
         // View mode controller
@@ -24,7 +24,7 @@ namespace Datra.Unity.Editor.Panels
         
         // Properties
         public Type CurrentType => currentType;
-        public object CurrentRepository => currentRepository;
+        public IDataRepository CurrentRepository => currentRepository;
         
         public DataInspectorPanel() : base()
         {
@@ -90,7 +90,7 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        public void SetDataContext(object dataContext, object repository, Type dataType, IRepositoryChangeTracker changeTracker)
+        public void SetDataContext(IDataContext dataContext, IDataRepository repository, Type dataType, IRepositoryChangeTracker changeTracker)
         {
             currentDataContext = dataContext;
             currentRepository = repository;

@@ -32,14 +32,14 @@ namespace Datra.Unity.Editor.Controllers
         private SplitViewWrapper cachedSplitView;
 
         private Type dataType;
-        private object repository;
-        private object dataContext;
+        private IDataRepository repository;
+        private IDataContext dataContext;
         private bool isReadOnly;
         private IRepositoryChangeTracker changeTracker;
         
         // Events
         public event Action<ViewMode> OnViewModeChanged;
-        public event Action<Type, object> OnSaveRequested;
+        public event Action<Type, IDataRepository> OnSaveRequested;
         public event Action<Type, bool> OnDataModified;  // Type, isModified
         
         // Properties
@@ -51,7 +51,7 @@ namespace Datra.Unity.Editor.Controllers
             this.headerContainer = headerContainer;
         }
         
-        public void SetData(Type type, object repo, object context, IRepositoryChangeTracker changeTracker, bool readOnly = false)
+        public void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker changeTracker, bool readOnly = false)
         {
             // Clear cached views if data type changed
             if (this.dataType != type)
@@ -223,7 +223,7 @@ namespace Datra.Unity.Editor.Controllers
             contentContainer.Clear();
         }
         
-        private void HandleSaveRequest(Type type, object repo)
+        private void HandleSaveRequest(Type type, IDataRepository repo)
         {
             OnSaveRequested?.Invoke(type, repo);
         }

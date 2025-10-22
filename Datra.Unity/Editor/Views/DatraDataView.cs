@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Datra.Interfaces;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -16,7 +17,7 @@ namespace Datra.Unity.Editor.Views
     {
         // Core properties
         protected Type dataType;
-        protected object repository;
+        protected IDataRepository repository;
         protected object dataContext;
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
@@ -40,13 +41,12 @@ namespace Datra.Unity.Editor.Views
         
         // Events
         public event Action<Type, bool> OnDataModified;  // Type, isModified
-        public event Action<Type, object> OnSaveRequested;
+        public event Action<Type, IDataRepository> OnSaveRequested;
         public event Action<object> OnItemDeleted;
         public event Action OnAddNewItem;
 
         protected void InvokeOnItemDeleted(object item) => OnItemDeleted?.Invoke(item);
         protected void InvokeOnAddNewItem() => OnAddNewItem?.Invoke();
-        protected void InvokeOnSaveRequested(Type type, object repo) => OnSaveRequested?.Invoke(type, repo);
         
         // Properties
         public Type DataType => dataType;
@@ -130,7 +130,7 @@ namespace Datra.Unity.Editor.Views
             footerContainer.Add(actionArea);
         }
         
-        public virtual void SetData(Type type, object repo, object context, IRepositoryChangeTracker tracker)
+        public virtual void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;

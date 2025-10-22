@@ -178,6 +178,14 @@ namespace Datra.Unity.Editor.Views
             UpdateModifiedState();
         }
 
+        protected override void OnModificationsCleared()
+        {
+            base.OnModificationsCleared();
+
+            // Rebuild ListView to clear visual modifications
+            listView.Rebuild();
+        }
+
         /// <summary>
         /// Loads all items from the repository
         /// </summary>
@@ -274,8 +282,62 @@ namespace Datra.Unity.Editor.Views
             // Store item reference for later use
             row.userData = item;
 
+            // Clear previous row state classes
+            row.RemoveFromClassList("modified-row");
+            row.RemoveFromClassList("missing-locale-row");
+
+            // Get first cell for indicator
+            var firstCell = row.childCount > 0 ? row[0] : null;
+            if (firstCell != null)
+            {
+                firstCell.RemoveFromClassList("modified-row-cell");
+                firstCell.RemoveFromClassList("missing-locale-cell");
+            }
+
+            // Apply row state styling
+            var rowState = GetRowState(item);
+            if (rowState.isModified)
+            {
+                row.AddToClassList("modified-row");
+                if (firstCell != null)
+                    firstCell.AddToClassList("modified-row-cell");
+            }
+            if (rowState.isSpecial) // For localization missing rows
+            {
+                row.AddToClassList("missing-locale-row");
+                if (firstCell != null)
+                    firstCell.AddToClassList("missing-locale-cell");
+            }
+
             // Bind data to cells
             BindRowData(row, item, index);
+        }
+
+        /// <summary>
+        /// Gets the state of a row (modified, special status, etc.)
+        /// Override in derived classes to provide custom row state logic
+        /// </summary>
+        protected virtual (bool isModified, bool isSpecial) GetRowState(object item)
+        {
+            // Default: check if item has any modifications via change tracker
+            if (changeTracker != null && item != null)
+            {
+                var itemKey = GetKeyFromItem(item);
+                if (itemKey != null)
+                {
+                    var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                    bool isModified = modifiedProps.Any();
+
+                    // Debug: log if modified
+                    if (isModified)
+                    {
+                        Debug.Log($"[GetRowState] Item {itemKey} is modified. Properties: {string.Join(", ", modifiedProps)}");
+                    }
+
+                    return (isModified, false);
+                }
+            }
+            return (false, false);
         }
 
         // Abstract methods for derived classes to implement
@@ -314,6 +376,63 @@ namespace Datra.Unity.Editor.Views
         protected virtual void ShowViewOptions()
         {
             // Override in derived classes
+        }
+
+        /// <summary>
+        /// Updates the visual state of a row without rebuilding (to avoid interrupting typing)
+        /// Finds the row element and updates its state classes
+        /// </summary>
+        protected void UpdateRowStateVisuals(object item)
+        {
+            if (item == null || listView == null) return;
+
+            // Find all visible rows in the ListView
+            var visibleRows = listView.Query<VisualElement>(className: "table-row").ToList();
+            Debug.Log($"[UpdateRowStateVisuals] Found {visibleRows.Count} visible rows");
+
+            foreach (var row in visibleRows)
+            {
+                // Check if this row corresponds to our item
+                if (row.userData == item)
+                {
+                    Debug.Log($"[UpdateRowStateVisuals] Found matching row for item");
+
+                    // Update row state
+                    var rowState = GetRowState(item);
+                    Debug.Log($"[UpdateRowStateVisuals] Row state - isModified: {rowState.isModified}, isSpecial: {rowState.isSpecial}");
+
+                    // Update modified state
+                    if (rowState.isModified)
+                    {
+                        row.AddToClassList("modified-row");
+                        if (row.childCount > 0)
+                            row[0].AddToClassList("modified-row-cell");
+                        Debug.Log($"[UpdateRowStateVisuals] Added modified-row class");
+                    }
+                    else
+                    {
+                        row.RemoveFromClassList("modified-row");
+                        if (row.childCount > 0)
+                            row[0].RemoveFromClassList("modified-row-cell");
+                    }
+
+                    // Update special state
+                    if (rowState.isSpecial)
+                    {
+                        row.AddToClassList("missing-locale-row");
+                        if (row.childCount > 0)
+                            row[0].AddToClassList("missing-locale-cell");
+                    }
+                    else
+                    {
+                        row.RemoveFromClassList("missing-locale-row");
+                        if (row.childCount > 0)
+                            row[0].RemoveFromClassList("missing-locale-cell");
+                    }
+
+                    break; // Found the row, no need to continue
+                }
+            }
         }
 
         /// <summary>

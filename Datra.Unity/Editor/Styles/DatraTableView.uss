@@ -170,7 +170,22 @@
     opacity: 0.6;
 }
 
-/* Missing locale rows */
+/* Modified rows (data changes) */
+.table-row.modified-row {
+    background-color: rgba(59, 130, 246, 0.15) !important;
+}
+
+.table-row.modified-row:hover {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Modified row cell indicator - shown in the first cell */
+.table-cell.modified-row-cell {
+    border-left-width: 3px;
+    border-left-color: #3b82f6;
+}
+
+/* Missing locale rows (for localization) */
 .table-row.missing-locale-row {
     background-color: rgba(139, 69, 19, 0.25) !important;
 }

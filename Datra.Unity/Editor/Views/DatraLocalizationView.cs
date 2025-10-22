@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Models;
 using Datra.Services;
@@ -53,6 +54,37 @@ namespace Datra.Unity.Editor.Views
         protected override bool HasActualModifications()
         {
             return changeTracker?.HasModifications() ?? false;
+        }
+
+        /// <summary>
+        /// Override to provide localization-specific row state (modified + missing)
+        /// </summary>
+        protected override (bool isModified, bool isSpecial) GetRowState(object item)
+        {
+            if (!(item is LocalizationKeyWrapper wrapper))
+                return (false, false);
+
+            // Check if modified via change tracker
+            bool isModified = false;
+            if (changeTracker != null)
+            {
+                isModified = changeTracker.IsModified(wrapper.Id);
+
+                // Debug log
+                if (isModified)
+                {
+                    Debug.Log($"[GetRowState] Localization key '{wrapper.Id}' is modified");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[GetRowState] changeTracker is null!");
+            }
+
+            // Check if missing translation
+            bool isMissing = wrapper.IsMissing;
+
+            return (isModified, isMissing);
         }
 
         protected override void CreateAdditionalHeaderUI()
@@ -118,7 +150,7 @@ namespace Datra.Unity.Editor.Views
             return toolbar;
         }
 
-        public override void SetData(Type type, object repo, object context, IRepositoryChangeTracker tracker)
+        public override void SetData(Type type, IDataRepository repo, IDataContext context, IRepositoryChangeTracker tracker)
         {
             dataType = type;
             repository = repo;
@@ -311,25 +343,13 @@ namespace Datra.Unity.Editor.Views
         {
             if (!(item is LocalizationKeyWrapper wrapper)) return;
 
-            // Remove old missing indicator
-            row.RemoveFromClassList("missing-locale-row");
-
-            // Bind actions cell
+            // Bind actions cell (delete button)
             var actionsCell = row[0];
-            actionsCell.RemoveFromClassList("missing-locale-cell");
-
             var deleteButton = actionsCell.Q<Button>();
             if (deleteButton != null)
             {
                 deleteButton.SetEnabled(!isReadOnly && !wrapper.IsFixedKey);
                 deleteButton.clicked += () => DeleteLocalizationKey(wrapper);
-            }
-
-            // Add missing indicator if needed
-            if (wrapper.IsMissing)
-            {
-                row.AddToClassList("missing-locale-row");
-                actionsCell.AddToClassList("missing-locale-cell");
             }
 
             // Bind key cell
@@ -798,16 +818,17 @@ namespace Datra.Unity.Editor.Views
 
         private void OnTextChanged(LocalizationKeyWrapper wrapper, string newValue)
         {
+            Debug.Log($"[OnTextChanged] Key: {wrapper.Id}, New value: {newValue}");
+
             wrapper.Text = newValue;
             localizationContext.SetText(wrapper.Id, newValue);
             changeTracker?.TrackTextChange(wrapper.Id, newValue);
 
-            // Remove missing indicator if translation is added
-            if (!wrapper.IsMissing)
-            {
-                // Rebuild to update visuals
-                listView.Rebuild();
-            }
+            Debug.Log($"[OnTextChanged] After tracking, IsModified: {changeTracker?.IsModified(wrapper.Id)}");
+
+            UpdateModifiedState();
+            // Update row state visuals without rebuilding (to avoid interrupting typing)
+            UpdateRowStateVisuals(wrapper);
 
             MarkAsModified();
             UpdateStatistics();

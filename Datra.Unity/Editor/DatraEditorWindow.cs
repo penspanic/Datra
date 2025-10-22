@@ -32,8 +32,8 @@ namespace Datra.Unity.Editor
         private class DataTab
         {
             public Type DataType { get; set; }
-            public object Repository { get; set; }
-            public object DataContext { get; set; }
+            public IDataRepository Repository { get; set; }
+            public IDataContext DataContext { get; set; }
             public VisualElement TabButton { get; set; }
             public VisualElement Content { get; set; }
             public bool IsModified { get; set; }
@@ -44,8 +44,8 @@ namespace Datra.Unity.Editor
         
         // Data Management
         private IDataContext dataContext;
-        private Dictionary<Type, object> repositories = new Dictionary<Type, object>();
-        private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new Dictionary<Type, DataTypeInfo>();
+        private Dictionary<Type, IDataRepository> repositories = new();
+        private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new();
         private DatraDataManager dataManager;
         private LocalizationContext localizationContext;
         private LocalizationChangeTracker localizationChangeTracker;
@@ -55,7 +55,7 @@ namespace Datra.Unity.Editor
 
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
-        public IReadOnlyDictionary<Type, object> Repositories => repositories;
+        public IReadOnlyDictionary<Type, IDataRepository> Repositories => repositories;
         public IReadOnlyDictionary<Type, DataTypeInfo> DataTypeInfoMap => dataTypeInfoMap;
         
         // Window State
@@ -330,7 +330,7 @@ namespace Datra.Unity.Editor
                 var property = properties.FirstOrDefault(p => p.Name == dataTypeInfo.PropertyName);
                 if (property != null)
                 {
-                    var repository = property.GetValue(dataContext);
+                    var repository = property.GetValue(dataContext) as IDataRepository;
                     if (repository != null)
                     {
                         repositories[dataTypeInfo.DataType] = repository;
@@ -398,7 +398,7 @@ namespace Datra.Unity.Editor
             }
         }
         
-        public void AddDataTab(Type dataType, object repository, object context)
+        public void AddDataTab(Type dataType, IDataRepository repository, IDataContext context)
         {
             // Check if tab already exists
             var existingTab = openTabs.FirstOrDefault(t => t.DataType == dataType);
@@ -521,7 +521,7 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories));
+                var success = await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories));
 
                 // Update navigation panel modified states
                 if (success)
@@ -547,7 +547,7 @@ namespace Datra.Unity.Editor
             }
         }
         
-        private async void OnInspectorSaveRequested(Type dataType, object repository)
+        private async void OnInspectorSaveRequested(Type dataType, IDataRepository repository)
         {
             await SaveSpecificData(dataType, repository);
         }
@@ -582,21 +582,17 @@ namespace Datra.Unity.Editor
                 if (!localizationInspectorPanel.HasUnsavedChanges)
                 {
                     // No modifications - suggest Force Save
-                    if (EditorUtility.DisplayDialog("No Changes",
+                    if (!EditorUtility.DisplayDialog("No Changes",
                         "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
                         "Force Save", "Cancel"))
-                    {
-                        ForceSaveLocalizationData();
-                    }
+                        return;
                 }
-                else
-                {
-                    await SaveLocalizationData();
-                }
+
+                SaveLocalizationData();
             }
         }
 
-        private async Task<bool> SaveSpecificData(Type dataType, object repository)
+        private async Task<bool> SaveSpecificData(Type dataType, IDataRepository repository)
         {
             if (dataManager == null || repository == null) return false;
 
@@ -624,11 +620,11 @@ namespace Datra.Unity.Editor
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                ForceSaveLocalizationData();
+                SaveLocalizationData();
             }
         }
 
-        private async Task ForceSaveData(Type dataType, object repository)
+        private async Task ForceSaveData(Type dataType, IDataRepository repository)
         {
             if (dataManager == null || repository == null) return;
 
@@ -656,7 +652,7 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories), true); // Force save all
+                var success = await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories), true); // Force save all
 
                 if (success)
                 {
@@ -679,18 +675,7 @@ namespace Datra.Unity.Editor
             }
         }
 
-        private async Task SaveLocalizationData()
-        {
-            if (localizationContext != null && localizationInspectorPanel != null)
-            {
-                // Trigger save from the panel which delegates to the view
-                localizationInspectorPanel.SaveData();
-                navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
-                await Task.CompletedTask;
-            }
-        }
-
-        private void ForceSaveLocalizationData()
+        private void SaveLocalizationData()
         {
             if (localizationContext != null && localizationInspectorPanel != null)
             {
@@ -720,7 +705,7 @@ namespace Datra.Unity.Editor
                 var result = await dataManager.CheckUnsavedChangesAsync("reloading");
                 if (!result) // User wants to save first
                 {
-                    await dataManager.SaveAllAsync(new Dictionary<Type, object>(repositories));
+                    await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories));
                 }
             }
             

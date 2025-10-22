@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Datra.Interfaces;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -15,8 +16,8 @@ namespace Datra.Unity.Editor.Windows
     public class DatraDataWindow : EditorWindow
     {
         private Type dataType;
-        private object repository;
-        private object dataContext;
+        private IDataRepository repository;
+        private IDataContext dataContext;
         private IRepositoryChangeTracker changeTracker;
         private string windowTitle;
         
@@ -26,9 +27,9 @@ namespace Datra.Unity.Editor.Windows
         
         private DatraViewModeController.ViewMode? initialViewMode;
         private DatraDataManager dataManager;
-        private Dictionary<Type, object> repositories;
+        private Dictionary<Type, IDataRepository> repositories;
         
-        public static DatraDataWindow CreateWindow(Type dataType, object repository, object dataContext, IRepositoryChangeTracker changeTracker, string title = null)
+        public static DatraDataWindow CreateWindow(Type dataType, IDataRepository repository, IDataContext dataContext, IRepositoryChangeTracker changeTracker, string title = null)
         {
             var window = CreateInstance<DatraDataWindow>();
             window.dataType = dataType;
@@ -80,8 +81,8 @@ namespace Datra.Unity.Editor.Windows
             root.Add(contentContainer);
 
             // Initialize data manager
-            dataManager = new DatraDataManager(dataContext as Datra.Interfaces.IDataContext);
-            repositories = new Dictionary<Type, object> { { dataType, repository } };
+            dataManager = new DatraDataManager(dataContext);
+            repositories = new Dictionary<Type, IDataRepository> { { dataType, repository } };
             
             dataManager.OnOperationCompleted += (message) => EditorUtility.DisplayDialog("Success", message, "OK");
             dataManager.OnOperationFailed += (message) => EditorUtility.DisplayDialog("Error", message, "OK");
@@ -209,7 +210,7 @@ namespace Datra.Unity.Editor.Windows
             }
         }
         
-        public void SetData(Type type, object repo, object context)
+        public void SetData(Type type, IDataRepository repo, IDataContext context)
         {
             dataType = type;
             repository = repo;
@@ -274,7 +275,7 @@ namespace Datra.Unity.Editor.Windows
             Debug.Log($"Export as {format} - Not implemented yet");
         }
         
-        private async void HandleSaveRequest(Type type, object repo)
+        private async void HandleSaveRequest(Type type, IDataRepository repo)
         {
             await dataManager.SaveAsync(type, repo);
         }
