@@ -87,7 +87,6 @@ namespace Datra.Unity.Editor.Views
             // Create virtualized list view
             listView = new ListView();
             listView.AddToClassList("table-body-list");
-            listView.style.flexGrow = 1;
             listView.fixedItemHeight = RowHeight;
             listView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
             listView.selectionType = SelectionType.None;

@@ -282,7 +282,6 @@ namespace Datra.Unity.Editor.Views
 
             // Text column
             var textHeader = CreateHeaderCell("Text", 400f);
-            textHeader.style.flexGrow = 1;
             headerRow.Add(textHeader);
         }
 
@@ -325,7 +324,8 @@ namespace Datra.Unity.Editor.Views
             // Text cell
             var textCell = new VisualElement();
             textCell.AddToClassList("table-cell");
-            textCell.style.flexGrow = 1;
+            textCell.style.width = 600f;
+            textCell.style.minWidth = 400f;
             textCell.style.paddingLeft = 8;
             textCell.style.paddingRight = 8;
             row.Add(textCell);
