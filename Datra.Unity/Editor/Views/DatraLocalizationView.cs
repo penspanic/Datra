@@ -512,27 +512,18 @@ namespace Datra.Unity.Editor.Views
 
         private async Task SwitchLanguage(LanguageCode newLanguage)
         {
-            ShowLoading(true);
+            currentLanguageCode = newLanguage;
 
-            try
-            {
-                await Task.Delay(100); // Simulate async load
+            // Load language data (includes LoadLanguageAsync, tracker init, and RefreshContent)
+            await LoadLanguageDataAsync(newLanguage);
 
-                currentLanguageCode = newLanguage;
-                RefreshContent();
-
-                // Update filter panel with categories from loaded data
-                var categories = allItems
-                    .OfType<LocalizationKeyWrapper>()
-                    .Select(w => string.IsNullOrEmpty(w.Category) ? "(Uncategorized)" : w.Category)
-                    .Distinct();
-                filterPanel?.SetCategories(categories);
-                filterPanel?.LoadSettings(currentLanguageCode);
-            }
-            finally
-            {
-                ShowLoading(false);
-            }
+            // Update filter panel with categories from loaded data
+            var categories = allItems
+                .OfType<LocalizationKeyWrapper>()
+                .Select(w => string.IsNullOrEmpty(w.Category) ? "(Uncategorized)" : w.Category)
+                .Distinct();
+            filterPanel?.SetCategories(categories);
+            filterPanel?.LoadSettings(currentLanguageCode);
         }
 
         private void ShowLoading(bool show)
