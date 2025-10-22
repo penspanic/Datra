@@ -327,13 +327,6 @@ namespace Datra.Unity.Editor.Views
                 {
                     var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
                     bool isModified = modifiedProps.Any();
-
-                    // Debug: log if modified
-                    if (isModified)
-                    {
-                        Debug.Log($"[GetRowState] Item {itemKey} is modified. Properties: {string.Join(", ", modifiedProps)}");
-                    }
-
                     return (isModified, false);
                 }
             }
@@ -388,18 +381,14 @@ namespace Datra.Unity.Editor.Views
 
             // Find all visible rows in the ListView
             var visibleRows = listView.Query<VisualElement>(className: "table-row").ToList();
-            Debug.Log($"[UpdateRowStateVisuals] Found {visibleRows.Count} visible rows");
 
             foreach (var row in visibleRows)
             {
                 // Check if this row corresponds to our item
                 if (row.userData == item)
                 {
-                    Debug.Log($"[UpdateRowStateVisuals] Found matching row for item");
-
                     // Update row state
                     var rowState = GetRowState(item);
-                    Debug.Log($"[UpdateRowStateVisuals] Row state - isModified: {rowState.isModified}, isSpecial: {rowState.isSpecial}");
 
                     // Update modified state
                     if (rowState.isModified)
@@ -407,7 +396,6 @@ namespace Datra.Unity.Editor.Views
                         row.AddToClassList("modified-row");
                         if (row.childCount > 0)
                             row[0].AddToClassList("modified-row-cell");
-                        Debug.Log($"[UpdateRowStateVisuals] Added modified-row class");
                     }
                     else
                     {

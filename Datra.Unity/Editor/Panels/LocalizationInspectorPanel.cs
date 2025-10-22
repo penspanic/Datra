@@ -40,7 +40,7 @@ namespace Datra.Unity.Editor.Panels
             changeTracker = tracker;
         }
 
-        public void SetLocalizationContext(LocalizationContext context)
+        public void SetLocalizationContext(LocalizationContext context, Datra.Interfaces.IDataRepository repository = null, Datra.Interfaces.IDataContext dataContext = null)
         {
             // If already set to the same context and view exists, do nothing
             // This prevents recreating the view and losing change tracking
@@ -72,6 +72,12 @@ namespace Datra.Unity.Editor.Panels
             if (changeTracker != null)
             {
                 localizationView.SetChangeTracker(changeTracker);
+            }
+
+            // Set data (repository, dataContext, changeTracker) - required for base DatraDataView functionality
+            if (repository != null && dataContext != null)
+            {
+                localizationView.SetData(typeof(LocalizationContext), repository, dataContext, changeTracker);
             }
 
             localizationView.SetLocalizationContext(context);
@@ -113,6 +119,7 @@ namespace Datra.Unity.Editor.Panels
             if (localizationView != null)
             {
                 localizationView.RefreshContent();
+                localizationView.UpdateModifiedState();
             }
         }
 

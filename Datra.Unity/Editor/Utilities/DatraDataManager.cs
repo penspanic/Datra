@@ -296,7 +296,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Update change tracker baseline after successful save
         /// </summary>
-        private void UpdateChangeTrackerBaseline(Type dataType, object repository)
+        private void UpdateChangeTrackerBaseline(Type dataType, IDataRepository repository)
         {
             if (!changeTrackers.TryGetValue(dataType, out var tracker))
                 return;
@@ -343,6 +343,13 @@ namespace Datra.Unity.Editor.Utilities
                         var changeTracker = tracker as IRepositoryChangeTracker;
                         changeTracker?.UpdateBaseline(dict);
                     }
+                }
+
+                // Check if it's LocalizationRepository
+                if (repository is LocalizationRepository localizationRepo)
+                {
+                    var localizationTracker = tracker as LocalizationChangeTracker;
+                    localizationTracker?.UpdateBaseline();
                 }
             }
             catch (Exception ex)

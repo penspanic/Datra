@@ -170,20 +170,9 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Get baseline value from tracker (if available)
-        /// </summary>
-        protected object GetTrackerBaselineValue(object key)
-        {
-            return changeTracker.GetBaselineValue(key);
-        }
-
-        /// <summary>
         /// Virtual method to check if there are actual modifications in derived classes
         /// </summary>
-        protected virtual bool HasActualModifications()
-        {
-            return changeTracker.HasModifications;
-        }
+        protected virtual bool HasActualModifications() => changeTracker.HasModifications;
 
         /// <summary>
         /// Updates the modified state based on actual modification check

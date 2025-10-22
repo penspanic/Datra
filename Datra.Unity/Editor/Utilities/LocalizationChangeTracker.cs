@@ -10,7 +10,7 @@ namespace Datra.Unity.Editor.Utilities
     /// Editor-only change tracker for LocalizationContext.
     /// Tracks changes per language without modifying runtime code.
     /// </summary>
-    public class LocalizationChangeTracker
+    public class LocalizationChangeTracker : IRepositoryChangeTracker
     {
         private readonly LocalizationContext _context;
         private readonly Dictionary<LanguageCode, RepositoryChangeTracker<string, string>> _languageTrackers;
@@ -283,5 +283,150 @@ namespace Datra.Unity.Editor.Utilities
                 tracker.SyncWithRepository(data);
             }
         }
+
+        #region IRepositoryChangeTracker Implementation
+
+        /// <summary>
+        /// Get whether current language has modifications (IRepositoryChangeTracker)
+        /// </summary>
+        bool IRepositoryChangeTracker.HasModifications => HasModifications();
+
+        /// <summary>
+        /// Get baseline value for a key (IRepositoryChangeTracker)
+        /// </summary>
+        object IRepositoryChangeTracker.GetBaselineValue(object key)
+        {
+            if (key is string keyStr)
+                return GetBaselineText(keyStr);
+            return null;
+        }
+
+        /// <summary>
+        /// Track a change (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.TrackChange(object key, object value)
+        {
+            if (key is string keyStr && value is string valueStr)
+                TrackTextChange(keyStr, valueStr);
+        }
+
+        /// <summary>
+        /// Track property change - not applicable for localization (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified)
+        {
+            // Localization doesn't have properties, just track as text change
+            if (key is string keyStr && newValue is string valueStr)
+            {
+                TrackTextChange(keyStr, valueStr);
+                isModified = IsModified(keyStr);
+            }
+            else
+            {
+                isModified = false;
+            }
+        }
+
+        /// <summary>
+        /// Track addition (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.TrackAdd(object key, object value)
+        {
+            if (key is string keyStr)
+                TrackKeyAdd(keyStr);
+        }
+
+        /// <summary>
+        /// Track deletion (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.TrackDelete(object key)
+        {
+            if (key is string keyStr)
+                TrackKeyDelete(keyStr);
+        }
+
+        /// <summary>
+        /// Check if key is modified (IRepositoryChangeTracker)
+        /// </summary>
+        bool IRepositoryChangeTracker.IsModified(object key)
+        {
+            if (key is string keyStr)
+                return IsModified(keyStr);
+            return false;
+        }
+
+        /// <summary>
+        /// Check if property is modified - not applicable (IRepositoryChangeTracker)
+        /// </summary>
+        bool IRepositoryChangeTracker.IsPropertyModified(object key, string propertyName)
+        {
+            // Localization doesn't have properties
+            return false;
+        }
+
+        /// <summary>
+        /// Check if key is added (IRepositoryChangeTracker)
+        /// </summary>
+        bool IRepositoryChangeTracker.IsAdded(object key)
+        {
+            if (key is string keyStr)
+                return GetAddedKeys().Contains(keyStr);
+            return false;
+        }
+
+        /// <summary>
+        /// Check if key is deleted (IRepositoryChangeTracker)
+        /// </summary>
+        bool IRepositoryChangeTracker.IsDeleted(object key)
+        {
+            if (key is string keyStr)
+                return GetDeletedKeys().Contains(keyStr);
+            return false;
+        }
+
+        /// <summary>
+        /// Get modified properties - not applicable (IRepositoryChangeTracker)
+        /// </summary>
+        IEnumerable<string> IRepositoryChangeTracker.GetModifiedProperties(object key)
+        {
+            // Localization doesn't have properties, return empty
+            return Enumerable.Empty<string>();
+        }
+
+        /// <summary>
+        /// Get property baseline value - not applicable (IRepositoryChangeTracker)
+        /// </summary>
+        object IRepositoryChangeTracker.GetPropertyBaselineValue(object key, string propertyName)
+        {
+            // Localization doesn't have properties
+            return null;
+        }
+
+        /// <summary>
+        /// Initialize baseline (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.InitializeBaseline(object repositoryData)
+        {
+            // Not used for localization - use InitializeLanguage instead
+        }
+
+        /// <summary>
+        /// Update baseline (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.UpdateBaseline(object repositoryData)
+        {
+            // Update baseline for current language
+            UpdateBaseline();
+        }
+
+        /// <summary>
+        /// Revert all changes (IRepositoryChangeTracker)
+        /// </summary>
+        void IRepositoryChangeTracker.RevertAll()
+        {
+            RevertAll();
+        }
+
+        #endregion
     }
 }

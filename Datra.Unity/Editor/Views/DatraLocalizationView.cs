@@ -23,7 +23,6 @@ namespace Datra.Unity.Editor.Views
     {
         // Localization-specific
         private LocalizationContext localizationContext;
-        private new LocalizationChangeTracker changeTracker;
         private LanguageCode currentLanguageCode;
         private DropdownField languageDropdown;
         private bool isLoading = false;
@@ -46,14 +45,6 @@ namespace Datra.Unity.Editor.Views
         {
             AddToClassList("datra-localization-view");
             availableCategories = new HashSet<string>();
-        }
-
-        /// <summary>
-        /// Override to check modifications from external LocalizationChangeTracker
-        /// </summary>
-        protected override bool HasActualModifications()
-        {
-            return changeTracker?.HasModifications() ?? false;
         }
 
         /// <summary>
@@ -155,7 +146,7 @@ namespace Datra.Unity.Editor.Views
             dataType = type;
             repository = repo;
             dataContext = context;
-            changeTracker = tracker as LocalizationChangeTracker;
+            changeTracker = tracker;
 
             if (context is LocalizationContext locContext)
             {
@@ -189,7 +180,12 @@ namespace Datra.Unity.Editor.Views
             }
 
             // Set required fields for VirtualizedTableView.RefreshContent
-            dataType = typeof(LocalizationKeyWrapper);
+            // Only set dataType if it hasn't been set via SetData() already
+            // If SetData() was called with typeof(LocalizationContext), preserve that
+            if (dataType == null)
+            {
+                dataType = typeof(LocalizationKeyWrapper);
+            }
 
             try
             {
@@ -227,10 +223,11 @@ namespace Datra.Unity.Editor.Views
                 Debug.Log($"[DatraLocalizationView] Language loaded successfully");
 
                 // Initialize change tracker for this language (only if not already initialized)
-                if (changeTracker != null && !changeTracker.IsLanguageInitialized(languageCode))
+                var localizationChangeTracker = changeTracker as LocalizationChangeTracker;
+                if (!localizationChangeTracker!.IsLanguageInitialized(languageCode))
                 {
                     Debug.Log($"[DatraLocalizationView] Initializing change tracker for {languageCode}");
-                    changeTracker.InitializeLanguage(languageCode);
+                    localizationChangeTracker.InitializeLanguage(languageCode);
                 }
 
                 Debug.Log($"[DatraLocalizationView] Refreshing content...");
@@ -776,7 +773,7 @@ namespace Datra.Unity.Editor.Views
             try
             {
                 await localizationContext.AddKeyAsync(keyId, "New key", "");
-                changeTracker?.TrackKeyAdd(keyId);
+                (changeTracker as LocalizationChangeTracker)!.TrackKeyAdd(keyId);
                 RefreshContent();
                 MarkAsModified();
                 UpdateStatus($"Key '{keyId}' added");
@@ -803,7 +800,7 @@ namespace Datra.Unity.Editor.Views
                 try
                 {
                     await localizationContext.DeleteKeyAsync(wrapper.Id);
-                    changeTracker?.TrackKeyDelete(wrapper.Id);
+                    (changeTracker as LocalizationChangeTracker)!.TrackKeyDelete(wrapper.Id);
                     RefreshContent();
                     MarkAsModified();
                     UpdateStatus($"Key '{wrapper.Id}' deleted");
@@ -818,13 +815,9 @@ namespace Datra.Unity.Editor.Views
 
         private void OnTextChanged(LocalizationKeyWrapper wrapper, string newValue)
         {
-            Debug.Log($"[OnTextChanged] Key: {wrapper.Id}, New value: {newValue}");
-
             wrapper.Text = newValue;
             localizationContext.SetText(wrapper.Id, newValue);
-            changeTracker?.TrackTextChange(wrapper.Id, newValue);
-
-            Debug.Log($"[OnTextChanged] After tracking, IsModified: {changeTracker?.IsModified(wrapper.Id)}");
+            (changeTracker as LocalizationChangeTracker)!.TrackTextChange(wrapper.Id, newValue);
 
             UpdateModifiedState();
             // Update row state visuals without rebuilding (to avoid interrupting typing)
@@ -864,7 +857,7 @@ namespace Datra.Unity.Editor.Views
                     {
                         var translatedText = localizationContext.GetText(wrapper.Id);
                         wrapper.Text = translatedText;
-                        changeTracker?.TrackTextChange(wrapper.Id, translatedText);
+                        (changeTracker as LocalizationChangeTracker)!.TrackTextChange(wrapper.Id, translatedText);
                     }
                 }
 
@@ -901,24 +894,17 @@ namespace Datra.Unity.Editor.Views
         {
             if (localizationContext == null || isReadOnly) return;
 
-            _ = SaveChangesAsync();
+            // Call base.SaveChanges() to trigger OnSaveRequested event
+            // This ensures localization uses the same save infrastructure as other data types
+            base.SaveChanges();
         }
 
-        private async Task SaveChangesAsync()
+        protected override void OnModificationsCleared()
         {
-            try
-            {
-                await localizationContext.SaveCurrentLanguageAsync();
-                changeTracker?.UpdateBaseline();
-                hasUnsavedChanges = false;
-                UpdateModifiedState();
-                UpdateStatus("Changes saved");
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to save: {e.Message}");
-                UpdateStatus($"Save error: {e.Message}");
-            }
+            base.OnModificationsCleared();
+
+            // Rebuild ListView to clear visual modifications
+            listView?.Rebuild();
         }
 
         protected override void RevertChanges()

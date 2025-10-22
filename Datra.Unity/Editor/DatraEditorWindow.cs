@@ -316,11 +316,18 @@ namespace Datra.Unity.Editor
             {
                 localizationContext = localizationProperty.GetValue(dataContext) as LocalizationContext;
 
-                // Create and register LocalizationChangeTracker
+                // Create and register LocalizationChangeTracker and LocalizationRepository
                 if (localizationContext != null)
                 {
                     localizationChangeTracker = new LocalizationChangeTracker(localizationContext);
                     dataManager.RegisterLocalizationChangeTracker(typeof(LocalizationContext), localizationChangeTracker);
+
+                    // Create LocalizationRepository wrapper and register it
+                    var localizationRepository = new LocalizationRepository(localizationContext);
+                    repositories[typeof(LocalizationContext)] = localizationRepository;
+
+                    // Register LocalizationRepository's change tracker with data manager
+                    changeTrackers[typeof(LocalizationContext)] = localizationChangeTracker;
                 }
             }
             
@@ -359,7 +366,13 @@ namespace Datra.Unity.Editor
                     localizationInspectorPanel.SetChangeTracker(localizationChangeTracker);
                 }
 
-                localizationInspectorPanel.SetLocalizationContext(localizationContext);
+                // Get LocalizationRepository from repositories
+                IDataRepository localizationRepository = null;
+                repositories.TryGetValue(typeof(LocalizationContext), out localizationRepository);
+
+                localizationInspectorPanel.SetLocalizationContext(localizationContext, localizationRepository, dataContext);
+
+                UpdateCurrentDataModifiedState();
             }
         }
         
@@ -578,17 +591,25 @@ namespace Datra.Unity.Editor
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                // Check if there are modifications in localization
-                if (!localizationInspectorPanel.HasUnsavedChanges)
+                // Get LocalizationRepository
+                if (repositories.TryGetValue(typeof(LocalizationContext), out var localizationRepository))
                 {
-                    // No modifications - suggest Force Save
-                    if (!EditorUtility.DisplayDialog("No Changes",
-                        "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
-                        "Force Save", "Cancel"))
-                        return;
+                    // Check if there are modifications in localization
+                    if (!localizationInspectorPanel.HasUnsavedChanges)
+                    {
+                        // No modifications - suggest Force Save
+                        if (EditorUtility.DisplayDialog("No Changes",
+                            "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
+                            "Force Save", "Cancel"))
+                        {
+                            await ForceSaveData(typeof(LocalizationContext), localizationRepository);
+                        }
+                    }
+                    else
+                    {
+                        await SaveSpecificData(typeof(LocalizationContext), localizationRepository);
+                    }
                 }
-
-                SaveLocalizationData();
             }
         }
 
@@ -607,6 +628,10 @@ namespace Datra.Unity.Editor
                 {
                     dataInspectorPanel.RefreshModifiedState();
                 }
+                else if (currentInspectorPanel == localizationInspectorPanel)
+                {
+                    localizationInspectorPanel.RefreshContent();
+                }
             }
             return success;
         }
@@ -620,7 +645,11 @@ namespace Datra.Unity.Editor
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                SaveLocalizationData();
+                // Get LocalizationRepository
+                if (repositories.TryGetValue(typeof(LocalizationContext), out var localizationRepository))
+                {
+                    await ForceSaveData(typeof(LocalizationContext), localizationRepository);
+                }
             }
         }
 
@@ -639,6 +668,10 @@ namespace Datra.Unity.Editor
                 if (currentInspectorPanel == dataInspectorPanel)
                 {
                     dataInspectorPanel.RefreshModifiedState();
+                }
+                else if (currentInspectorPanel == localizationInspectorPanel)
+                {
+                    localizationInspectorPanel.RefreshContent();
                 }
 
                 EditorUtility.DisplayDialog("Force Save", $"Force saved {dataType.Name} successfully!", "OK");
@@ -672,16 +705,6 @@ namespace Datra.Unity.Editor
             finally
             {
                 toolbar.SetSaveButtonEnabled(true);
-            }
-        }
-
-        private void SaveLocalizationData()
-        {
-            if (localizationContext != null && localizationInspectorPanel != null)
-            {
-                // Force save - trigger save even without changes
-                localizationInspectorPanel.SaveData();
-                navigationPanel.MarkTypeAsModified(typeof(LocalizationContext), false);
             }
         }
 
