@@ -1353,8 +1353,9 @@ namespace Datra.Unity.Editor.Components
                         // Update the displayed text after editing
                         textField.value = updatedText ?? "(Missing)";
 
-                        // Notify that something changed
-                        OnFieldValueChanged(localeRefValue);
+                        // Note: Don't call OnFieldValueChanged for LocaleRef because it's a readonly property.
+                        // The localization changes are already tracked in LocalizationContext/ChangeTracker
+                        // via ShowLocaleEditPopup -> LocaleEditPopup.ApplyChanges
                     });
                 }
             };

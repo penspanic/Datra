@@ -233,116 +233,107 @@ namespace Datra.Unity.Editor.Panels
         private void BuildTreeDataFromInfos(IReadOnlyList<DataTypeInfo> dataTypeInfos)
         {
             var rootItems = new List<TreeViewItemData<DataTypeItem>>();
-            
+
             // Group data types by category
-            var singleDataInfos = new List<DataTypeInfo>();
-            var tableDataInfos = new List<DataTypeInfo>();
-            
-            foreach (var info in dataTypeInfos)
-            {
-                if (info.IsSingleData)
-                    singleDataInfos.Add(info);
-                else
-                    tableDataInfos.Add(info);
-            }
-            
-            // Create categories with their items
+            var singleDataInfos = dataTypeInfos.Where(info => info.IsSingleData).ToList();
+            var tableDataInfos = dataTypeInfos.Where(info => !info.IsSingleData).ToList();
+
+            // Create Single Data category
             if (singleDataInfos.Any())
             {
-                var singleDataItems = singleDataInfos
-                    .OrderBy(info => info.DataType.Name)
-                    .Select(info => new TreeViewItemData<DataTypeItem>(
-                        info.DataType.GetHashCode(),
-                        new DataTypeItem 
-                        { 
-                            Name = info.DataType.Name, 
-                            DataType = info.DataType,
-                            DataTypeInfo = info,
-                            IsCategory = false,
-                            IsModified = modifiedTypes.Contains(info.DataType)
-                        }))
-                    .ToList();
-                
-                var singleDataCategory = new TreeViewItemData<DataTypeItem>(
-                    "SingleData".GetHashCode(),
-                    new DataTypeItem 
-                    { 
-                        Name = $"Single Data ({singleDataInfos.Count})",
-                        IsCategory = true,
-                        Icon = "single-data"
-                    },
-                    singleDataItems);
-                
-                rootItems.Add(singleDataCategory);
+                var category = CreateDataTypeCategory(
+                    "SingleData",
+                    "single-data",
+                    "Single Data",
+                    singleDataInfos);
+                rootItems.Add(category);
             }
-            
+
+            // Create Table Data category
             if (tableDataInfos.Any())
             {
-                var tableDataItems = tableDataInfos
-                    .OrderBy(info => info.DataType.Name)
-                    .Select(info => new TreeViewItemData<DataTypeItem>(
-                        info.DataType.GetHashCode(),
-                        new DataTypeItem 
-                        { 
-                            Name = info.DataType.Name, 
-                            DataType = info.DataType,
-                            DataTypeInfo = info,
-                            IsCategory = false,
-                            IsModified = modifiedTypes.Contains(info.DataType)
-                        }))
-                    .ToList();
-                
-                var tableDataCategory = new TreeViewItemData<DataTypeItem>(
-                    "TableData".GetHashCode(),
-                    new DataTypeItem 
-                    { 
-                        Name = $"Table Data ({tableDataInfos.Count})",
-                        IsCategory = true,
-                        Icon = "table-data"
-                    },
-                    tableDataItems);
-                
-                rootItems.Add(tableDataCategory);
+                var category = CreateDataTypeCategory(
+                    "TableData",
+                    "table-data",
+                    "Table Data",
+                    tableDataInfos);
+                rootItems.Add(category);
             }
-            
-            // Add Localization category if LocalizationContext exists
+
+            // Create Localization category
             if (localizationContext != null)
             {
-                var localizationType = typeof(LocalizationKeyWrapper);
-
-                var localizationItem = new TreeViewItemData<DataTypeItem>(
-                    "LocalizationContext".GetHashCode(),
-                    new DataTypeItem
-                    {
-                        Name = "Localization",
-                        DataType = localizationType,
-                        DataTypeInfo = null,
-                        IsCategory = false,
-                        IsLocalization = true,
-                        IsModified = modifiedTypes.Contains(localizationType)
-                    });
-                
-                var localizationCategory = new TreeViewItemData<DataTypeItem>(
-                    "Localization".GetHashCode(),
-                    new DataTypeItem 
-                    { 
-                        Name = "Localization (1)",
-                        IsCategory = true,
-                        Icon = "localization"
-                    },
-                    new List<TreeViewItemData<DataTypeItem>> { localizationItem });
-                
-                rootItems.Add(localizationCategory);
+                var category = CreateLocalizationCategory();
+                rootItems.Add(category);
             }
-            
-            // Store the original tree data
+
+            // Store and display tree data
             treeData = rootItems;
-            
             treeView.SetRootItems(rootItems);
             treeView.Rebuild();
-            
-            // Expand all by default
             treeView.ExpandAll();
+        }
+
+        /// <summary>
+        /// Create a category node with data type items as children
+        /// </summary>
+        private TreeViewItemData<DataTypeItem> CreateDataTypeCategory(
+            string categoryId,
+            string iconName,
+            string categoryDisplayName,
+            IReadOnlyList<DataTypeInfo> dataTypeInfos)
+        {
+            var items = dataTypeInfos
+                .OrderBy(info => info.DataType.Name)
+                .Select(info => new TreeViewItemData<DataTypeItem>(
+                    info.DataType.GetHashCode(),
+                    new DataTypeItem
+                    {
+                        Name = info.DataType.Name,
+                        DataType = info.DataType,
+                        DataTypeInfo = info,
+                        IsCategory = false,
+                        IsModified = modifiedTypes.Contains(info.DataType)
+                    }))
+                .ToList();
+
+            return new TreeViewItemData<DataTypeItem>(
+                categoryId.GetHashCode(),
+                new DataTypeItem
+                {
+                    Name = $"{categoryDisplayName} ({items.Count})",
+                    IsCategory = true,
+                    Icon = iconName
+                },
+                items);
+        }
+
+        /// <summary>
+        /// Create the Localization category node
+        /// </summary>
+        private TreeViewItemData<DataTypeItem> CreateLocalizationCategory()
+        {
+            var localizationItem = new TreeViewItemData<DataTypeItem>(
+                "LocalizationContext".GetHashCode(),
+                new DataTypeItem
+                {
+                    Name = "Localization",
+                    DataType = typeof(LocalizationContext), // Use LocalizationContext for consistency
+                    DataTypeInfo = null,
+                    IsCategory = false,
+                    IsLocalization = true,
+                    IsModified = modifiedTypes.Contains(typeof(LocalizationContext))
+                });
+
+            return new TreeViewItemData<DataTypeItem>(
+                "Localization".GetHashCode(),
+                new DataTypeItem
+                {
+                    Name = "Localization (1)",
+                    IsCategory = true,
+                    Icon = "localization"
+                },
+                new List<TreeViewItemData<DataTypeItem>> { localizationItem });
         }
         
         
@@ -416,7 +407,7 @@ namespace Datra.Unity.Editor.Panels
                 modifiedTypes.Add(type);
             else
                 modifiedTypes.Remove(type);
-            
+
             // Update tree view
             if (treeView != null && treeData != null)
             {
@@ -426,7 +417,20 @@ namespace Datra.Unity.Editor.Panels
                     {
                         foreach (var child in category.children)
                         {
-                            if (child.data != null && child.data.DataType == type)
+                            if (child.data == null) continue;
+
+                            // Special handling for LocalizationContext
+                            bool isMatch = false;
+                            if (type == typeof(LocalizationContext) && child.data.IsLocalization)
+                            {
+                                isMatch = true;
+                            }
+                            else if (child.data.DataType == type)
+                            {
+                                isMatch = true;
+                            }
+
+                            if (isMatch)
                             {
                                 child.data.IsModified = isModified;
                                 // Force rebind of the specific item

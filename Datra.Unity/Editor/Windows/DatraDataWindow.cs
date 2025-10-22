@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Datra.Interfaces;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -20,14 +21,13 @@ namespace Datra.Unity.Editor.Windows
         private IDataContext dataContext;
         private IRepositoryChangeTracker changeTracker;
         private string windowTitle;
-        
+
         private VisualElement contentContainer;
         private DatraViewModeController viewModeController;
         private bool isDocked = false;
-        
+
         private DatraViewModeController.ViewMode? initialViewMode;
-        private DatraDataManager dataManager;
-        private Dictionary<Type, IDataRepository> repositories;
+        private bool hasModifications = false;
         
         public static DatraDataWindow CreateWindow(Type dataType, IDataRepository repository, IDataContext dataContext, IRepositoryChangeTracker changeTracker, string title = null)
         {
@@ -80,23 +80,6 @@ namespace Datra.Unity.Editor.Windows
             contentContainer.style.flexGrow = 1;
             root.Add(contentContainer);
 
-            // Initialize data manager
-            dataManager = new DatraDataManager(dataContext);
-            repositories = new Dictionary<Type, IDataRepository> { { dataType, repository } };
-            
-            dataManager.OnOperationCompleted += (message) => EditorUtility.DisplayDialog("Success", message, "OK");
-            dataManager.OnOperationFailed += (message) => EditorUtility.DisplayDialog("Error", message, "OK");
-            dataManager.OnModifiedStateChanged += (hasModified) => {
-                if (hasModified)
-                {
-                    titleContent.text = windowTitle + " *";
-                }
-                else
-                {
-                    titleContent.text = windowTitle;
-                }
-            };
-            
             // Initialize view mode controller
             viewModeController = new DatraViewModeController(contentContainer, headerContainer: root);
             viewModeController.OnViewModeChanged += OnViewModeChanged;
@@ -277,39 +260,67 @@ namespace Datra.Unity.Editor.Windows
         
         private async void HandleSaveRequest(Type type, IDataRepository repo)
         {
-            await dataManager.SaveAsync(type, repo);
+            try
+            {
+                await repo.SaveAsync();
+                hasModifications = false;
+                titleContent.text = windowTitle;
+                EditorUtility.DisplayDialog("Success", $"{type.Name} saved successfully!", "OK");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to save {type.Name}: {e.Message}", "OK");
+            }
         }
-        
+
         private void HandleDataModified(Type type, bool isModified)
         {
+            hasModifications = isModified;
             if (isModified)
             {
-                dataManager.MarkAsModified(type);
+                titleContent.text = windowTitle + " *";
             }
             else
             {
-                dataManager.ClearModifiedState(type);
+                titleContent.text = windowTitle;
             }
         }
-        
-        private async System.Threading.Tasks.Task SaveData()
+
+        private async Task SaveData()
         {
-            await dataManager.SaveAllAsync(repositories);
-        }
-        
-        private async System.Threading.Tasks.Task ReloadData()
-        {
-            if (await dataManager.ReloadAllAsync())
+            try
             {
-                // Refresh the view
-                viewModeController.SetData(dataType, repository, dataContext, changeTracker);
+                await repository.SaveAsync();
+                hasModifications = false;
+                titleContent.text = windowTitle;
+                EditorUtility.DisplayDialog("Success", $"{dataType.Name} saved successfully!", "OK");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to save: {e.Message}", "OK");
             }
         }
-        
+
+        private async Task ReloadData()
+        {
+            try
+            {
+                await dataContext.LoadAllAsync();
+                hasModifications = false;
+                titleContent.text = windowTitle;
+                viewModeController.SetData(dataType, repository, dataContext, changeTracker);
+                EditorUtility.DisplayDialog("Success", "Data reloaded successfully!", "OK");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to reload: {e.Message}", "OK");
+            }
+        }
+
         private void OnDestroy()
         {
             // Check for unsaved changes
-            if (dataManager != null && dataManager.HasModifiedData)
+            if (hasModifications)
             {
                 var result = EditorUtility.DisplayDialogComplex(
                     "Unsaved Changes",
@@ -318,11 +329,11 @@ namespace Datra.Unity.Editor.Windows
                     "Cancel",
                     "Don't Save"
                 );
-                
+
                 if (result == 0) // Save
                 {
                     // Save synchronously before closing
-                    _ = dataManager.SaveAllAsync(repositories);
+                    _ = SaveData();
                 }
                 else if (result == 1) // Cancel
                 {

@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using Datra.Interfaces;
+using Datra.Localization;
 using Datra.Services;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Utilities;
@@ -177,29 +178,37 @@ namespace Datra.Unity.Editor
         private void InitializeData()
         {
             if (isInitialized) return;
-            
+
             try
             {
                 // Execute bootstrapper to initialize data context
                 dataContext = DatraBootstrapper.AutoInitialize();
                 if (dataContext != null)
                 {
-                    // Initialize data manager
-                    dataManager = new DatraDataManager(dataContext);
-                    // Note: OnDataModified events come from inspector panels, not from dataManager
-                    dataManager.OnModifiedStateChanged += (hasModified) => {
-                        toolbar.SetModifiedState(hasModified);
-                    };
+                    // First load data types to populate repositories and change trackers
+                    LoadDataTypes();
+
+                    // Initialize data manager with all required dependencies
+                    dataManager = new DatraDataManager(
+                        dataContext,
+                        repositories,
+                        changeTrackers,
+                        localizationContext,
+                        localizationChangeTracker);
+
+                    // Subscribe to manager events
+                    dataManager.OnModifiedStateChanged += OnManagerModifiedStateChanged;
                     dataManager.OnOperationCompleted += (message) => {
                         EditorUtility.DisplayDialog("Success", message, "OK");
                     };
                     dataManager.OnOperationFailed += (message) => {
                         EditorUtility.DisplayDialog("Error", message, "OK");
                     };
-                    
-                    LoadDataTypes();
+                    dataManager.OnDataChanged += OnManagerDataChanged;
+                    dataManager.OnLocalizationChanged += OnManagerLocalizationChanged;
+
                     isInitialized = true;
-                    
+
                     // Set project name
                     currentProjectName = Application.productName;
                     toolbar.SetProjectName(currentProjectName);
@@ -215,7 +224,44 @@ namespace Datra.Unity.Editor
                 Debug.LogError($"Datra Editor initialization failed: {e}");
             }
         }
-        
+
+        private void OnManagerModifiedStateChanged(Type dataType, bool hasChanges)
+        {
+            // Update navigation panel indicator
+            navigationPanel.MarkTypeAsModified(dataType, hasChanges);
+
+            // Update toolbar modified state (check if ANY type is modified)
+            var anyModified = dataManager.Repositories.Keys.Any(t => dataManager.HasUnsavedChanges(t));
+            toolbar.SetModifiedState(anyModified);
+
+            // Update current data modified state if it's the active panel
+            UpdateCurrentDataModifiedState();
+        }
+
+        private void OnManagerDataChanged(Type dataType)
+        {
+            // Refresh the currently displayed view if it matches the changed data type
+            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType == dataType)
+            {
+                // Optionally refresh the view - but be careful not to lose focus/selection
+                // For now, just let the view handle its own updates
+            }
+
+            // Always refresh LocalizationInspectorPanel when LocalizationContext changes
+            // This is important because LocaleEditPopup can be opened from DataInspectorPanel (e.g., TableView)
+            // and we need to ensure the LocalizationInspectorPanel shows updated values when the user switches to it
+            if (dataType == typeof(LocalizationContext))
+            {
+                localizationInspectorPanel.RefreshContent();
+            }
+        }
+
+        private void OnManagerLocalizationChanged(string key, LanguageCode language)
+        {
+            // The LocalizationView subscribes to LocalizationContext events directly
+            // This event is for other components that might need to react to localization changes
+        }
+
         private void CreateChangeTrackerForRepository(Type dataType, object repository)
         {
             try
@@ -254,9 +300,6 @@ namespace Datra.Unity.Editor
 
                         // Store tracker
                         changeTrackers[dataType] = tracker;
-
-                        // Register with data manager
-                        dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
                     }
                     return;
                 }
@@ -286,9 +329,6 @@ namespace Datra.Unity.Editor
 
                         // Store tracker
                         changeTrackers[dataType] = tracker;
-
-                        // Register with data manager
-                        dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
                     }
                 }
             }
@@ -320,13 +360,12 @@ namespace Datra.Unity.Editor
                 if (localizationContext != null)
                 {
                     localizationChangeTracker = new LocalizationChangeTracker(localizationContext);
-                    dataManager.RegisterLocalizationChangeTracker(typeof(LocalizationContext), localizationChangeTracker);
 
                     // Create LocalizationRepository wrapper and register it
                     var localizationRepository = new LocalizationRepository(localizationContext);
                     repositories[typeof(LocalizationContext)] = localizationRepository;
 
-                    // Register LocalizationRepository's change tracker with data manager
+                    // Register LocalizationRepository's change tracker
                     changeTrackers[typeof(LocalizationContext)] = localizationChangeTracker;
 
                     // Load all available languages for editor (allows editing multiple languages without switching)
@@ -481,19 +520,19 @@ namespace Datra.Unity.Editor
         
         private void CloseTab(DataTab tab)
         {
-            if (dataManager != null && dataManager.ModifiedTypes.Contains(tab.DataType))
+            if (dataManager != null && dataManager.HasUnsavedChanges(tab.DataType))
             {
-                if (!EditorUtility.DisplayDialog("Unsaved Changes", 
-                    $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?", 
+                if (!EditorUtility.DisplayDialog("Unsaved Changes",
+                    $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?",
                     "Close", "Cancel"))
                 {
                     return;
                 }
             }
-            
+
             openTabs.Remove(tab);
             tabContainer.Remove(tab.TabButton);
-            
+
             // Hide tab container if no tabs
             if (openTabs.Count == 0)
             {
@@ -509,23 +548,18 @@ namespace Datra.Unity.Editor
         
         private void OnDataModified(Type dataType, bool isModified)
         {
-            if (isModified)
-            {
-                dataManager.MarkAsModified(dataType);
-            }
-            else
-            {
-                dataManager.ClearModifiedState(dataType);
-            }
+            // The manager now handles modified state tracking automatically via change tracker events
+            // Just update the navigation panel
             navigationPanel.MarkTypeAsModified(dataType, isModified);
         }
-        
+
         private async void SaveAllData()
         {
             if (dataManager == null) return;
 
             // Check if there are any modifications
-            if (!dataManager.HasModifiedData)
+            var hasModifications = dataManager.Repositories.Keys.Any(t => dataManager.HasUnsavedChanges(t));
+            if (!hasModifications)
             {
                 // No modifications - suggest Force Save All
                 if (EditorUtility.DisplayDialog("No Changes",
@@ -540,23 +574,18 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories));
+                var success = await dataManager.SaveAllAsync(forceSave: false);
 
-                // Update navigation panel modified states
+                // Refresh current view's modified state if it was saved
                 if (success)
                 {
-                    foreach (var type in repositories.Keys)
-                    {
-                        if (!dataManager.ModifiedTypes.Contains(type))
-                        {
-                            navigationPanel.MarkTypeAsModified(type, false);
-                        }
-                    }
-
-                    // Refresh current view's modified state if it was saved
                     if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
                     {
                         dataInspectorPanel.RefreshModifiedState();
+                    }
+                    else if (currentInspectorPanel == localizationInspectorPanel)
+                    {
+                        localizationInspectorPanel.RefreshContent();
                     }
                 }
             }
@@ -568,7 +597,7 @@ namespace Datra.Unity.Editor
         
         private async void OnInspectorSaveRequested(Type dataType, IDataRepository repository)
         {
-            await SaveSpecificData(dataType, repository);
+            await SaveSpecificData(dataType);
         }
 
         private async void SaveCurrentData()
@@ -577,58 +606,50 @@ namespace Datra.Unity.Editor
             if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
             {
                 var dataType = dataInspectorPanel.CurrentType;
-                var repository = dataInspectorPanel.CurrentRepository;
 
                 // Check if there are modifications
-                if (!dataManager.ModifiedTypes.Contains(dataType))
+                if (!dataManager.HasUnsavedChanges(dataType))
                 {
                     // No modifications - suggest Force Save
                     if (EditorUtility.DisplayDialog("No Changes",
                         $"{dataType.Name} has no unsaved changes.\n\nWould you like to Force Save anyway?",
                         "Force Save", "Cancel"))
                     {
-                        await ForceSaveData(dataType, repository);
+                        await ForceSaveData(dataType);
                     }
                 }
                 else
                 {
-                    await SaveSpecificData(dataType, repository);
+                    await SaveSpecificData(dataType);
                 }
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                // Get LocalizationRepository
-                if (repositories.TryGetValue(typeof(LocalizationContext), out var localizationRepository))
+                // Check if there are modifications in localization
+                if (!dataManager.HasUnsavedLocalizationChanges())
                 {
-                    // Check if there are modifications in localization
-                    if (!localizationInspectorPanel.HasUnsavedChanges)
+                    // No modifications - suggest Force Save
+                    if (EditorUtility.DisplayDialog("No Changes",
+                        "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
+                        "Force Save", "Cancel"))
                     {
-                        // No modifications - suggest Force Save
-                        if (EditorUtility.DisplayDialog("No Changes",
-                            "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
-                            "Force Save", "Cancel"))
-                        {
-                            await ForceSaveData(typeof(LocalizationContext), localizationRepository);
-                        }
+                        await ForceSaveData(typeof(LocalizationContext));
                     }
-                    else
-                    {
-                        await SaveSpecificData(typeof(LocalizationContext), localizationRepository);
-                    }
+                }
+                else
+                {
+                    await SaveSpecificData(typeof(LocalizationContext));
                 }
             }
         }
 
-        private async Task<bool> SaveSpecificData(Type dataType, IDataRepository repository)
+        private async Task<bool> SaveSpecificData(Type dataType)
         {
-            if (dataManager == null || repository == null) return false;
+            if (dataManager == null) return false;
 
-            var success = await dataManager.SaveAsync(dataType, repository);
+            var success = await dataManager.SaveAsync(dataType, forceSave: false);
             if (success)
             {
-                navigationPanel.MarkTypeAsModified(dataType, false);
-                UpdateCurrentDataModifiedState();
-
                 // Refresh the view's modified state to clear UI indicators
                 if (currentInspectorPanel == dataInspectorPanel)
                 {
@@ -647,29 +668,22 @@ namespace Datra.Unity.Editor
             // Force save currently selected/active data (even if not modified)
             if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
             {
-                await ForceSaveData(dataInspectorPanel.CurrentType, dataInspectorPanel.CurrentRepository);
+                await ForceSaveData(dataInspectorPanel.CurrentType);
             }
             else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
             {
-                // Get LocalizationRepository
-                if (repositories.TryGetValue(typeof(LocalizationContext), out var localizationRepository))
-                {
-                    await ForceSaveData(typeof(LocalizationContext), localizationRepository);
-                }
+                await ForceSaveData(typeof(LocalizationContext));
             }
         }
 
-        private async Task ForceSaveData(Type dataType, IDataRepository repository)
+        private async Task ForceSaveData(Type dataType)
         {
-            if (dataManager == null || repository == null) return;
+            if (dataManager == null) return;
 
             // Force save bypasses modification check
-            var success = await dataManager.SaveAsync(dataType, repository, true);
+            var success = await dataManager.SaveAsync(dataType, forceSave: true);
             if (success)
             {
-                navigationPanel.MarkTypeAsModified(dataType, false);
-                UpdateCurrentDataModifiedState();
-
                 // Refresh the view's modified state to clear UI indicators
                 if (currentInspectorPanel == dataInspectorPanel)
                 {
@@ -691,20 +705,18 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories), true); // Force save all
+                var success = await dataManager.SaveAllAsync(forceSave: true);
 
                 if (success)
                 {
-                    // Clear all modified states
-                    foreach (var type in repositories.Keys)
-                    {
-                        navigationPanel.MarkTypeAsModified(type, false);
-                    }
-
                     // Refresh current view's modified state
                     if (currentInspectorPanel == dataInspectorPanel)
                     {
                         dataInspectorPanel.RefreshModifiedState();
+                    }
+                    else if (currentInspectorPanel == localizationInspectorPanel)
+                    {
+                        localizationInspectorPanel.RefreshContent();
                     }
                 }
             }
@@ -719,41 +731,29 @@ namespace Datra.Unity.Editor
             // Update the Save button state based on current data
             if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
             {
-                var isModified = dataManager?.ModifiedTypes.Contains(dataInspectorPanel.CurrentType) ?? false;
+                var isModified = dataManager?.HasUnsavedChanges(dataInspectorPanel.CurrentType) ?? false;
                 toolbar.SetCurrentDataModified(isModified);
             }
         }
-        
+
         private async void ReloadData()
         {
             if (dataManager == null) return;
-            
-            // Handle unsaved changes
-            if (dataManager.HasModifiedData)
-            {
-                var result = await dataManager.CheckUnsavedChangesAsync("reloading");
-                if (!result) // User wants to save first
-                {
-                    await dataManager.SaveAllAsync(new Dictionary<Type, IDataRepository>(repositories));
-                }
-            }
-            
+
             try
             {
                 toolbar.SetReloadButtonEnabled(false);
-                
-                if (await dataManager.ReloadAllAsync(false))
+
+                if (await dataManager.ReloadAllAsync(checkModified: true))
                 {
-                    // Clear all modified states in navigation panel
-                    foreach (var type in repositories.Keys)
-                    {
-                        navigationPanel.MarkTypeAsModified(type, false);
-                    }
-                    
                     // Refresh current view if data inspector is active
-                    if (currentInspectorPanel == dataInspectorPanel)
+                    if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
                     {
                         dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType, changeTrackers.GetValueOrDefault(dataInspectorPanel.CurrentType));
+                    }
+                    else if (currentInspectorPanel == localizationInspectorPanel)
+                    {
+                        localizationInspectorPanel.RefreshContent();
                     }
                 }
             }

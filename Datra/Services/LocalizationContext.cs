@@ -22,7 +22,7 @@ namespace Datra.Services
             public string Text { get; set; } = string.Empty;
             public string Context { get; set; } = string.Empty;
         }
-        
+
         private readonly IRawDataProvider _rawDataProvider;
         private readonly DataSerializerFactory _serializerFactory;
         private readonly DatraConfigurationValue _config;
@@ -31,6 +31,22 @@ namespace Datra.Services
         private KeyValueDataRepository<string, LocalizationKeyData>? _keyRepository;
         private LanguageCode _currentLanguageCode;
         private List<LanguageCode> _availableLanguages;
+
+        // Events for editor
+        /// <summary>
+        /// Fired when localization text is changed. Internal for editor use only.
+        /// </summary>
+        internal event Action<string, LanguageCode>? OnTextChanged;
+
+        /// <summary>
+        /// Fired when a new localization key is added. Internal for editor use only.
+        /// </summary>
+        internal event Action<string>? OnKeyAdded;
+
+        /// <summary>
+        /// Fired when a localization key is deleted. Internal for editor use only.
+        /// </summary>
+        internal event Action<string>? OnKeyDeleted;
         
         /// <summary>
         /// Gets the current language as ISO code string (implements ILocalizationContext)
@@ -241,6 +257,10 @@ namespace Datra.Services
             }
 
             _languageData[language][key] = new LocalizationEntry { Text = value, Context = context };
+
+            // Fire event for editor
+            System.Diagnostics.Debug.WriteLine($"[LocalizationContext.SetText] key={key}, language={language}, value={value}, subscribers={OnTextChanged?.GetInvocationList()?.Length ?? 0}");
+            OnTextChanged?.Invoke(key, language);
         }
         
         /// <summary>
@@ -465,6 +485,9 @@ namespace Datra.Services
                 await SaveCurrentLanguageAsync();
                 _currentLanguageCode = previousLanguage;
             }
+
+            // Fire event for editor
+            OnKeyDeleted?.Invoke(key);
         }
 
         /// <summary>
@@ -521,6 +544,25 @@ namespace Datra.Services
             {
                 await SaveCurrentLanguageAsync();
             }
+
+            // Fire event for editor
+            OnKeyAdded?.Invoke(key);
+        }
+
+        /// <summary>
+        /// Subscribe to editor events (for Unity Editor assembly use only)
+        /// </summary>
+        public void SubscribeToEditorEvents(
+            Action<string, LanguageCode> onTextChanged,
+            Action<string> onKeyAdded,
+            Action<string> onKeyDeleted)
+        {
+            if (onTextChanged != null)
+                OnTextChanged += onTextChanged;
+            if (onKeyAdded != null)
+                OnKeyAdded += onKeyAdded;
+            if (onKeyDeleted != null)
+                OnKeyDeleted += onKeyDeleted;
         }
 
         /// <summary>

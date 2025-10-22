@@ -10,15 +10,30 @@ namespace Datra.Unity.Editor.Utilities
     /// Editor-only change tracker for LocalizationContext.
     /// Tracks changes per language without modifying runtime code.
     /// </summary>
-    public class LocalizationChangeTracker : IRepositoryChangeTracker
+    public class LocalizationChangeTracker : IRepositoryChangeTracker, INotifyModifiedStateChanged
     {
         private readonly LocalizationContext _context;
         private readonly Dictionary<LanguageCode, RepositoryChangeTracker<string, string>> _languageTrackers;
+
+        // Event for modified state changes
+        public event Action<bool> OnModifiedStateChanged;
 
         public LocalizationChangeTracker(LocalizationContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _languageTrackers = new Dictionary<LanguageCode, RepositoryChangeTracker<string, string>>();
+        }
+
+        /// <summary>
+        /// Helper method to notify modified state change if it changed
+        /// </summary>
+        private void CheckAndNotifyModifiedStateChange(bool hadChanges)
+        {
+            bool hasChanges = HasModifications();
+            if (hadChanges != hasChanges)
+            {
+                OnModifiedStateChanged?.Invoke(hasChanges);
+            }
         }
 
         /// <summary>
@@ -53,15 +68,26 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Track text change (call after SetText)
+        /// Track text change for current language (call after SetText)
         /// </summary>
         public void TrackTextChange(string key, string newValue)
         {
-            var languageCode = _context.CurrentLanguageCode;
+            TrackTextChange(key, newValue, _context.CurrentLanguageCode);
+        }
+
+        /// <summary>
+        /// Track text change for specific language (call after SetText)
+        /// </summary>
+        public void TrackTextChange(string key, string newValue, LanguageCode languageCode)
+        {
+            bool hadChanges = HasModifications();
+
             if (_languageTrackers.TryGetValue(languageCode, out var tracker))
             {
                 tracker.TrackChange(key, newValue ?? string.Empty);
             }
+
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
@@ -69,6 +95,8 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public void TrackKeyAdd(string key)
         {
+            bool hadChanges = HasModifications();
+
             // Track in all loaded languages
             foreach (var kvp in _languageTrackers)
             {
@@ -83,6 +111,8 @@ namespace Datra.Unity.Editor.Utilities
 
                 tracker.TrackAdd(key, text);
             }
+
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
@@ -90,11 +120,15 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public void TrackKeyDelete(string key)
         {
+            bool hadChanges = HasModifications();
+
             // Track in all loaded languages
             foreach (var tracker in _languageTrackers.Values)
             {
                 tracker.TrackDelete(key);
             }
+
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>

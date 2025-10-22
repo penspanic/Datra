@@ -132,17 +132,15 @@ namespace Datra.Unity.Editor.Components
                 // Only update if changed
                 if (newText != currentText)
                 {
+                    // SetText will fire OnTextChanged event
+                    // DatraDataManager will automatically update the ChangeTracker
                     localizationContext.SetText(localeKey, newText, languageCode);
-
-                    // Track change in change tracker
-                    if (changeTracker != null && changeTracker.IsLanguageInitialized(languageCode))
-                    {
-                        changeTracker.TrackTextChange(localeKey, newText);
-                    }
                 }
             }
 
             // Notify modification
+            // LocalizationContext.SetText() already fires OnTextChanged event
+            // which DatraDataManager propagates to all subscribers and updates ChangeTracker
             onModified?.Invoke();
         }
 

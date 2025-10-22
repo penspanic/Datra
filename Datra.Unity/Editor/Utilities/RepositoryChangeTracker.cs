@@ -11,7 +11,7 @@ namespace Datra.Unity.Editor.Utilities
     /// Does NOT modify runtime code. Tracks baseline and current state separately.
     /// Tracks changes at property level for granular change detection.
     /// </summary>
-    public class RepositoryChangeTracker<TKey, TValue> : IRepositoryChangeTracker
+    public class RepositoryChangeTracker<TKey, TValue> : IRepositoryChangeTracker, INotifyModifiedStateChanged
         where TKey : notnull
         where TValue : class
     {
@@ -33,6 +33,21 @@ namespace Datra.Unity.Editor.Utilities
         {
             public object BaselineValue { get; set; }
             public object CurrentValue { get; set; }
+        }
+
+        // Event for modified state changes
+        public event Action<bool> OnModifiedStateChanged;
+
+        /// <summary>
+        /// Helper method to notify modified state change if it changed
+        /// </summary>
+        private void CheckAndNotifyModifiedStateChange(bool hadChanges)
+        {
+            bool hasChanges = HasModifications;
+            if (hadChanges != hasChanges)
+            {
+                OnModifiedStateChanged?.Invoke(hasChanges);
+            }
         }
 
         /// <summary>
@@ -98,6 +113,8 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public void TrackPropertyChange(TKey key, string propertyName, object newValue, out bool isModified)
         {
+            bool hadChanges = HasModifications;
+
             isModified = false;
             if (!_baseline.TryGetValue(key, out var baselineEntity))
             {
@@ -161,6 +178,9 @@ namespace Datra.Unity.Editor.Utilities
                     propInfo.SetValue(currentEntity, newValue);
                 }
             }
+
+            // Notify if modified state changed
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
@@ -168,6 +188,8 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public void TrackAdd(TKey key, TValue value)
         {
+            bool hadChanges = HasModifications;
+
             _current[key] = DeepClone(value);
 
             if (!_baseline.ContainsKey(key))
@@ -180,6 +202,8 @@ namespace Datra.Unity.Editor.Utilities
                 // Was in baseline, treat as modification
                 TrackChange(key, value);
             }
+
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
@@ -187,6 +211,8 @@ namespace Datra.Unity.Editor.Utilities
         /// </summary>
         public void TrackDelete(TKey key)
         {
+            bool hadChanges = HasModifications;
+
             _current.Remove(key);
 
             if (_addedKeys.Contains(key))
@@ -206,6 +232,8 @@ namespace Datra.Unity.Editor.Utilities
                     _propertyChanges.Remove(k);
                 }
             }
+
+            CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
