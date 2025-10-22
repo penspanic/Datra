@@ -1,28 +1,28 @@
 Id,Description,Category,IsFixedKey
-Button_Start,Start button text,UI,false
-Button_Exit,Exit button text,UI,false
-Button_Settings,Settings button text,UI,false
 Button_Cancel,Cancel button text,UI,false
+Button_Exit,Exit button text,UI,false
 Button_OK,OK button text,UI,false
-Message_Welcome,Welcome message shown on first login,Dialog,false
-Message_Goodbye,Goodbye message shown on logout,Dialog,false
-Message_Loading,Loading message,Dialog,false
-Message_SaveComplete,Save complete notification,Dialog,false
-Error_NetworkDisconnected,Network disconnection error message,System,false
-Error_InvalidInput,Invalid input error message,System,false
-Error_FileNotFound,File not found error message,System,false
+Button_Settings,Settings button text,UI,false
+Button_Start,Start button text,UI,false
 CharacterData.hero_001.name,Character name for hero_001 (Arthur),Character,true
 CharacterData.hero_002.name,Character name for hero_002 (Marin),Character,true
 CharacterData.hero_003.name,Character name for hero_003 (Lena),Character,true
 CharacterData.hero_004.name,Character name for hero_004 (Thor),Character,true
 CharacterData.hero_005.name,Character name for hero_005 (Luna),Character,true
-ItemData.1001.name,Item name for 1001 (Iron Sword),Item,true
+Error_FileNotFound,File not found error message,System,false
+Error_InvalidInput,Invalid input error message,System,false
+Error_NetworkDisconnected,Network disconnection error message,System,false
 ItemData.1001.description,Item description for 1001 (Iron Sword),Item,true
-ItemData.1002.name,Item name for 1002 (Leather Armor),Item,true
+ItemData.1001.name,Item name for 1001 (Iron Sword),Item,true
 ItemData.1002.description,Item description for 1002 (Leather Armor),Item,true
-ItemData.2001.name,Item name for 2001 (Health Potion),Item,true
+ItemData.1002.name,Item name for 1002 (Leather Armor),Item,true
 ItemData.2001.description,Item description for 2001 (Health Potion),Item,true
-ItemData.3001.name,Item name for 3001 (Magic Staff),Item,true
+ItemData.2001.name,Item name for 2001 (Health Potion),Item,true
 ItemData.3001.description,Item description for 3001 (Magic Staff),Item,true
-ItemData.3002.name,Item name for 3002 (Mithril Armor),Item,true
+ItemData.3001.name,Item name for 3001 (Magic Staff),Item,true
 ItemData.3002.description,Item description for 3002 (Mithril Armor),Item,true
+ItemData.3002.name,Item name for 3002 (Mithril Armor),Item,true
+Message_Goodbye,Goodbye message shown on logout,Dialog,false
+Message_Loading,Loading message,Dialog,false
+Message_SaveComplete,Save complete notification,Dialog,false
+Message_Welcome,Welcome message shown on first login,Dialog,false

@@ -311,20 +311,22 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Track property change - not applicable for localization (IRepositoryChangeTracker)
+        /// Track property change (IRepositoryChangeTracker)
+        /// For localization, we track the "Text" property
         /// </summary>
         void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified)
         {
-            // Localization doesn't have properties, just track as text change
-            if (key is string keyStr && newValue is string valueStr)
+            if (key is string keyStr && propertyName == "Text" && newValue is string valueStr)
             {
-                TrackTextChange(keyStr, valueStr);
-                isModified = IsModified(keyStr);
+                var languageCode = _context.CurrentLanguageCode;
+                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                {
+                    tracker.TrackChange(keyStr, valueStr ?? string.Empty);
+                    isModified = tracker.IsModified(keyStr);
+                    return;
+                }
             }
-            else
-            {
-                isModified = false;
-            }
+            isModified = false;
         }
 
         /// <summary>
@@ -356,11 +358,19 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Check if property is modified - not applicable (IRepositoryChangeTracker)
+        /// Check if property is modified (IRepositoryChangeTracker)
+        /// For localization, we check the "Text" property
         /// </summary>
         bool IRepositoryChangeTracker.IsPropertyModified(object key, string propertyName)
         {
-            // Localization doesn't have properties
+            if (key is string keyStr && propertyName == "Text")
+            {
+                var languageCode = _context.CurrentLanguageCode;
+                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                {
+                    return tracker.IsModified(keyStr);
+                }
+            }
             return false;
         }
 
@@ -385,20 +395,39 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Get modified properties - not applicable (IRepositoryChangeTracker)
+        /// Get modified properties (IRepositoryChangeTracker)
+        /// For localization, returns "Text" if modified
         /// </summary>
         IEnumerable<string> IRepositoryChangeTracker.GetModifiedProperties(object key)
         {
-            // Localization doesn't have properties, return empty
+            if (key is string keyStr)
+            {
+                var languageCode = _context.CurrentLanguageCode;
+                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                {
+                    if (tracker.IsModified(keyStr))
+                    {
+                        return new[] { "Text" };
+                    }
+                }
+            }
             return Enumerable.Empty<string>();
         }
 
         /// <summary>
-        /// Get property baseline value - not applicable (IRepositoryChangeTracker)
+        /// Get property baseline value (IRepositoryChangeTracker)
+        /// For localization, returns baseline text value
         /// </summary>
         object IRepositoryChangeTracker.GetPropertyBaselineValue(object key, string propertyName)
         {
-            // Localization doesn't have properties
+            if (key is string keyStr && propertyName == "Text")
+            {
+                var languageCode = _context.CurrentLanguageCode;
+                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                {
+                    return tracker.GetBaselineValue(keyStr);
+                }
+            }
             return null;
         }
 
