@@ -1,0 +1,160 @@
+/* Localization View Styles */
+.datra-localization-view {
+    flex: 1;
+}
+
+/* Localization Toolbar */
+.localization-toolbar {
+    flex-direction: row;
+    height: 36px;
+    padding-left: 8px;
+    padding-right: 8px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+}
+
+/* Category Filter Bar */
+.category-filter-bar {
+    flex-direction: row;
+    min-height: 32px;
+    padding-left: 8px;
+    padding-right: 8px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+    background-color: #404040;
+    flex-wrap: wrap;
+}
+
+.category-filter-bar Label {
+    margin-right: 8px;
+    -unity-font-style: bold;
+}
+
+#category-buttons-container {
+    flex-direction: row;
+    flex-grow: 1;
+    flex-wrap: wrap;
+}
+
+.category-toggle-button {
+    margin-right: 4px;
+    margin-bottom: 2px;
+    height: 20px;
+    padding-left: 8px;
+    padding-right: 8px;
+    background-color: #4d4d4d;
+    border-width: 1px;
+    border-color: #333;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.category-toggle-button:hover {
+    background-color: #5a5a5a;
+}
+
+.category-toggle-button.active {
+    background-color: #4d7aa8;
+    border-color: #5a9fd4;
+}
+
+.filter-action-button {
+    margin-left: 8px;
+    height: 20px;
+    padding-left: 8px;
+    padding-right: 8px;
+    background-color: #555;
+    border-width: 0;
+    border-radius: 3px;
+    font-size: 10px;
+}
+
+.filter-action-button:hover {
+    background-color: #666;
+}
+
+/* Status Filter Bar */
+.status-filter-bar {
+    flex-direction: row;
+    height: 32px;
+    padding-left: 8px;
+    padding-right: 8px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+    background-color: #404040;
+}
+
+.status-filter-bar Label {
+    margin-right: 8px;
+    -unity-font-style: bold;
+}
+
+.status-filter-button {
+    margin-right: 4px;
+    padding-left: 12px;
+    padding-right: 12px;
+    height: 24px;
+    background-color: #4d4d4d;
+    border-width: 1px;
+    border-color: #333;
+    border-radius: 3px;
+    font-size: 11px;
+}
+
+.status-filter-button:hover {
+    background-color: #5a5a5a;
+}
+
+.status-filter-button.active {
+    background-color: #4d7aa8;
+    border-color: #5a9fd4;
+    color: white;
+}
+
+/* Statistics Bar */
+.statistics-bar {
+    flex-direction: row;
+    height: 24px;
+    padding-left: 8px;
+    padding-right: 8px;
+    align-items: center;
+    border-bottom-width: 1px;
+    border-bottom-color: #1a1a1a;
+    background-color: #333;
+}
+
+.statistics-bar Label {
+    font-size: 11px;
+    -unity-font-style: bold;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-container {
+    background-color: #4d4d4d;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    border-radius: 5px;
+}
+
+.loading-container Label {
+    font-size: 14px;
+    -unity-font-style: bold;
+}

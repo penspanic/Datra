@@ -29,7 +29,6 @@ namespace Datra.Services
         private readonly ITranslationProvider _translationProvider;
         private readonly Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>> _languageData;
         private KeyValueDataRepository<string, LocalizationKeyData>? _keyRepository;
-        private Dictionary<string, object> _languageRepositories; // Will be IDataRepository<string, LocalizationData> at runtime
         private LanguageCode _currentLanguageCode;
         private List<LanguageCode> _availableLanguages;
         
@@ -63,7 +62,6 @@ namespace Datra.Services
             _config = config ?? DatraConfigurationValue.CreateDefault();
             _translationProvider = translationProvider ?? new DummyTranslationProvider();
             _languageData = new Dictionary<LanguageCode, Dictionary<string, LocalizationEntry>>();
-            _languageRepositories = new Dictionary<string, object>();
             _availableLanguages = new List<LanguageCode>();
             // Parse default language from config
             _currentLanguageCode = LanguageCodeExtensions.TryParse(_config.DefaultLanguage) ?? LanguageCode.En;

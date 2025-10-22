@@ -17,6 +17,16 @@ using UnityEngine.UIElements;
 namespace Datra.Unity.Editor.Views
 {
     /// <summary>
+    /// Translation status filter options
+    /// </summary>
+    public enum TranslationStatus
+    {
+        All = 0,
+        MissingOnly = 1,
+        CompleteOnly = 2
+    }
+
+    /// <summary>
     /// View for editing localization data with full change tracking and revert functionality
     /// </summary>
     public class DatraLocalizationView : DatraDataView
@@ -33,9 +43,18 @@ namespace Datra.Unity.Editor.Views
         private bool isLoading = false;
         private LanguageCode currentLanguageCode;
 
+        // Filtering
+        private HashSet<string> availableCategories;
+        private HashSet<string> selectedCategories;
+        private TranslationStatus currentStatusFilter = TranslationStatus.All;
+        private VisualElement categoryFilterBar;
+        private VisualElement statusFilterBar;
+        private Label statisticsLabel;
+
         // Column widths
         private const float ActionsColumnWidth = 60f;
         private const float KeyColumnWidth = 300f;
+        private const float CategoryColumnWidth = 150f;
         private const float RowHeight = 28f;
 
         public DatraLocalizationView() : base()
@@ -61,6 +80,18 @@ namespace Datra.Unity.Editor.Views
             // Add toolbar to header
             var toolbar = CreateToolbar();
             headerContainer.Add(toolbar);
+
+            // Create category filter bar
+            categoryFilterBar = CreateCategoryFilterBar();
+            headerContainer.Add(categoryFilterBar);
+
+            // Create status filter bar
+            statusFilterBar = CreateStatusFilterBar();
+            headerContainer.Add(statusFilterBar);
+
+            // Create statistics bar
+            var statisticsBar = CreateStatisticsBar();
+            headerContainer.Add(statisticsBar);
 
             // Create main table container
             tableContainer = new VisualElement();
@@ -145,29 +176,87 @@ namespace Datra.Unity.Editor.Views
             return toolbar;
         }
 
+        private VisualElement CreateCategoryFilterBar()
+        {
+            var filterBar = new VisualElement();
+            filterBar.AddToClassList("category-filter-bar");
+
+            var categoryLabel = new Label("Categories:");
+            filterBar.Add(categoryLabel);
+
+            // Category buttons container (will be populated when data is loaded)
+            var categoryButtonsContainer = new VisualElement();
+            categoryButtonsContainer.name = "category-buttons-container";
+            filterBar.Add(categoryButtonsContainer);
+
+            // Select All / Clear All buttons
+            var selectAllButton = new Button(() => SelectAllCategories());
+            selectAllButton.text = "Select All";
+            selectAllButton.AddToClassList("filter-action-button");
+            filterBar.Add(selectAllButton);
+
+            var clearAllButton = new Button(() => ClearAllCategories());
+            clearAllButton.text = "Clear All";
+            clearAllButton.AddToClassList("filter-action-button");
+            filterBar.Add(clearAllButton);
+
+            return filterBar;
+        }
+
+        private VisualElement CreateStatusFilterBar()
+        {
+            var filterBar = new VisualElement();
+            filterBar.AddToClassList("status-filter-bar");
+
+            var statusLabel = new Label("Status:");
+            filterBar.Add(statusLabel);
+
+            // All button
+            var allButton = new Button(() => SetStatusFilter(TranslationStatus.All));
+            allButton.text = "All";
+            allButton.name = "status-all-button";
+            allButton.AddToClassList("status-filter-button");
+            allButton.AddToClassList("active"); // Default active
+            filterBar.Add(allButton);
+
+            // Missing Only button
+            var missingButton = new Button(() => SetStatusFilter(TranslationStatus.MissingOnly));
+            missingButton.text = "Missing Only";
+            missingButton.name = "status-missing-button";
+            missingButton.AddToClassList("status-filter-button");
+            filterBar.Add(missingButton);
+
+            // Complete button
+            var completeButton = new Button(() => SetStatusFilter(TranslationStatus.CompleteOnly));
+            completeButton.text = "Complete";
+            completeButton.name = "status-complete-button";
+            completeButton.AddToClassList("status-filter-button");
+            filterBar.Add(completeButton);
+
+            return filterBar;
+        }
+
+        private VisualElement CreateStatisticsBar()
+        {
+            var statsBar = new VisualElement();
+            statsBar.AddToClassList("statistics-bar");
+
+            statisticsLabel = new Label("Total: 0 | Shown: 0 | Missing: 0");
+            statsBar.Add(statisticsLabel);
+
+            return statsBar;
+        }
+
         private void CreateLoadingOverlay()
         {
             loadingOverlay = new VisualElement();
-            loadingOverlay.style.position = Position.Absolute;
-            loadingOverlay.style.left = 0;
-            loadingOverlay.style.top = 0;
-            loadingOverlay.style.right = 0;
-            loadingOverlay.style.bottom = 0;
-            loadingOverlay.style.backgroundColor = new Color(0, 0, 0, 0.7f);
-            loadingOverlay.style.alignItems = Align.Center;
-            loadingOverlay.style.justifyContent = Justify.Center;
+            loadingOverlay.AddToClassList("loading-overlay");
             loadingOverlay.style.display = DisplayStyle.None;
 
             var loadingContainer = new VisualElement();
-            loadingContainer.style.backgroundColor = new Color(0.3f, 0.3f, 0.3f);
-            loadingContainer.style.paddingLeft = 20;
-            loadingContainer.style.paddingRight = 20;
-            loadingContainer.style.paddingTop = 20;
-            loadingContainer.style.paddingBottom = 20;
+            loadingContainer.AddToClassList("loading-container");
 
             var loadingLabel = new Label("Loading language data...");
-            loadingLabel.style.fontSize = 14;
-            loadingLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
             loadingContainer.Add(loadingLabel);
 
             loadingOverlay.Add(loadingContainer);
@@ -342,6 +431,12 @@ namespace Datra.Unity.Editor.Views
 
             bodyScrollView?.Add(bodyContainer);
 
+            // Populate category filter buttons
+            PopulateCategoryButtons();
+
+            // Update statistics
+            UpdateStatistics();
+
             // Update modification state after restoring (to show orange dot if there are modifications)
             UpdateModifiedState();
         }
@@ -355,6 +450,10 @@ namespace Datra.Unity.Editor.Views
             // Key column header
             var keyHeader = CreateHeaderCell("Key", KeyColumnWidth);
             headerRow.Add(keyHeader);
+
+            // Category column header
+            var categoryHeader = CreateHeaderCell("Category", CategoryColumnWidth);
+            headerRow.Add(categoryHeader);
 
             // Text column header
             var textHeader = CreateHeaderCell("Text", 400f);
@@ -388,17 +487,19 @@ namespace Datra.Unity.Editor.Views
             row.style.height = RowHeight;
             row.style.alignItems = Align.Center;
 
-            // Add missing locale indicator
-            if (wrapper.IsMissing)
-            {
-                row.AddToClassList("missing-locale-row");
-            }
-
             var cells = new Dictionary<string, VisualElement>();
             cellElements[wrapper] = cells;
 
             // 1. Actions column
             var actionsCell = CreateActionsCell(wrapper);
+
+            // Add missing locale indicator to the first cell instead of the row
+            if (wrapper.IsMissing)
+            {
+                row.AddToClassList("missing-locale-row");
+                actionsCell.AddToClassList("missing-locale-cell");
+            }
+
             row.Add(actionsCell);
 
             // 2. Key column (read-only)
@@ -406,7 +507,12 @@ namespace Datra.Unity.Editor.Views
             cells["Id"] = keyCell;
             row.Add(keyCell);
 
-            // 3. Text column (editable with DatraPropertyField)
+            // 3. Category column (read-only)
+            var categoryCell = CreateCategoryCell(wrapper);
+            cells["Category"] = categoryCell;
+            row.Add(categoryCell);
+
+            // 4. Text column (editable with DatraPropertyField)
             var textProperty = typeof(LocalizationKeyWrapper).GetProperty("Text");
             if (textProperty != null)
             {
@@ -563,6 +669,12 @@ namespace Datra.Unity.Editor.Views
                         // Remove missing-locale-row class if it exists
                         row.RemoveFromClassList("missing-locale-row");
 
+                        // Remove missing-locale-cell class from actions cell (first child)
+                        if (row.childCount > 0)
+                        {
+                            row[0].RemoveFromClassList("missing-locale-cell");
+                        }
+
                         // Update the text field cell
                         if (cellElements.TryGetValue(wrapper, out var cells))
                         {
@@ -668,6 +780,33 @@ namespace Datra.Unity.Editor.Views
             return cell;
         }
 
+        private VisualElement CreateCategoryCell(LocalizationKeyWrapper wrapper)
+        {
+            var cell = new VisualElement();
+            cell.AddToClassList("table-cell");
+            cell.style.width = CategoryColumnWidth;
+            cell.style.minWidth = CategoryColumnWidth;
+            cell.style.paddingLeft = 8;
+            cell.style.paddingRight = 8;
+
+            var categoryText = string.IsNullOrEmpty(wrapper.Category) ? "(Uncategorized)" : wrapper.Category;
+            var label = new Label(categoryText);
+            label.style.fontSize = 11;
+            label.style.overflow = Overflow.Hidden;
+            label.style.textOverflow = TextOverflow.Ellipsis;
+            label.tooltip = categoryText;
+
+            // Style uncategorized differently
+            if (string.IsNullOrEmpty(wrapper.Category))
+            {
+                label.style.unityFontStyleAndWeight = FontStyle.Italic;
+                label.style.color = new Color(0.6f, 0.6f, 0.6f);
+            }
+
+            cell.Add(label);
+            return cell;
+        }
+
         private async void DeleteLocalizationKey(LocalizationKeyWrapper wrapper)
         {
             if (EditorUtility.DisplayDialog(
@@ -736,18 +875,42 @@ namespace Datra.Unity.Editor.Views
                 var wrapper = kvp.Key;
                 var row = kvp.Value;
 
-                bool matches = string.IsNullOrEmpty(searchTerm);
-                if (!matches)
+                bool matches = true;
+
+                // 1. Search term filter
+                if (!string.IsNullOrEmpty(searchTerm))
                 {
-                    // Search in key, text, description, category
                     matches = wrapper.Id.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0 ||
                               wrapper.Text.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0 ||
                               (wrapper.Description?.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0 ||
                               (wrapper.Category?.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) ?? -1) >= 0;
                 }
 
+                // 2. Category filter
+                if (matches && selectedCategories != null && selectedCategories.Count > 0)
+                {
+                    var category = string.IsNullOrEmpty(wrapper.Category) ? "(Uncategorized)" : wrapper.Category;
+                    matches = selectedCategories.Contains(category);
+                }
+
+                // 3. Status filter
+                if (matches && currentStatusFilter != TranslationStatus.All)
+                {
+                    bool isMissing = wrapper.IsMissing;
+
+                    matches = currentStatusFilter switch
+                    {
+                        TranslationStatus.MissingOnly => isMissing,
+                        TranslationStatus.CompleteOnly => !isMissing,
+                        _ => true
+                    };
+                }
+
                 row.style.display = matches ? DisplayStyle.Flex : DisplayStyle.None;
             }
+
+            // Update statistics after filtering
+            UpdateStatistics();
         }
 
         protected override void SaveChanges()
@@ -841,5 +1004,221 @@ namespace Datra.Unity.Editor.Views
                 }
             }
         }
+
+        #region Filter Methods
+
+        private void PopulateCategoryButtons()
+        {
+            var container = categoryFilterBar?.Q("category-buttons-container");
+            if (container == null) return;
+
+            container.Clear();
+
+            // Collect all unique categories from wrappers
+            availableCategories = new HashSet<string>();
+            if (rowElements != null)
+            {
+                foreach (var wrapper in rowElements.Keys)
+                {
+                    var category = string.IsNullOrEmpty(wrapper.Category) ? "(Uncategorized)" : wrapper.Category;
+                    availableCategories.Add(category);
+                }
+            }
+
+            // Load saved filter settings
+            LoadFilterSettings();
+
+            // Create toggle button for each category
+            foreach (var category in availableCategories.OrderBy(c => c))
+            {
+                var isSelected = selectedCategories == null || selectedCategories.Contains(category);
+                var button = CreateCategoryToggleButton(category, isSelected);
+                container.Add(button);
+            }
+        }
+
+        private Button CreateCategoryToggleButton(string category, bool isSelected)
+        {
+            var button = new Button(() => ToggleCategory(category));
+            button.text = category;
+            button.AddToClassList("category-toggle-button");
+
+            if (isSelected)
+            {
+                button.AddToClassList("active");
+            }
+
+            return button;
+        }
+
+        private void ToggleCategory(string category)
+        {
+            if (selectedCategories == null)
+            {
+                // If null (all selected), initialize with all categories except the clicked one
+                selectedCategories = new HashSet<string>(availableCategories);
+                selectedCategories.Remove(category);
+            }
+            else if (selectedCategories.Contains(category))
+            {
+                selectedCategories.Remove(category);
+            }
+            else
+            {
+                selectedCategories.Add(category);
+            }
+
+            // If all categories are selected, set to null (means "all")
+            if (selectedCategories.Count == availableCategories.Count)
+            {
+                selectedCategories = null;
+            }
+
+            // Update button visuals
+            UpdateCategoryButtonVisuals();
+
+            // Apply filter
+            var currentSearchTerm = (searchField as ToolbarSearchField)?.value ?? "";
+            FilterItems(currentSearchTerm);
+
+            // Save settings
+            SaveFilterSettings();
+        }
+
+        private void UpdateCategoryButtonVisuals()
+        {
+            var container = categoryFilterBar?.Q("category-buttons-container");
+            if (container == null) return;
+
+            var buttons = container.Query<Button>(className: "category-toggle-button").ToList();
+            foreach (var button in buttons)
+            {
+                var category = button.text;
+                var isSelected = selectedCategories == null || selectedCategories.Contains(category);
+
+                if (isSelected)
+                {
+                    button.AddToClassList("active");
+                }
+                else
+                {
+                    button.RemoveFromClassList("active");
+                }
+            }
+        }
+
+        private void SelectAllCategories()
+        {
+            selectedCategories = null; // null means all selected
+            UpdateCategoryButtonVisuals();
+            var currentSearchTerm = (searchField as ToolbarSearchField)?.value ?? "";
+            FilterItems(currentSearchTerm);
+            SaveFilterSettings();
+        }
+
+        private void ClearAllCategories()
+        {
+            selectedCategories = new HashSet<string>(); // Empty set means none selected
+            UpdateCategoryButtonVisuals();
+            var currentSearchTerm = (searchField as ToolbarSearchField)?.value ?? "";
+            FilterItems(currentSearchTerm);
+            SaveFilterSettings();
+        }
+
+        private void SetStatusFilter(TranslationStatus status)
+        {
+            currentStatusFilter = status;
+
+            // Update button visuals
+            var allButton = statusFilterBar?.Q<Button>("status-all-button");
+            var missingButton = statusFilterBar?.Q<Button>("status-missing-button");
+            var completeButton = statusFilterBar?.Q<Button>("status-complete-button");
+
+            allButton?.RemoveFromClassList("active");
+            missingButton?.RemoveFromClassList("active");
+            completeButton?.RemoveFromClassList("active");
+
+            switch (status)
+            {
+                case TranslationStatus.All:
+                    allButton?.AddToClassList("active");
+                    break;
+                case TranslationStatus.MissingOnly:
+                    missingButton?.AddToClassList("active");
+                    break;
+                case TranslationStatus.CompleteOnly:
+                    completeButton?.AddToClassList("active");
+                    break;
+            }
+
+            // Apply filter
+            var currentSearchTerm = (searchField as ToolbarSearchField)?.value ?? "";
+            FilterItems(currentSearchTerm);
+
+            // Save settings
+            SaveFilterSettings();
+        }
+
+        private void UpdateStatistics()
+        {
+            if (rowElements == null || statisticsLabel == null) return;
+
+            var totalCount = rowElements.Count;
+            var shownCount = rowElements.Count(kvp => kvp.Value.style.display == DisplayStyle.Flex);
+            var missingCount = rowElements.Count(kvp => kvp.Key.IsMissing);
+
+            statisticsLabel.text = $"Total: {totalCount:N0} | Shown: {shownCount:N0} | Missing: {missingCount:N0}";
+
+            // Highlight missing count if there are missing translations
+            if (missingCount > 0)
+            {
+                statisticsLabel.style.color = new Color(1f, 0.7f, 0.3f); // Orange
+            }
+            else
+            {
+                statisticsLabel.style.color = Color.white;
+            }
+        }
+
+        private void LoadFilterSettings()
+        {
+            if (currentLanguageCode == default) return;
+
+            // Load category filter
+            var savedCategories = DatraUserPreferences.GetLocalizationCategoryFilters(currentLanguageCode.ToIsoCode());
+            if (string.IsNullOrEmpty(savedCategories))
+            {
+                selectedCategories = null; // All selected
+            }
+            else
+            {
+                selectedCategories = new HashSet<string>(savedCategories.Split(','));
+            }
+
+            // Load status filter
+            var savedStatus = DatraUserPreferences.GetLocalizationStatusFilter(currentLanguageCode.ToIsoCode());
+            currentStatusFilter = (TranslationStatus)savedStatus;
+
+            // Update status button visuals
+            SetStatusFilter(currentStatusFilter);
+        }
+
+        private void SaveFilterSettings()
+        {
+            if (currentLanguageCode == default) return;
+
+            // Save category filter
+            string categoriesToSave = null;
+            if (selectedCategories != null && selectedCategories.Count > 0 && selectedCategories.Count < availableCategories?.Count)
+            {
+                categoriesToSave = string.Join(",", selectedCategories);
+            }
+            DatraUserPreferences.SetLocalizationCategoryFilters(currentLanguageCode.ToIsoCode(), categoriesToSave);
+
+            // Save status filter
+            DatraUserPreferences.SetLocalizationStatusFilter(currentLanguageCode.ToIsoCode(), (int)currentStatusFilter);
+        }
+
+        #endregion
     }
 }

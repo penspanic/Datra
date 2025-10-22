@@ -189,5 +189,56 @@ namespace Datra.Unity.Editor.Utilities
             SetFloat($"Window_{windowName}_width", rect.width);
             SetFloat($"Window_{windowName}_height", rect.height);
         }
+
+        /// <summary>
+        /// Gets the selected categories for localization view
+        /// </summary>
+        /// <param name="languageCode">The language code</param>
+        /// <returns>Comma-separated list of selected categories, or null if all selected</returns>
+        public static string GetLocalizationCategoryFilters(string languageCode)
+        {
+            var key = $"LocalizationCategoryFilters_{languageCode}";
+            return GetString(key, null);
+        }
+
+        /// <summary>
+        /// Sets the selected categories for localization view
+        /// </summary>
+        /// <param name="languageCode">The language code</param>
+        /// <param name="categories">Comma-separated list of selected categories, or null/empty for all</param>
+        public static void SetLocalizationCategoryFilters(string languageCode, string categories)
+        {
+            var key = $"LocalizationCategoryFilters_{languageCode}";
+            if (string.IsNullOrEmpty(categories))
+            {
+                // Remove key to indicate all categories are selected
+                if (EditorPrefs.HasKey($"{PrefsKeyPrefix}{key}"))
+                {
+                    EditorPrefs.DeleteKey($"{PrefsKeyPrefix}{key}");
+                }
+            }
+            else
+            {
+                SetString(key, categories);
+            }
+        }
+
+        /// <summary>
+        /// Gets the status filter for localization view (0=All, 1=MissingOnly, 2=CompleteOnly)
+        /// </summary>
+        public static int GetLocalizationStatusFilter(string languageCode)
+        {
+            var key = $"LocalizationStatusFilter_{languageCode}";
+            return GetInt(key, 0); // Default to All
+        }
+
+        /// <summary>
+        /// Sets the status filter for localization view (0=All, 1=MissingOnly, 2=CompleteOnly)
+        /// </summary>
+        public static void SetLocalizationStatusFilter(string languageCode, int status)
+        {
+            var key = $"LocalizationStatusFilter_{languageCode}";
+            SetInt(key, status);
+        }
     }
 }

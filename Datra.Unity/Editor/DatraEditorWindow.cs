@@ -156,7 +156,8 @@ namespace Datra.Unity.Editor
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraPropertyField.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraDataView.uss",
                 "Packages/com.penspanic.datra.unity/Editor/Styles/DatraTableView.uss",
-                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraFormView.uss"
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraFormView.uss",
+                "Packages/com.penspanic.datra.unity/Editor/Styles/DatraLocalizationView.uss"
             };
             
             foreach (var path in stylePaths)
@@ -256,8 +257,6 @@ namespace Datra.Unity.Editor
 
                         // Register with data manager
                         dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
-
-                        Debug.Log($"Created and registered RepositoryChangeTracker<{keyType.Name}, {valueType.Name}> for Single Data {dataType.Name}");
                     }
                     return;
                 }
@@ -290,8 +289,6 @@ namespace Datra.Unity.Editor
 
                         // Register with data manager
                         dataManager.RegisterChangeTracker(dataType, tracker, keyType, valueType);
-
-                        Debug.Log($"Created and registered RepositoryChangeTracker<{keyType.Name}, {valueType.Name}> for Table Data {dataType.Name}");
                     }
                 }
             }

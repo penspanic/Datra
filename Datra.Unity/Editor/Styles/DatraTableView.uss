@@ -173,12 +173,16 @@
 /* Missing locale rows */
 .table-row.missing-locale-row {
     background-color: rgba(139, 69, 19, 0.25) !important;
-    border-left-width: 3px;
-    border-left-color: #d97706;
 }
 
 .table-row.missing-locale-row:hover {
     background-color: rgba(139, 69, 19, 0.35) !important;
+}
+
+/* Missing locale cell indicator - shown in the first cell */
+.table-cell.missing-locale-cell {
+    border-left-width: 3px;
+    border-left-color: #d97706;
 }
 
 /* Delete column styles */
