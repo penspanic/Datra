@@ -74,29 +74,20 @@ namespace Datra.Unity.Editor.Views
             tableHeaderContainer.Add(headerRow);
             tableContainer.Add(tableHeaderContainer);
 
-            // Create scroll view for horizontal scrolling
-            var scrollView = new ScrollView(ScrollViewMode.VerticalAndHorizontal);
-            scrollView.AddToClassList("table-body-scroll");
-            scrollView.style.flexGrow = 1;
-
-            // Sync horizontal scroll with header
-            scrollView.horizontalScroller.valueChanged += (value) => {
-                headerRow.style.left = -value;
-            };
-
             // Create virtualized list view
             listView = new ListView();
             listView.AddToClassList("table-body-list");
             listView.fixedItemHeight = RowHeight;
             listView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
             listView.selectionType = SelectionType.None;
+            listView.style.flexGrow = 1;
 
             // Set callbacks
             listView.makeItem = CreateRowTemplate;
             listView.bindItem = BindRow;
 
-            scrollView.Add(listView);
-            tableContainer.Add(scrollView);
+            tableContainer.Add(listView);
+
             contentContainer.Add(tableContainer);
         }
 
