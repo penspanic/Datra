@@ -123,6 +123,17 @@ namespace Datra.Unity.Editor.Panels
             }
         }
 
+        /// <summary>
+        /// Switch to a different language
+        /// </summary>
+        public async void SwitchLanguage(Datra.Localization.LanguageCode newLanguage)
+        {
+            if (localizationView != null)
+            {
+                await localizationView.SwitchLanguageAsync(newLanguage);
+            }
+        }
+
         public void SaveData()
         {
             localizationView?.SaveData();

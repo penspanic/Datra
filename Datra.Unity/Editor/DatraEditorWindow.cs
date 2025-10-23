@@ -93,6 +93,7 @@ namespace Datra.Unity.Editor
             toolbar.OnForceSaveAllClicked += ForceSaveAllData;
             toolbar.OnReloadClicked += ReloadData;
             toolbar.OnSettingsClicked += ShowSettings;
+            toolbar.OnLanguageChanged += OnToolbarLanguageChanged;
             mainContainer.Add(toolbar);
             
             // Create tab container
@@ -370,6 +371,21 @@ namespace Datra.Unity.Editor
 
                     // Load all available languages for editor (allows editing multiple languages without switching)
                     localizationContext.LoadAllAvailableLanguagesAsync().Wait();
+
+                    // Initialize LocalizationChangeTracker for all loaded languages
+                    // This is important because LocaleEditPopup can edit multiple languages at once
+                    var loadedLanguages = localizationContext.GetLoadedLanguages();
+                    foreach (var languageCode in loadedLanguages)
+                    {
+                        if (!localizationChangeTracker.IsLanguageInitialized(languageCode))
+                        {
+                            localizationChangeTracker.InitializeLanguage(languageCode);
+                        }
+                    }
+
+                    // Initialize toolbar language dropdown
+                    var availableLanguages = localizationContext.GetAvailableLanguages();
+                    toolbar.SetupLanguages(availableLanguages, localizationContext.CurrentLanguageCode);
 
                     // Pass localizationContext to DataInspectorPanel for FixedLocale property support
                     dataInspectorPanel.SetLocalizationContext(localizationContext, localizationChangeTracker);
@@ -767,6 +783,23 @@ namespace Datra.Unity.Editor
         {
             // TODO: Implement settings window
             EditorUtility.DisplayDialog("Settings", "Settings window coming soon!", "OK");
+        }
+
+        private void OnToolbarLanguageChanged(LanguageCode newLanguage)
+        {
+            if (localizationContext == null) return;
+
+            // Update LocalizationContext current language
+            localizationContext.LoadLanguageAsync(newLanguage).Wait();
+
+            // Update LocalizationView (handles language switch internally)
+            localizationInspectorPanel.SwitchLanguage(newLanguage);
+
+            // Refresh DataInspectorPanel to update LocaleRef fields in tables
+            if (currentInspectorPanel == dataInspectorPanel)
+            {
+                dataInspectorPanel.RefreshContent();
+            }
         }
         
         private void ShowInitializationError(string message)

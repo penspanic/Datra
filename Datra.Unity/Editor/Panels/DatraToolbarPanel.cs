@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Datra.Localization;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -13,6 +15,8 @@ namespace Datra.Unity.Editor.Panels
         private Button settingsButton;
         private Label projectLabel;
         private VisualElement modifiedIndicator;
+        private VisualElement languageContainer;
+        private DropdownField languageDropdown;
 
         public event Action OnSaveClicked;
         public event Action OnSaveAllClicked;
@@ -20,6 +24,7 @@ namespace Datra.Unity.Editor.Panels
         public event Action OnForceSaveAllClicked;
         public event Action OnReloadClicked;
         public event Action OnSettingsClicked;
+        public event Action<LanguageCode> OnLanguageChanged;
         
         public DatraToolbarPanel()
         {
@@ -55,13 +60,32 @@ namespace Datra.Unity.Editor.Panels
             // Center section - Quick actions
             var centerSection = new VisualElement();
             centerSection.AddToClassList("toolbar-center");
-            
+
             modifiedIndicator = new VisualElement();
             modifiedIndicator.AddToClassList("modified-indicator");
             modifiedIndicator.tooltip = "Unsaved changes";
             modifiedIndicator.style.display = DisplayStyle.None;
             centerSection.Add(modifiedIndicator);
-            
+
+            // Language dropdown container
+            languageContainer = new VisualElement();
+            languageContainer.AddToClassList("toolbar-language-container");
+            languageContainer.style.flexDirection = FlexDirection.Row;
+            languageContainer.style.alignItems = Align.Center;
+            languageContainer.style.display = DisplayStyle.None; // Hidden by default until languages are loaded
+
+            var globeIcon = new Label("🌐");
+            globeIcon.style.marginRight = 4;
+            globeIcon.style.fontSize = 16;
+            languageContainer.Add(globeIcon);
+
+            languageDropdown = new DropdownField();
+            languageDropdown.AddToClassList("toolbar-language-dropdown");
+            languageDropdown.style.minWidth = 100;
+            languageContainer.Add(languageDropdown);
+
+            centerSection.Add(languageContainer);
+
             Add(centerSection);
             
             // Right section - Action buttons
@@ -177,6 +201,66 @@ namespace Datra.Unity.Editor.Panels
         public void SetReloadButtonEnabled(bool enabled)
         {
             reloadButton.SetEnabled(enabled);
+        }
+
+        /// <summary>
+        /// Set up the language dropdown with available languages
+        /// </summary>
+        public void SetupLanguages(IEnumerable<LanguageCode> languages, LanguageCode currentLanguage)
+        {
+            var languageList = new List<LanguageCode>(languages);
+            if (languageList.Count == 0)
+            {
+                languageContainer.style.display = DisplayStyle.None;
+                return;
+            }
+
+            var languageNames = new List<string>();
+            var currentIndex = 0;
+
+            for (int i = 0; i < languageList.Count; i++)
+            {
+                var lang = languageList[i];
+                languageNames.Add(lang.ToIsoCode());
+                if (lang == currentLanguage)
+                {
+                    currentIndex = i;
+                }
+            }
+
+            languageDropdown.choices = languageNames;
+            languageDropdown.index = currentIndex;
+
+            // Unregister previous callback if any
+            languageDropdown.UnregisterValueChangedCallback(OnLanguageDropdownChanged);
+
+            // Register new callback
+            languageDropdown.RegisterValueChangedCallback(OnLanguageDropdownChanged);
+
+            languageContainer.style.display = DisplayStyle.Flex;
+        }
+
+        private void OnLanguageDropdownChanged(ChangeEvent<string> evt)
+        {
+            if (string.IsNullOrEmpty(evt.newValue)) return;
+
+            var languageCode = LanguageCodeExtensions.TryParse(evt.newValue);
+            if (languageCode.HasValue)
+            {
+                OnLanguageChanged?.Invoke(languageCode.Value);
+            }
+        }
+
+        /// <summary>
+        /// Update the current language selection without triggering the event
+        /// </summary>
+        public void SetCurrentLanguage(LanguageCode languageCode)
+        {
+            var isoCode = languageCode.ToIsoCode();
+            if (languageDropdown.choices != null && languageDropdown.choices.Contains(isoCode))
+            {
+                languageDropdown.SetValueWithoutNotify(isoCode);
+            }
         }
     }
 }

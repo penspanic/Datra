@@ -23,7 +23,6 @@ namespace Datra.Unity.Editor.Views
     {
         // Localization-specific
         private LanguageCode currentLanguageCode;
-        private DropdownField languageDropdown;
         private bool isLoading = false;
         private VisualElement loadingOverlay;
 
@@ -91,12 +90,6 @@ namespace Datra.Unity.Editor.Views
             toolbar.style.paddingRight = 8;
             toolbar.style.alignItems = Align.Center;
 
-            // Language dropdown
-            languageDropdown = new DropdownField("Language:");
-            languageDropdown.style.minWidth = 200;
-            languageDropdown.RegisterValueChangedCallback(async evt => await OnLanguageChanged(evt.newValue));
-            toolbar.Add(languageDropdown);
-
             // Add button
             var addButton = new Button(() => {
                 if (!isReadOnly)
@@ -147,7 +140,6 @@ namespace Datra.Unity.Editor.Views
             if (context is LocalizationContext locContext)
             {
                 localizationContext = locContext;
-                PopulateLanguageDropdown();
             }
 
             CleanupFields();
@@ -196,16 +188,9 @@ namespace Datra.Unity.Editor.Views
 
             dataContext = context;
 
-            // Initialize language dropdown
-            var languages = context.GetAvailableLanguageIsoCodes().ToList();
-            languageDropdown.choices = languages;
-
-            if (languages.Count > 0)
-            {
-                currentLanguageCode = context.CurrentLanguageCode;
-                languageDropdown.value = context.CurrentLanguage;
-                await LoadLanguageDataAsync(currentLanguageCode);
-            }
+            // Initialize current language
+            currentLanguageCode = context.CurrentLanguageCode;
+            await LoadLanguageDataAsync(currentLanguageCode);
         }
 
         private async Task LoadLanguageDataAsync(LanguageCode languageCode)
@@ -481,49 +466,15 @@ namespace Datra.Unity.Editor.Views
             );
         }
 
-        // Language management
-        private void PopulateLanguageDropdown()
+        // Language management - now handled by toolbar
+
+        /// <summary>
+        /// Switch to a different language (called from toolbar)
+        /// </summary>
+        public async Task SwitchLanguageAsync(LanguageCode newLanguage)
         {
-            if (localizationContext == null || languageDropdown == null) return;
+            if (localizationContext == null) return;
 
-            var languages = localizationContext.GetAvailableLanguages().ToList();
-            var languageNames = languages.Select(lang => lang.ToIsoCode()).ToList();
-
-            languageDropdown.choices = languageNames;
-
-            if (languageNames.Count > 0)
-            {
-                languageDropdown.value = languageNames[0];
-                currentLanguageCode = languages[0];
-            }
-        }
-
-        private async Task OnLanguageChanged(string newLanguage)
-        {
-            if (isLoading) return;
-
-            Debug.Log($"[OnLanguageChanged] newLanguage string: {newLanguage}");
-
-            var languages = localizationContext.GetAvailableLanguages().ToList();
-            Debug.Log($"[OnLanguageChanged] Available languages: {string.Join(", ", languages.Select(l => l.ToIsoCode()))}");
-
-            var matchIndex = languages.FindIndex(lang => lang.ToIsoCode() == newLanguage);
-            Debug.Log($"[OnLanguageChanged] Match index: {matchIndex}");
-
-            if (matchIndex >= 0)
-            {
-                var newLangCode = languages[matchIndex];
-                Debug.Log($"[OnLanguageChanged] Matched language code: {newLangCode}");
-                await SwitchLanguage(newLangCode);
-            }
-            else
-            {
-                Debug.LogWarning($"[OnLanguageChanged] Could not find language code for: {newLanguage}");
-            }
-        }
-
-        private async Task SwitchLanguage(LanguageCode newLanguage)
-        {
             currentLanguageCode = newLanguage;
 
             // Load language data (includes LoadLanguageAsync, tracker init, and RefreshContent)
