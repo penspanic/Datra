@@ -159,6 +159,37 @@ public partial class CharacterData : ITableData<string>
 }
 ```
 
+### 🏠 Nested Type Support
+
+Embed struct or class types within your data models. Nested types are serialized using dot notation in CSV:
+
+```csharp
+// Define a nested type
+public struct PooledPrefab
+{
+    public string Path { get; set; }
+    public int InitialCount { get; set; }
+    public int MaxCount { get; set; }
+}
+
+[TableData("Characters.csv", Format = DataFormat.Csv)]
+public partial class CharacterData : ITableData<string>
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public PooledPrefab ModelPrefab { get; set; }  // Nested struct
+}
+```
+
+In CSV files, nested properties use dot notation for column headers:
+```csv
+Id,Name,ModelPrefab.Path,ModelPrefab.InitialCount,ModelPrefab.MaxCount
+hero_001,Knight,Assets/Prefabs/Knight.prefab,5,20
+hero_002,Mage,Assets/Prefabs/Mage.prefab,3,15
+```
+
+Note: Nested types support one level of nesting. Deeply nested types (nested within nested) are not supported.
+
 ### 🎨 Complex Data Models
 
 Combine all features for rich data structures:
@@ -289,9 +320,27 @@ public partial class GameConfig
 }
 ```
 
-### 2. Create Your Data Context
+### 2. Configure Your Data Context
 
-The Source Generator will automatically create a DataContext class based on your models. The generated `GameDataContext` class is placed in the `Datra.Generated` namespace to avoid conflicts when model classes are spread across multiple namespaces:
+Add the `DatraConfiguration` attribute to your assembly to configure the generated context:
+
+```csharp
+using Datra.Attributes;
+
+// In your AssemblyInfo.cs or any .cs file in your project
+[assembly: DatraConfiguration("GameData",
+    Namespace = "MyGame.Generated",           // Required: explicit namespace for generated code
+    EnableLocalization = true,                // Optional: enable localization support
+    LocalizationKeyDataPath = "Localizations/LocalizationKeys.csv",
+    EmitPhysicalFiles = false                 // Optional: set to true for debugging generated code
+)]
+```
+
+**Note**: The `Namespace` property is **required**. This ensures consistent namespace behavior across Unity and .NET environments. Without it, you'll get compile error `DATRA003`.
+
+### 3. Create Your Data Context
+
+The Source Generator will automatically create a DataContext class based on your models. The generated `GameDataContext` class is placed in the configured namespace (or `{AssemblyName}.Generated` by default):
 
 ```csharp
 // This class is auto-generated in Datra.Generated namespace
@@ -307,7 +356,7 @@ namespace Datra.Generated
 }
 ```
 
-### 3. Load and Use Your Data
+### 4. Load and Use Your Data
 
 ```csharp
 using Datra.Generated;

@@ -136,11 +136,29 @@ namespace Datra.Generators.Builders
             return lastDot >= 0 ? typeName.Substring(0, lastDot) : "Generated";
         }
 
+        // C# reserved keywords that cannot be used as identifiers
+        private static readonly HashSet<string> CSharpKeywords = new HashSet<string>
+        {
+            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
+            "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
+            "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for",
+            "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock",
+            "long", "namespace", "new", "null", "object", "operator", "out", "override", "params",
+            "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed",
+            "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw",
+            "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using",
+            "virtual", "void", "volatile", "while"
+        };
+
         public static string ToCamelCase(string pascalCase)
         {
             if (string.IsNullOrEmpty(pascalCase))
                 return pascalCase;
-            return char.ToLower(pascalCase[0]) + pascalCase.Substring(1);
+            var result = char.ToLower(pascalCase[0]) + pascalCase.Substring(1);
+            // Escape C# reserved keywords with @ prefix
+            if (CSharpKeywords.Contains(result))
+                return "@" + result;
+            return result;
         }
 
         public static string GetDataFormat(string format)

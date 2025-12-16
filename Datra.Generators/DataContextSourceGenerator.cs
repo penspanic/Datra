@@ -122,8 +122,7 @@ namespace Datra.Generators
             string localizationKeysPath = "Localizations/LocalizationKeys.csv";
             string localizationDataPath = "Localizations/";
             string defaultLanguage = "en";
-            // Default namespace: {AssemblyName}.Generated
-            string generatedNamespace = $"{compilation.AssemblyName}.Generated";
+            string generatedNamespace = null; // Will be required
             bool enableLocalization = false;
             bool enableDebugLogging = false;
             bool emitPhysicalFiles = false;
@@ -147,7 +146,7 @@ namespace Datra.Generators
                         defaultLanguage = arg.Value.Value?.ToString() ?? defaultLanguage;
                         break;
                     case "Namespace":
-                        generatedNamespace = arg.Value.Value?.ToString() ?? generatedNamespace;
+                        generatedNamespace = arg.Value.Value?.ToString();
                         break;
                     case "EnableDebugLogging":
                         enableDebugLogging = arg.Value.Value is bool debug ? debug : false;
@@ -159,6 +158,24 @@ namespace Datra.Generators
                         physicalFilesPath = arg.Value.Value?.ToString();
                         break;
                 }
+            }
+
+            // Namespace is required to ensure consistent behavior across Unity and .NET
+            if (string.IsNullOrEmpty(generatedNamespace))
+            {
+                var diagnostic = Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DATRA003",
+                        "Missing Namespace in DatraConfiguration",
+                        "DatraConfiguration requires Namespace property. Example: [assembly: DatraConfiguration(\"GameData\", Namespace = \"MyGame.Generated\")]. This ensures consistent namespace across Unity and .NET environments.",
+                        "Datra",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    Location.None);
+                context.ReportDiagnostic(diagnostic);
+                GeneratorLogger.LogError("DatraConfiguration requires Namespace property");
+                GeneratorLogger.AddDebugOutput(context);
+                return;
             }
             GeneratorLogger.Log($"Found DatraConfigurationAttribute: ContextName={contextName}, Namespace={generatedNamespace}, EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, LocalizationDataPath={localizationDataPath}, DefaultLanguage={defaultLanguage}, EnableDebugLogging={enableDebugLogging}, EmitPhysicalFiles={emitPhysicalFiles}, PhysicalFilesPath={physicalFilesPath}");
 
@@ -367,6 +384,28 @@ namespace Datra.Generators
                 File.WriteAllText(filePath, content);
                 GeneratorLogger.Log($"Wrote file: {filePath}");
             }
+        }
+
+        /// <summary>
+        /// Sanitize a string to be a valid C# namespace identifier.
+        /// Replaces spaces with dots and removes invalid characters.
+        /// </summary>
+        private static string SanitizeNamespace(string input)
+        {
+            if (string.IsNullOrEmpty(input))
+                return "Generated";
+
+            // Replace spaces with dots (common in Unity project names)
+            var result = input.Replace(" ", ".");
+
+            // Remove consecutive dots
+            while (result.Contains(".."))
+                result = result.Replace("..", ".");
+
+            // Trim leading/trailing dots
+            result = result.Trim('.');
+
+            return string.IsNullOrEmpty(result) ? "Generated" : result;
         }
     }
 }

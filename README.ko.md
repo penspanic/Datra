@@ -159,6 +159,37 @@ public partial class CharacterData : ITableData<string>
 }
 ```
 
+### 🏠 중첩 타입 지원
+
+데이터 모델 내에 struct나 class 타입을 포함할 수 있습니다. 중첩 타입은 CSV에서 점 표기법으로 직렬화됩니다:
+
+```csharp
+// 중첩 타입 정의
+public struct PooledPrefab
+{
+    public string Path { get; set; }
+    public int InitialCount { get; set; }
+    public int MaxCount { get; set; }
+}
+
+[TableData("Characters.csv", Format = DataFormat.Csv)]
+public partial class CharacterData : ITableData<string>
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public PooledPrefab ModelPrefab { get; set; }  // 중첩 struct
+}
+```
+
+CSV 파일에서 중첩 속성은 열 헤더에 점 표기법을 사용합니다:
+```csv
+Id,Name,ModelPrefab.Path,ModelPrefab.InitialCount,ModelPrefab.MaxCount
+hero_001,Knight,Assets/Prefabs/Knight.prefab,5,20
+hero_002,Mage,Assets/Prefabs/Mage.prefab,3,15
+```
+
+참고: 중첩 타입은 한 단계의 중첩만 지원합니다. 깊게 중첩된 타입(중첩 내부의 중첩)은 지원되지 않습니다.
+
 ### 🎨 복합 데이터 모델
 
 풍부한 데이터 구조를 위해 모든 기능을 결합합니다:
@@ -288,9 +319,27 @@ public partial class GameConfig
 }
 ```
 
-### 2. 데이터 컨텍스트 생성
+### 2. 데이터 컨텍스트 설정
 
-Source Generator가 모델을 기반으로 DataContext 클래스를 자동으로 생성합니다. 생성된 `GameDataContext` 클래스는 모델 클래스가 여러 네임스페이스에 분산되어 있을 때 충돌을 피하기 위해 `Datra.Generated` 네임스페이스에 배치됩니다:
+`DatraConfiguration` 속성을 어셈블리에 추가하여 생성된 컨텍스트를 구성합니다:
+
+```csharp
+using Datra.Attributes;
+
+// AssemblyInfo.cs 또는 프로젝트의 아무 .cs 파일에
+[assembly: DatraConfiguration("GameData",
+    Namespace = "MyGame.Generated",           // 필수: 생성된 코드의 네임스페이스
+    EnableLocalization = true,                // 선택: 지역화 지원 활성화
+    LocalizationKeyDataPath = "Localizations/LocalizationKeys.csv",
+    EmitPhysicalFiles = false                 // 선택: 생성된 코드 디버깅용
+)]
+```
+
+**참고**: `Namespace` 속성은 **필수**입니다. 이는 Unity와 .NET 환경 간에 일관된 네임스페이스 동작을 보장합니다. 설정하지 않으면 컴파일 에러 `DATRA003`이 발생합니다.
+
+### 3. 데이터 컨텍스트 생성
+
+Source Generator가 모델을 기반으로 DataContext 클래스를 자동으로 생성합니다. 생성된 `GameDataContext` 클래스는 설정된 네임스페이스에 배치됩니다:
 
 ```csharp
 // 이 클래스는 Datra.Generated 네임스페이스에 자동 생성됩니다
@@ -306,7 +355,7 @@ namespace Datra.Generated
 }
 ```
 
-### 3. 데이터 로드 및 사용
+### 4. 데이터 로드 및 사용
 
 ```csharp
 using Datra.Generated;
