@@ -29,6 +29,8 @@ namespace Datra.SampleData.Models
         public CharacterGrade Grade { get; set; }
         public StatType[] Stats { get; set; } // Array of stat types
         public int[] UpgradeCosts { get; set; } // Array of upgrade costs for each level
+
+        public PooledPrefab TestPooledPrefab { get; set; }
         
         // Character model prefab
         [AssetType(UnityAssetTypes.GameObject)]

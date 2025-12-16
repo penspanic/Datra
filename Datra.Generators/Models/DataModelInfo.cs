@@ -70,5 +70,27 @@ namespace Datra.Generators.Models
 
         // For backward compatibility
         public bool IsStringDataRef => IsDataRef && DataRefKeyType == "string";
+
+        // Nested type support (struct/class within data model)
+        /// <summary>
+        /// Indicates this property is a nested struct/class type (not a primitive, enum, array, or DataRef)
+        /// </summary>
+        public bool IsNestedType { get; set; }
+
+        /// <summary>
+        /// True if the nested type is a struct (value type), false if it's a class
+        /// </summary>
+        public bool IsNestedStruct { get; set; }
+
+        /// <summary>
+        /// The fully qualified name of the nested type (with global:: prefix)
+        /// </summary>
+        public string NestedTypeName { get; set; }
+
+        /// <summary>
+        /// List of properties/fields within the nested type.
+        /// Used for generating dot-notation column names (e.g., "PooledPrefab.Path")
+        /// </summary>
+        public List<PropertyInfo> NestedProperties { get; set; }
     }
 }

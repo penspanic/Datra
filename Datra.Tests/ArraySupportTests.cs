@@ -91,6 +91,7 @@ namespace Datra.Tests
                 CharacterGrade.Epic,
                 new[] { StatType.Attack, StatType.Defense },
                 new[] { 50, 100, 200, 400 },
+                new PooledPrefab(),  // TestPooledPrefab
                 null,  // ModelPrefabPath
                 null,  // PortraitPath
                 null,  // IconPath
@@ -164,6 +165,7 @@ namespace Datra.Tests
                 CharacterGrade.Legendary,
                 new[] { StatType.Attack, StatType.Defense, StatType.HealthRegen },
                 new[] { 100, 200, 400, 800, 1600 },
+                new PooledPrefab(),  // TestPooledPrefab
                 null,  // ModelPrefabPath
                 null,  // PortraitPath
                 null,  // IconPath
@@ -280,6 +282,7 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
                 CharacterGrade.Epic,
                 new[] { StatType.Attack, StatType.Defense, StatType.CriticalRate, StatType.Evasion },
                 new[] { 500, 1000, 2000, 4000 },
+                new PooledPrefab(),  // TestPooledPrefab
                 null,  // ModelPrefabPath
                 null,  // PortraitPath
                 null,  // IconPath

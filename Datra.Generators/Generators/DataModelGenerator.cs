@@ -133,9 +133,23 @@ namespace Datra.Generators.Generators
                     // DataRef is a struct, initialize with default
                     codeBuilder.AppendLine($"{prop.Name} = default;");
                 }
+                else if (prop.IsNestedType)
+                {
+                    // Nested struct/class - initialize appropriately
+                    if (prop.IsNestedStruct)
+                    {
+                        // Struct - use default or new
+                        codeBuilder.AppendLine($"{prop.Name} = new {prop.Type}();");
+                    }
+                    else
+                    {
+                        // Class - create new instance
+                        codeBuilder.AppendLine($"{prop.Name} = new {prop.Type}();");
+                    }
+                }
                 else if (prop.Type.Contains(".") && !prop.Type.StartsWith("System."))
                 {
-                    // Nested classes or other types
+                    // Other nested types not detected by IsNestedType
                     codeBuilder.AppendLine($"{prop.Name} = new {prop.Type}();");
                 }
             }

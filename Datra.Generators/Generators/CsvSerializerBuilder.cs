@@ -172,7 +172,18 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("var classProperties = new global::System.Collections.Generic.HashSet<string>();");
             foreach (var prop in model.GetSerializableProperties())
             {
-                codeBuilder.AppendLine($"classProperties.Add(\"{prop.Name}\");");
+                if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+                {
+                    // Add dot-notation column names for nested type fields
+                    foreach (var nestedProp in prop.NestedProperties)
+                    {
+                        codeBuilder.AppendLine($"classProperties.Add(\"{prop.Name}.{nestedProp.Name}\");");
+                    }
+                }
+                else
+                {
+                    codeBuilder.AppendLine($"classProperties.Add(\"{prop.Name}\");");
+                }
             }
 
             codeBuilder.AppendLine("// First, add all original columns in their exact order");
@@ -188,10 +199,25 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("var propertiesToAdd = new global::System.Collections.Generic.List<string>();");
             foreach (var prop in model.GetSerializableProperties())
             {
-                codeBuilder.AppendLine($"if (!columnList.Contains(\"{prop.Name}\"))");
-                codeBuilder.BeginBlock();
-                codeBuilder.AppendLine($"propertiesToAdd.Add(\"{prop.Name}\");");
-                codeBuilder.EndBlock();
+                if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+                {
+                    // Add dot-notation column names for nested type fields
+                    foreach (var nestedProp in prop.NestedProperties)
+                    {
+                        var columnName = $"{prop.Name}.{nestedProp.Name}";
+                        codeBuilder.AppendLine($"if (!columnList.Contains(\"{columnName}\"))");
+                        codeBuilder.BeginBlock();
+                        codeBuilder.AppendLine($"propertiesToAdd.Add(\"{columnName}\");");
+                        codeBuilder.EndBlock();
+                    }
+                }
+                else
+                {
+                    codeBuilder.AppendLine($"if (!columnList.Contains(\"{prop.Name}\"))");
+                    codeBuilder.BeginBlock();
+                    codeBuilder.AppendLine($"propertiesToAdd.Add(\"{prop.Name}\");");
+                    codeBuilder.EndBlock();
+                }
             }
 
             codeBuilder.AppendLine("// Build property order map for efficient insertion");
@@ -237,7 +263,18 @@ namespace Datra.Generators.Generators
             codeBuilder.AppendLine("// No metadata - just use class properties in order (only serializable properties)");
             foreach (var prop in model.GetSerializableProperties())
             {
-                codeBuilder.AppendLine($"columnList.Add(\"{prop.Name}\");");
+                if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+                {
+                    // Add dot-notation column names for nested type fields
+                    foreach (var nestedProp in prop.NestedProperties)
+                    {
+                        codeBuilder.AppendLine($"columnList.Add(\"{prop.Name}.{nestedProp.Name}\");");
+                    }
+                }
+                else
+                {
+                    codeBuilder.AppendLine($"columnList.Add(\"{prop.Name}\");");
+                }
             }
             codeBuilder.EndBlock();
             codeBuilder.AddBlankLine();
@@ -266,10 +303,25 @@ namespace Datra.Generators.Generators
             codeBuilder.BeginBlock();
             foreach (var prop in model.GetSerializableProperties())
             {
-                var serializeCode = GetCsvSerializeCode(prop, "item", "config");
-                codeBuilder.AppendLine($"case \"{prop.Name}\":");
-                codeBuilder.AppendLine($"    values[i] = {serializeCode};");
-                codeBuilder.AppendLine("    break;");
+                if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+                {
+                    // Generate case statements for each nested field (dot notation)
+                    foreach (var nestedProp in prop.NestedProperties)
+                    {
+                        var columnName = $"{prop.Name}.{nestedProp.Name}";
+                        var serializeCode = GetNestedPropertySerializeCode(prop, nestedProp, "item", "config");
+                        codeBuilder.AppendLine($"case \"{columnName}\":");
+                        codeBuilder.AppendLine($"    values[i] = {serializeCode};");
+                        codeBuilder.AppendLine("    break;");
+                    }
+                }
+                else
+                {
+                    var serializeCode = GetCsvSerializeCode(prop, "item", "config");
+                    codeBuilder.AppendLine($"case \"{prop.Name}\":");
+                    codeBuilder.AppendLine($"    values[i] = {serializeCode};");
+                    codeBuilder.AppendLine("    break;");
+                }
             }
             codeBuilder.AppendLine("default:");
             codeBuilder.AppendLine("    values[i] = string.Empty;");
@@ -287,6 +339,13 @@ namespace Datra.Generators.Generators
         
         private void GetCsvPropertyParseCodeWithLogging(CodeBuilder codeBuilder, PropertyInfo prop, string valuesVar, string headerIndexVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
         {
+            // Handle nested types with dot notation columns
+            if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+            {
+                GenerateNestedTypeDeserialization(codeBuilder, prop, valuesVar, headerIndexVar, varName, configVar, loggerVar, lineNumberVar, fileName);
+                return;
+            }
+
             var getValueCode = $"{headerIndexVar}.TryGetValue(\"{prop.Name}\", out var {varName}Idx) && {varName}Idx < {valuesVar}.Length ? {valuesVar}[{varName}Idx] : \"\"";
 
             // Get the raw value
@@ -296,6 +355,120 @@ namespace Datra.Generators.Generators
             var parseCode = GetParseCodeWithHelper(prop, $"{varName}Raw", varName, configVar, loggerVar, lineNumberVar, fileName);
             codeBuilder.AppendLine($"var {varName} = {parseCode};");
             codeBuilder.AddBlankLine(); // Add blank line between properties for readability
+        }
+
+        /// <summary>
+        /// Generate deserialization code for nested types using dot notation columns
+        /// Example: TestPooledPrefab.Path, TestPooledPrefab.InitialCount, TestPooledPrefab.MaxCount
+        /// </summary>
+        private void GenerateNestedTypeDeserialization(CodeBuilder codeBuilder, PropertyInfo prop, string valuesVar, string headerIndexVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
+        {
+            codeBuilder.AppendLine($"// Deserialize nested type: {prop.Name}");
+
+            // Create instance of the nested type
+            if (prop.IsNestedStruct)
+            {
+                codeBuilder.AppendLine($"var {varName} = new {prop.Type}();");
+            }
+            else
+            {
+                codeBuilder.AppendLine($"var {varName} = new {prop.Type}();");
+            }
+
+            // Parse each field of the nested type
+            foreach (var nestedProp in prop.NestedProperties)
+            {
+                var columnName = $"{prop.Name}.{nestedProp.Name}";
+                var nestedVarName = $"{varName}_{nestedProp.Name}";
+
+                // Get the raw value from the dot-notation column
+                var getValueCode = $"{headerIndexVar}.TryGetValue(\"{columnName}\", out var {nestedVarName}Idx) && {nestedVarName}Idx < {valuesVar}.Length ? {valuesVar}[{nestedVarName}Idx] : \"\"";
+                codeBuilder.AppendLine($"var {nestedVarName}Raw = {getValueCode};");
+
+                // Generate parse code for the nested property
+                var parseCode = GetNestedPropertyParseCode(nestedProp, $"{nestedVarName}Raw", nestedVarName, configVar, loggerVar, lineNumberVar, fileName, columnName);
+                codeBuilder.AppendLine($"var {nestedVarName} = {parseCode};");
+
+                // Assign to the nested type instance
+                codeBuilder.AppendLine($"{varName}.{nestedProp.Name} = {nestedVarName};");
+            }
+
+            codeBuilder.AddBlankLine();
+        }
+
+        /// <summary>
+        /// Generate parse code for a property within a nested type
+        /// </summary>
+        private string GetNestedPropertyParseCode(PropertyInfo prop, string rawValueVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName, string columnName)
+        {
+            // Handle DataRef types
+            if (prop.IsDataRef)
+            {
+                if (prop.DataRefKeyType == "string")
+                {
+                    return $"new {prop.Type} {{ Value = {rawValueVar} }}";
+                }
+                else if (prop.DataRefKeyType == "int")
+                {
+                    return $"new {prop.Type} {{ Value = global::Datra.Helpers.ParsingHelper.ParseInt({rawValueVar}, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\") }}";
+                }
+            }
+
+            // Handle enums
+            if (prop.IsEnum)
+            {
+                return $"global::Datra.Helpers.ParsingHelper.ParseEnum<{prop.Type}>({rawValueVar}, default({prop.Type}), {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+            }
+
+            // Handle basic types
+            var cleanType = prop.CleanTypeName ?? prop.Type;
+            switch (cleanType)
+            {
+                case "string":
+                case "System.String":
+                    return rawValueVar;
+                case "int":
+                case "System.Int32":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseInt({rawValueVar}, 0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "float":
+                case "System.Single":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseFloat({rawValueVar}, 0f, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "double":
+                case "System.Double":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseDouble({rawValueVar}, 0.0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "bool":
+                case "System.Boolean":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseBool({rawValueVar}, false, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "long":
+                case "System.Int64":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseLong({rawValueVar}, 0L, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "short":
+                case "System.Int16":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseShort({rawValueVar}, (short)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "byte":
+                case "System.Byte":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseByte({rawValueVar}, (byte)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "decimal":
+                case "System.Decimal":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseDecimal({rawValueVar}, 0m, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "uint":
+                case "System.UInt32":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseUInt({rawValueVar}, 0u, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "ulong":
+                case "System.UInt64":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseULong({rawValueVar}, 0ul, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "ushort":
+                case "System.UInt16":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseUShort({rawValueVar}, (ushort)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "sbyte":
+                case "System.SByte":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseSByte({rawValueVar}, (sbyte)0, {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                case "char":
+                case "System.Char":
+                    return $"global::Datra.Helpers.ParsingHelper.ParseChar({rawValueVar}, '\\0', {loggerVar}, {fileName}, {lineNumberVar}, \"{columnName}\")";
+                default:
+                    return $"default({prop.Type})";
+            }
         }
 
         private string GetParseCodeWithHelper(PropertyInfo prop, string rawValueVar, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
@@ -623,6 +796,72 @@ namespace Datra.Generators.Generators
                 default:
                     // Fallback for unknown types
                     return $"{arrayVar} == null ? string.Empty : string.Join({arrayDelimiter}, {arrayVar}.Select(x => x?.ToString() ?? string.Empty))";
+            }
+        }
+
+        /// <summary>
+        /// Generate serialization code for a property within a nested type
+        /// Example: item.TestPooledPrefab.Path or item.TestPooledPrefab.InitialCount
+        /// </summary>
+        private string GetNestedPropertySerializeCode(PropertyInfo parentProp, PropertyInfo nestedProp, string itemVar, string configVar)
+        {
+            var accessPath = $"{itemVar}.{parentProp.Name}.{nestedProp.Name}";
+
+            // Handle DataRef types
+            if (nestedProp.IsDataRef)
+            {
+                if (nestedProp.DataRefKeyType == "string")
+                {
+                    return $"{accessPath}.Value ?? string.Empty";
+                }
+                else
+                {
+                    return $"{accessPath}.Value.ToString()";
+                }
+            }
+
+            // Handle basic types
+            var cleanType = nestedProp.CleanTypeName ?? nestedProp.Type;
+            switch (cleanType)
+            {
+                case "string":
+                case "System.String":
+                    return $"{accessPath} ?? string.Empty";
+                case "int":
+                case "System.Int32":
+                case "float":
+                case "System.Single":
+                case "double":
+                case "System.Double":
+                case "long":
+                case "System.Int64":
+                case "decimal":
+                case "System.Decimal":
+                    return $"{accessPath}.ToString(global::System.Globalization.CultureInfo.InvariantCulture)";
+                case "bool":
+                case "System.Boolean":
+                case "short":
+                case "System.Int16":
+                case "byte":
+                case "System.Byte":
+                case "uint":
+                case "System.UInt32":
+                case "ulong":
+                case "System.UInt64":
+                case "ushort":
+                case "System.UInt16":
+                case "sbyte":
+                case "System.SByte":
+                case "char":
+                case "System.Char":
+                    return $"{accessPath}.ToString()";
+                default:
+                    // Handle enums and other value types
+                    if (nestedProp.IsEnum || nestedProp.IsValueType)
+                    {
+                        return $"{accessPath}.ToString()";
+                    }
+                    return $"{accessPath}?.ToString() ?? string.Empty";
             }
         }
     }

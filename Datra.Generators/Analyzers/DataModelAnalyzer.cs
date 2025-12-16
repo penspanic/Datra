@@ -240,6 +240,26 @@ namespace Datra.Generators.Analyzers
                         }
                     }
 
+                    // Check for nested type (struct/class that is not a primitive, enum, array, or DataRef)
+                    bool isNestedType = false;
+                    bool isNestedStruct = false;
+                    string nestedTypeName = null;
+                    List<PropertyInfo> nestedProperties = null;
+
+                    if (!isArray && !isDataRef && !isEnum && !isFixedLocale)
+                    {
+                        if (propertyType is INamedTypeSymbol namedPropertyType &&
+                            (namedPropertyType.TypeKind == TypeKind.Struct || namedPropertyType.TypeKind == TypeKind.Class) &&
+                            !IsPrimitiveOrSystemType(namedPropertyType))
+                        {
+                            isNestedType = true;
+                            isNestedStruct = namedPropertyType.IsValueType;
+                            nestedTypeName = namedPropertyType.ToDisplayString(FullyQualifiedFormat);
+                            nestedProperties = GetNestedTypeProperties(namedPropertyType);
+                            GeneratorLogger.Log($"Found nested type property: {property.Name} of type {nestedTypeName} with {nestedProperties.Count} members");
+                        }
+                    }
+
                     properties.Add(new PropertyInfo
                     {
                         Name = property.Name,
@@ -257,13 +277,164 @@ namespace Datra.Generators.Analyzers
                         IsValueType = isValueType,
                         ElementIsEnum = elementIsEnum,
                         ElementIsValueType = elementIsValueType,
-                        IsFixedLocale = isFixedLocale
+                        IsFixedLocale = isFixedLocale,
+                        // Nested type metadata
+                        IsNestedType = isNestedType,
+                        IsNestedStruct = isNestedStruct,
+                        NestedTypeName = nestedTypeName,
+                        NestedProperties = nestedProperties
                     });
                 }
             }
 
             GeneratorLogger.Log($"Found {properties.Count} properties in {classSymbol.Name}");
             return properties;
+        }
+
+        /// <summary>
+        /// Check if the type is a primitive or system type (string, DateTime, etc.)
+        /// </summary>
+        private bool IsPrimitiveOrSystemType(INamedTypeSymbol typeSymbol)
+        {
+            var fullName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
+
+            // Check for system types
+            if (fullName.StartsWith("global::System."))
+                return true;
+
+            // Check for primitive type keywords
+            var cleanName = typeSymbol.ToDisplayString();
+            switch (cleanName)
+            {
+                case "string":
+                case "int":
+                case "float":
+                case "double":
+                case "bool":
+                case "long":
+                case "short":
+                case "byte":
+                case "decimal":
+                case "uint":
+                case "ulong":
+                case "ushort":
+                case "sbyte":
+                case "char":
+                case "object":
+                    return true;
+            }
+
+            // Check for Datra built-in types (LocaleRef, DataRef, etc.)
+            if (fullName.StartsWith("global::Datra.DataTypes."))
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Get the public fields and properties of a nested type for CSV column generation
+        /// </summary>
+        private List<PropertyInfo> GetNestedTypeProperties(INamedTypeSymbol typeSymbol, int depth = 0)
+        {
+            var properties = new List<PropertyInfo>();
+
+            // Limit recursion depth to prevent infinite loops
+            if (depth > 2)
+            {
+                GeneratorLogger.LogWarning($"Nested type depth exceeded for {typeSymbol.Name}. Max depth is 2.");
+                return properties;
+            }
+
+            foreach (var member in typeSymbol.GetMembers())
+            {
+                // Handle public fields (common in structs)
+                if (member is IFieldSymbol field &&
+                    field.DeclaredAccessibility == Accessibility.Public &&
+                    !field.IsStatic && !field.IsConst)
+                {
+                    var propInfo = CreatePropertyInfoFromSymbol(field.Type, field.Name, field.GetAttributes(), depth);
+                    if (propInfo != null)
+                        properties.Add(propInfo);
+                }
+                // Handle public properties with setter (or init-only)
+                else if (member is IPropertySymbol property &&
+                         property.DeclaredAccessibility == Accessibility.Public &&
+                         !property.IsStatic &&
+                         property.SetMethod != null)
+                {
+                    var propInfo = CreatePropertyInfoFromSymbol(property.Type, property.Name, property.GetAttributes(), depth);
+                    if (propInfo != null)
+                        properties.Add(propInfo);
+                }
+            }
+
+            return properties;
+        }
+
+        /// <summary>
+        /// Create a PropertyInfo from a type symbol (used for nested type members)
+        /// </summary>
+        private PropertyInfo CreatePropertyInfoFromSymbol(ITypeSymbol typeSymbol, string name,
+            System.Collections.Immutable.ImmutableArray<AttributeData> attributes, int depth)
+        {
+            var isDataRef = false;
+            string dataRefKeyType = null;
+            string dataRefTargetType = null;
+            var isArray = false;
+            string elementType = null;
+            bool isEnum = false;
+            bool isValueType = false;
+            bool elementIsEnum = false;
+            bool elementIsValueType = false;
+            string cleanTypeName = null;
+            string cleanElementType = null;
+
+            // Check if it's an array type
+            if (typeSymbol is IArrayTypeSymbol arrayType)
+            {
+                isArray = true;
+                var elementTypeSymbol = arrayType.ElementType;
+                elementType = elementTypeSymbol.ToDisplayString(FullyQualifiedFormat);
+                cleanElementType = elementTypeSymbol.ToDisplayString();
+                elementIsEnum = elementTypeSymbol.TypeKind == TypeKind.Enum;
+                elementIsValueType = elementTypeSymbol.IsValueType;
+            }
+            // Check if it's a DataRef type
+            else if (typeSymbol is INamedTypeSymbol namedType && namedType.IsGenericType)
+            {
+                var constructedFrom = namedType.ConstructedFrom.ToDisplayString(FullyQualifiedFormat);
+                if (constructedFrom == "global::Datra.DataTypes.StringDataRef<T>" ||
+                    constructedFrom == "global::Datra.DataTypes.IntDataRef<T>")
+                {
+                    isDataRef = true;
+                    dataRefKeyType = constructedFrom.Contains("StringDataRef") ? "string" : "int";
+                    dataRefTargetType = namedType.TypeArguments[0].Name;
+                }
+            }
+
+            cleanTypeName = typeSymbol.ToDisplayString();
+            isEnum = typeSymbol.TypeKind == TypeKind.Enum;
+            isValueType = typeSymbol.IsValueType;
+
+            return new PropertyInfo
+            {
+                Name = name,
+                Type = typeSymbol.ToDisplayString(FullyQualifiedFormat),
+                IsNullable = typeSymbol.NullableAnnotation == NullableAnnotation.Annotated,
+                IsDataRef = isDataRef,
+                DataRefKeyType = dataRefKeyType,
+                DataRefTargetType = dataRefTargetType,
+                IsArray = isArray,
+                ElementType = elementType,
+                CleanTypeName = cleanTypeName,
+                CleanElementType = cleanElementType,
+                IsEnum = isEnum,
+                IsValueType = isValueType,
+                ElementIsEnum = elementIsEnum,
+                ElementIsValueType = elementIsValueType,
+                IsFixedLocale = false,
+                IsNestedType = false // Don't support nested-nested types beyond depth limit
+            };
         }
     }
 }
