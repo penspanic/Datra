@@ -364,26 +364,30 @@ namespace Datra.Unity.Editor.Components
             {
                 return CreateDataRefField(propertyType, value);
             }
+            else if (IsNestedType(propertyType))
+            {
+                return CreateNestedTypeField(propertyType, value);
+            }
             else
             {
                 // Log warning for unsupported type
                 Debug.LogWarning($"[DatraPropertyField] Unsupported property type: {propertyType.FullName} for property '{property.Name}'. " +
                                 $"Consider adding support for this type or using a custom editor.");
-                
+
                 // For unsupported types, create a read-only field with type info
                 var container = new VisualElement();
                 container.AddToClassList("unsupported-field-container");
-                
+
                 var readOnlyField = new TextField();
                 readOnlyField.value = value?.ToString() ?? "null";
                 readOnlyField.isReadOnly = true;
                 readOnlyField.AddToClassList("unsupported-field");
                 container.Add(readOnlyField);
-                
+
                 var typeInfo = new Label($"Type: {propertyType.Name}");
                 typeInfo.AddToClassList("type-info");
                 container.Add(typeInfo);
-                
+
                 return container;
             }
         }
@@ -826,7 +830,325 @@ namespace Datra.Unity.Editor.Components
         {
             return type.IsArray && type.GetElementType().IsEnum;
         }
-        
+
+        private bool IsNestedType(Type type)
+        {
+            // Check if it's a struct or class that we should treat as nested type
+            if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal))
+                return false;
+            if (type.IsArray || type.IsEnum)
+                return false;
+            if (type.Namespace != null && type.Namespace.StartsWith("System"))
+                return false;
+            if (type.Namespace != null && type.Namespace.StartsWith("UnityEngine"))
+                return false;
+            if (IsDataRefType(type))
+                return false;
+            if (type == typeof(LocaleRef))
+                return false;
+
+            // It's a user-defined struct or class
+            return type.IsValueType || type.IsClass;
+        }
+
+        private VisualElement CreateNestedTypeField(Type nestedType, object value)
+        {
+            var container = new VisualElement();
+            container.AddToClassList("nested-type-field-container");
+
+            // Table mode: compact display with edit button
+            if (layoutMode == DatraFieldLayoutMode.Table)
+            {
+                container.style.flexDirection = FlexDirection.Row;
+                container.style.alignItems = Align.Center;
+
+                // Edit button
+                var editButton = new Button(() => OpenNestedTypeEditor(nestedType, value));
+                editButton.text = "✏";
+                editButton.tooltip = $"Edit {nestedType.Name}";
+                editButton.AddToClassList("nested-type-edit-button");
+                editButton.style.marginRight = 4;
+                container.Add(editButton);
+
+                // Compact display using ToString() or showing field values
+                var displayField = new TextField();
+                displayField.isReadOnly = true;
+                displayField.style.flexGrow = 1;
+                displayField.AddToClassList("nested-type-compact-display");
+
+                if (value != null)
+                {
+                    var displayText = GetNestedTypeDisplayText(nestedType, value);
+                    if (displayText.Length > 60)
+                    {
+                        displayText = displayText.Substring(0, 57) + "...";
+                    }
+                    displayField.value = displayText;
+                }
+                else
+                {
+                    displayField.value = "(null)";
+                }
+
+                container.Add(displayField);
+                return container;
+            }
+
+            // Form/Inline mode: show nested fields
+            container.style.flexDirection = FlexDirection.Column;
+            container.style.marginLeft = 8;
+            container.style.paddingLeft = 8;
+            container.style.borderLeftWidth = 2;
+            container.style.borderLeftColor = new UnityEngine.Color(0.3f, 0.3f, 0.3f, 1f);
+
+            if (value == null)
+            {
+                // Create instance if null
+                if (nestedType.IsValueType)
+                {
+                    value = Activator.CreateInstance(nestedType);
+                    property.SetValue(target, value);
+                }
+                else
+                {
+                    var createButton = new Button(() =>
+                    {
+                        var newValue = Activator.CreateInstance(nestedType);
+                        property.SetValue(target, newValue);
+                        RefreshField();
+                        OnFieldValueChanged(newValue);
+                    });
+                    createButton.text = $"Create {nestedType.Name}";
+                    container.Add(createButton);
+                    return container;
+                }
+            }
+
+            // Get all public fields and properties
+            var members = GetNestedTypeMembers(nestedType);
+
+            foreach (var member in members)
+            {
+                var memberContainer = new VisualElement();
+                memberContainer.AddToClassList("nested-member-container");
+                memberContainer.style.flexDirection = FlexDirection.Row;
+                memberContainer.style.alignItems = Align.Center;
+                memberContainer.style.marginBottom = 2;
+
+                var memberLabel = new Label(ObjectNames.NicifyVariableName(member.Name));
+                memberLabel.style.minWidth = 100;
+                memberLabel.style.marginRight = 8;
+                memberContainer.Add(memberLabel);
+
+                var memberType = GetMemberType(member);
+                var memberValue = GetMemberValue(member, value);
+
+                var memberField = CreateNestedMemberField(member, memberType, memberValue, value);
+                if (memberField != null)
+                {
+                    memberField.style.flexGrow = 1;
+                    memberContainer.Add(memberField);
+                }
+
+                container.Add(memberContainer);
+            }
+
+            return container;
+        }
+
+        private string GetNestedTypeDisplayText(Type nestedType, object value)
+        {
+            // Try ToString() first
+            var toStringResult = value.ToString();
+            if (toStringResult != nestedType.FullName && toStringResult != nestedType.Name)
+            {
+                return toStringResult;
+            }
+
+            // Fallback: show field values
+            var members = GetNestedTypeMembers(nestedType);
+            var values = new System.Collections.Generic.List<string>();
+
+            foreach (var member in members)
+            {
+                var memberValue = GetMemberValue(member, value);
+                if (memberValue != null)
+                {
+                    var strValue = memberValue.ToString();
+                    if (!string.IsNullOrEmpty(strValue))
+                    {
+                        values.Add(strValue);
+                    }
+                }
+            }
+
+            return values.Count > 0 ? string.Join(", ", values) : "(empty)";
+        }
+
+        private System.Collections.Generic.List<MemberInfo> GetNestedTypeMembers(Type type)
+        {
+            var members = new System.Collections.Generic.List<MemberInfo>();
+
+            // Get public fields
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var field in fields)
+            {
+                // Skip backing fields
+                if (field.Name.Contains("<") || field.Name.Contains(">"))
+                    continue;
+                members.Add(field);
+            }
+
+            // Get public properties with setter
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var prop in properties)
+            {
+                if (prop.CanWrite && prop.CanRead && prop.GetIndexParameters().Length == 0)
+                {
+                    // Skip if there's already a field with similar name
+                    var fieldExists = fields.Any(f => f.Name.Equals(prop.Name, StringComparison.OrdinalIgnoreCase));
+                    if (!fieldExists)
+                    {
+                        members.Add(prop);
+                    }
+                }
+            }
+
+            return members;
+        }
+
+        private Type GetMemberType(MemberInfo member)
+        {
+            return member switch
+            {
+                FieldInfo field => field.FieldType,
+                PropertyInfo prop => prop.PropertyType,
+                _ => typeof(object)
+            };
+        }
+
+        private object GetMemberValue(MemberInfo member, object target)
+        {
+            return member switch
+            {
+                FieldInfo field => field.GetValue(target),
+                PropertyInfo prop => prop.GetValue(target),
+                _ => null
+            };
+        }
+
+        private void SetMemberValue(MemberInfo member, object target, object value)
+        {
+            switch (member)
+            {
+                case FieldInfo field:
+                    field.SetValue(target, value);
+                    break;
+                case PropertyInfo prop:
+                    prop.SetValue(target, value);
+                    break;
+            }
+        }
+
+        private VisualElement CreateNestedMemberField(MemberInfo member, Type memberType, object memberValue, object parentValue)
+        {
+            if (memberType == typeof(string))
+            {
+                // Check for asset attributes on fields
+                if (member is FieldInfo fieldInfo && AttributeFieldHandler.HasAssetAttributes(fieldInfo))
+                {
+                    var assetType = AttributeFieldHandler.GetAssetTypeAttribute(fieldInfo);
+                    var folderPath = AttributeFieldHandler.GetFolderPathAttribute(fieldInfo);
+
+                    return new AssetFieldElement(assetType, folderPath, memberValue as string ?? "", (newValue) =>
+                    {
+                        SetMemberValue(member, parentValue, newValue);
+                        UpdateNestedTypeValue(parentValue);
+                    }, true);
+                }
+
+                var textField = new TextField();
+                textField.value = memberValue as string ?? "";
+                textField.RegisterValueChangedCallback(evt =>
+                {
+                    SetMemberValue(member, parentValue, evt.newValue);
+                    UpdateNestedTypeValue(parentValue);
+                });
+                return textField;
+            }
+            else if (memberType == typeof(int))
+            {
+                var intField = new IntegerField();
+                intField.value = memberValue != null ? Convert.ToInt32(memberValue) : 0;
+                intField.RegisterValueChangedCallback(evt =>
+                {
+                    SetMemberValue(member, parentValue, evt.newValue);
+                    UpdateNestedTypeValue(parentValue);
+                });
+                return intField;
+            }
+            else if (memberType == typeof(float))
+            {
+                var floatField = new FloatField();
+                floatField.value = memberValue != null ? Convert.ToSingle(memberValue) : 0f;
+                floatField.RegisterValueChangedCallback(evt =>
+                {
+                    SetMemberValue(member, parentValue, evt.newValue);
+                    UpdateNestedTypeValue(parentValue);
+                });
+                return floatField;
+            }
+            else if (memberType == typeof(bool))
+            {
+                var toggle = new Toggle();
+                toggle.value = memberValue != null && Convert.ToBoolean(memberValue);
+                toggle.RegisterValueChangedCallback(evt =>
+                {
+                    SetMemberValue(member, parentValue, evt.newValue);
+                    UpdateNestedTypeValue(parentValue);
+                });
+                return toggle;
+            }
+            else if (memberType.IsEnum)
+            {
+                var enumField = new EnumField((Enum)(memberValue ?? Enum.GetValues(memberType).GetValue(0)));
+                enumField.RegisterValueChangedCallback(evt =>
+                {
+                    SetMemberValue(member, parentValue, evt.newValue);
+                    UpdateNestedTypeValue(parentValue);
+                });
+                return enumField;
+            }
+            else
+            {
+                // Unsupported member type - show readonly
+                var readOnlyField = new TextField();
+                readOnlyField.value = memberValue?.ToString() ?? "";
+                readOnlyField.isReadOnly = true;
+                return readOnlyField;
+            }
+        }
+
+        private void UpdateNestedTypeValue(object nestedValue)
+        {
+            // For structs, we need to reassign to the property since they are value types
+            if (property.PropertyType.IsValueType)
+            {
+                property.SetValue(target, nestedValue);
+            }
+            OnFieldValueChanged(nestedValue);
+        }
+
+        private void OpenNestedTypeEditor(Type nestedType, object value)
+        {
+            // Open property editor popup for nested type
+            DatraPropertyEditorPopup.ShowEditor(property, target, () =>
+            {
+                RefreshField();
+                OnFieldValueChanged(property.GetValue(target));
+            });
+        }
+
         private VisualElement CreateDataRefField(Type dataRefType, object value)
         {
             var container = new VisualElement();

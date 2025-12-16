@@ -222,9 +222,22 @@ namespace Datra.Generators.Generators
 
             codeBuilder.AppendLine("// Build property order map for efficient insertion");
             codeBuilder.AppendLine("var propOrder = new global::System.Collections.Generic.Dictionary<string, int>();");
-            for (int i = 0; i < model.Properties.Count; i++)
+            int orderIndex = 0;
+            foreach (var prop in model.GetSerializableProperties())
             {
-                codeBuilder.AppendLine($"propOrder[\"{model.Properties[i].Name}\"] = {i};");
+                if (prop.IsNestedType && prop.NestedProperties != null && prop.NestedProperties.Count > 0)
+                {
+                    // Add dot-notation column names for nested type fields
+                    foreach (var nestedProp in prop.NestedProperties)
+                    {
+                        codeBuilder.AppendLine($"propOrder[\"{prop.Name}.{nestedProp.Name}\"] = {orderIndex};");
+                    }
+                }
+                else
+                {
+                    codeBuilder.AppendLine($"propOrder[\"{prop.Name}\"] = {orderIndex};");
+                }
+                orderIndex++;
             }
             codeBuilder.AddBlankLine();
 

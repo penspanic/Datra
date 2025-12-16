@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Datra.Unity.Editor.Components;
+using Datra.Unity.Editor.UI;
+using DatraPropertyField = Datra.Unity.Editor.Components.DatraPropertyField;
 using Datra.DataTypes;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
@@ -15,12 +17,92 @@ using Cursor = UnityEngine.UIElements.Cursor;
 namespace Datra.Unity.Editor.Views
 {
     /// <summary>
+    /// Represents a column in the table (either a direct property or a nested property field)
+    /// </summary>
+    internal class ColumnInfo
+    {
+        public PropertyInfo Property { get; set; }        // The parent property
+        public MemberInfo NestedMember { get; set; }      // Nested field/property (null for direct properties)
+        public string DisplayName { get; set; }           // Display name in header
+        public string ColumnName { get; set; }            // Column identifier (e.g., "TestPooledPrefab.Path")
+
+        public bool IsNestedColumn => NestedMember != null;
+
+        public object GetValue(object item)
+        {
+            var parentValue = Property.GetValue(item);
+            if (!IsNestedColumn || parentValue == null)
+                return parentValue;
+
+            return NestedMember switch
+            {
+                FieldInfo field => field.GetValue(parentValue),
+                PropertyInfo prop => prop.GetValue(parentValue),
+                _ => null
+            };
+        }
+
+        public void SetValue(object item, object value)
+        {
+            if (!IsNestedColumn)
+            {
+                Property.SetValue(item, value);
+                return;
+            }
+
+            var parentValue = Property.GetValue(item);
+            if (parentValue == null)
+            {
+                // Create instance for value types (structs)
+                if (Property.PropertyType.IsValueType)
+                {
+                    parentValue = Activator.CreateInstance(Property.PropertyType);
+                }
+                else
+                {
+                    return; // Cannot set nested value on null parent
+                }
+            }
+
+            switch (NestedMember)
+            {
+                case FieldInfo field:
+                    field.SetValue(parentValue, value);
+                    break;
+                case PropertyInfo prop:
+                    prop.SetValue(parentValue, value);
+                    break;
+            }
+
+            // For structs, we need to write back to the parent property
+            if (Property.PropertyType.IsValueType)
+            {
+                Property.SetValue(item, parentValue);
+            }
+        }
+
+        public Type GetValueType()
+        {
+            if (!IsNestedColumn)
+                return Property.PropertyType;
+
+            return NestedMember switch
+            {
+                FieldInfo field => field.FieldType,
+                PropertyInfo prop => prop.PropertyType,
+                _ => typeof(object)
+            };
+        }
+    }
+
+    /// <summary>
     /// Virtualized table view for generic data types
     /// </summary>
     public class DatraTableView : VirtualizedTableView
     {
         // Properties
         private List<PropertyInfo> columns;
+        private List<ColumnInfo> expandedColumns;  // Columns with nested types expanded
         public bool ShowIdColumn { get; set; } = true;
         public bool ShowActionsColumn { get; set; } = true;
 
@@ -40,6 +122,7 @@ namespace Datra.Unity.Editor.Views
         {
             AddToClassList("datra-table-view");
             columnWidths = new Dictionary<string, float>();
+            expandedColumns = new List<ColumnInfo>();
         }
 
         public override void SetData(
@@ -69,10 +152,111 @@ namespace Datra.Unity.Editor.Views
             // Get columns (properties) BEFORE calling RefreshContent
             columns = GetFilteredProperties(type);
 
+            // Build expanded columns list (with nested types expanded to individual columns)
+            BuildExpandedColumns();
+
             // Now cleanup and refresh
             CleanupFields();
             RefreshContent();
             UpdateFooter();
+        }
+
+        private void BuildExpandedColumns()
+        {
+            expandedColumns.Clear();
+
+            foreach (var property in columns)
+            {
+                if (IsNestedType(property.PropertyType))
+                {
+                    // Expand nested type to multiple columns
+                    var nestedMembers = GetNestedTypeMembers(property.PropertyType);
+                    foreach (var member in nestedMembers)
+                    {
+                        var memberName = member switch
+                        {
+                            FieldInfo f => f.Name,
+                            PropertyInfo p => p.Name,
+                            _ => "Unknown"
+                        };
+
+                        expandedColumns.Add(new ColumnInfo
+                        {
+                            Property = property,
+                            NestedMember = member,
+                            DisplayName = $"{ObjectNames.NicifyVariableName(property.Name)}.{ObjectNames.NicifyVariableName(memberName)}",
+                            ColumnName = $"{property.Name}.{memberName}"
+                        });
+                    }
+                }
+                else
+                {
+                    // Regular column
+                    expandedColumns.Add(new ColumnInfo
+                    {
+                        Property = property,
+                        NestedMember = null,
+                        DisplayName = ObjectNames.NicifyVariableName(property.Name),
+                        ColumnName = property.Name
+                    });
+                }
+            }
+        }
+
+        private bool IsNestedType(Type type)
+        {
+            if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal))
+                return false;
+            if (type.IsArray || type.IsEnum)
+                return false;
+            if (type.Namespace != null && type.Namespace.StartsWith("System"))
+                return false;
+            if (type.Namespace != null && type.Namespace.StartsWith("UnityEngine"))
+                return false;
+            // Check for DataRef types
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                if (genericDef.Name.Contains("DataRef"))
+                    return false;
+            }
+            // Check for LocaleRef
+            if (type == typeof(LocaleRef))
+                return false;
+
+            return type.IsValueType || type.IsClass;
+        }
+
+        private List<MemberInfo> GetNestedTypeMembers(Type type)
+        {
+            var members = new List<MemberInfo>();
+
+            // Get public fields
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var field in fields)
+            {
+                // Skip backing fields
+                if (field.Name.Contains("<") || field.Name.Contains(">"))
+                    continue;
+                members.Add(field);
+            }
+
+            // Get public properties with setter
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var prop in properties)
+            {
+                if (prop.CanWrite && prop.CanRead && prop.GetIndexParameters().Length == 0)
+                {
+                    // Skip if there's already a field with similar name
+                    var fieldExists = fields.Any(f => f.Name.Equals(prop.Name, StringComparison.OrdinalIgnoreCase));
+                    if (!fieldExists)
+                    {
+                        members.Add(prop);
+                    }
+                }
+            }
+
+            return members;
         }
 
         protected override void CreateHeaderCells()
@@ -102,12 +286,12 @@ namespace Datra.Unity.Editor.Views
                 columnIndex++;
             }
 
-            // Data columns
-            foreach (var column in columns)
+            // Data columns (using expanded columns for nested types)
+            foreach (var colInfo in expandedColumns)
             {
-                if (column.Name == "Id" && ShowIdColumn) continue;
+                if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
-                var headerCell = CreateHeaderCell(ObjectNames.NicifyVariableName(column.Name), DefaultColumnWidth);
+                var headerCell = CreateHeaderCell(colInfo.DisplayName, DefaultColumnWidth);
                 if (columnIndex == 0)
                 {
                     var leftHandle = headerCell.Q<VisualElement>(className: "resize-handle-left");
@@ -151,17 +335,17 @@ namespace Datra.Unity.Editor.Views
                 row.Add(idCell);
             }
 
-            // Data cells
-            foreach (var column in columns)
+            // Data cells (using expanded columns for nested types)
+            foreach (var colInfo in expandedColumns)
             {
-                if (column.Name == "Id" && ShowIdColumn) continue;
+                if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
                 var cell = new VisualElement();
                 cell.AddToClassList("table-cell");
                 cell.AddToClassList("editable-cell");
                 cell.style.width = DefaultColumnWidth;
                 cell.style.minWidth = DefaultColumnWidth;
-                cell.name = $"cell-{column.Name}";
+                cell.name = $"cell-{colInfo.ColumnName}";
                 row.Add(cell);
             }
         }
@@ -200,13 +384,13 @@ namespace Datra.Unity.Editor.Views
                 cellIndex++;
             }
 
-            // Bind data cells
-            foreach (var column in columns)
+            // Bind data cells (using expanded columns for nested types)
+            foreach (var colInfo in expandedColumns)
             {
-                if (column.Name == "Id" && ShowIdColumn) continue;
+                if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
                 var cell = row[cellIndex];
-                BindEditableCell(cell, item, column);
+                BindEditableCellForColumnInfo(cell, item, colInfo);
                 cellIndex++;
             }
 
@@ -226,6 +410,134 @@ namespace Datra.Unity.Editor.Views
                     }
                 }
             }
+        }
+
+        private void BindEditableCellForColumnInfo(VisualElement cell, object item, ColumnInfo colInfo)
+        {
+            cell.Clear();
+
+            if (colInfo.IsNestedColumn)
+            {
+                // Nested column - create direct field for the nested member
+                BindNestedMemberCell(cell, item, colInfo);
+            }
+            else
+            {
+                // Regular column - use existing method
+                BindEditableCell(cell, item, colInfo.Property);
+            }
+        }
+
+        private void BindNestedMemberCell(VisualElement cell, object item, ColumnInfo colInfo)
+        {
+            var valueType = colInfo.GetValueType();
+            var value = colInfo.GetValue(item);
+
+            if (isReadOnly)
+            {
+                var displayValue = GetDisplayValue(valueType, value);
+                var label = new Label(displayValue);
+                cell.Add(label);
+                return;
+            }
+
+            // Create appropriate field based on type
+            VisualElement field = null;
+
+            if (valueType == typeof(string))
+            {
+                // Check for asset attributes on the nested member
+                if (colInfo.NestedMember is FieldInfo fieldInfo &&
+                    Utilities.AttributeFieldHandler.HasAssetAttributes(fieldInfo))
+                {
+                    var assetType = Utilities.AttributeFieldHandler.GetAssetTypeAttribute(fieldInfo);
+                    var folderPath = Utilities.AttributeFieldHandler.GetFolderPathAttribute(fieldInfo);
+
+                    field = new AssetFieldElement(assetType, folderPath, value as string ?? "", (newValue) =>
+                    {
+                        colInfo.SetValue(item, newValue);
+                        TrackNestedPropertyChange(item, colInfo, newValue);
+                    }, true);
+                }
+                else
+                {
+                    var textField = new TextField();
+                    textField.value = value as string ?? "";
+                    textField.RegisterValueChangedCallback(evt =>
+                    {
+                        colInfo.SetValue(item, evt.newValue);
+                        TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                    });
+                    field = textField;
+                }
+            }
+            else if (valueType == typeof(int))
+            {
+                var intField = new IntegerField();
+                intField.value = value != null ? Convert.ToInt32(value) : 0;
+                intField.RegisterValueChangedCallback(evt =>
+                {
+                    colInfo.SetValue(item, evt.newValue);
+                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                });
+                field = intField;
+            }
+            else if (valueType == typeof(float))
+            {
+                var floatField = new FloatField();
+                floatField.value = value != null ? Convert.ToSingle(value) : 0f;
+                floatField.RegisterValueChangedCallback(evt =>
+                {
+                    colInfo.SetValue(item, evt.newValue);
+                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                });
+                field = floatField;
+            }
+            else if (valueType == typeof(bool))
+            {
+                var toggle = new Toggle();
+                toggle.value = value != null && Convert.ToBoolean(value);
+                toggle.RegisterValueChangedCallback(evt =>
+                {
+                    colInfo.SetValue(item, evt.newValue);
+                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                });
+                field = toggle;
+            }
+            else if (valueType.IsEnum)
+            {
+                var enumField = new EnumField((Enum)(value ?? Enum.GetValues(valueType).GetValue(0)));
+                enumField.RegisterValueChangedCallback(evt =>
+                {
+                    colInfo.SetValue(item, evt.newValue);
+                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                });
+                field = enumField;
+            }
+            else
+            {
+                // Fallback to label
+                var displayValue = GetDisplayValue(valueType, value);
+                var label = new Label(displayValue);
+                cell.Add(label);
+                return;
+            }
+
+            if (field != null)
+            {
+                field.AddToClassList("table-field");
+                cell.Add(field);
+            }
+        }
+
+        private void TrackNestedPropertyChange(object item, ColumnInfo colInfo, object newValue)
+        {
+            var itemKey = GetKeyFromItem(item);
+            // Track at the parent property level for change tracking
+            var parentValue = colInfo.Property.GetValue(item);
+            changeTracker.TrackPropertyChange(itemKey, colInfo.Property.Name, parentValue, out bool isModified);
+            UpdateModifiedState();
+            UpdateRowStateVisuals(item);
         }
 
         private void BindEditableCell(VisualElement cell, object item, PropertyInfo property)
@@ -275,9 +587,10 @@ namespace Datra.Unity.Editor.Views
         {
             if (string.IsNullOrEmpty(searchTerm)) return true;
 
-            foreach (var column in columns)
+            // Search through expanded columns (including nested type fields)
+            foreach (var colInfo in expandedColumns)
             {
-                var value = column.GetValue(item)?.ToString() ?? "";
+                var value = colInfo.GetValue(item)?.ToString() ?? "";
                 if (value.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     return true;

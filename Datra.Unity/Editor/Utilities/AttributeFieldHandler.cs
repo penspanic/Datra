@@ -21,7 +21,16 @@ namespace Datra.Unity.Editor.Utilities
             return property.GetCustomAttribute<AssetTypeAttribute>() != null ||
                    property.GetCustomAttribute<FolderPathAttribute>() != null;
         }
-        
+
+        /// <summary>
+        /// Check if a field has asset-related attributes
+        /// </summary>
+        public static bool HasAssetAttributes(FieldInfo field)
+        {
+            return field.GetCustomAttribute<AssetTypeAttribute>() != null ||
+                   field.GetCustomAttribute<FolderPathAttribute>() != null;
+        }
+
         /// <summary>
         /// Get AssetTypeAttribute from property
         /// </summary>
@@ -29,13 +38,29 @@ namespace Datra.Unity.Editor.Utilities
         {
             return property.GetCustomAttribute<AssetTypeAttribute>();
         }
-        
+
+        /// <summary>
+        /// Get AssetTypeAttribute from field
+        /// </summary>
+        public static AssetTypeAttribute GetAssetTypeAttribute(FieldInfo field)
+        {
+            return field.GetCustomAttribute<AssetTypeAttribute>();
+        }
+
         /// <summary>
         /// Get FolderPathAttribute from property
         /// </summary>
         public static FolderPathAttribute GetFolderPathAttribute(PropertyInfo property)
         {
             return property.GetCustomAttribute<FolderPathAttribute>();
+        }
+
+        /// <summary>
+        /// Get FolderPathAttribute from field
+        /// </summary>
+        public static FolderPathAttribute GetFolderPathAttribute(FieldInfo field)
+        {
+            return field.GetCustomAttribute<FolderPathAttribute>();
         }
         
         /// <summary>
