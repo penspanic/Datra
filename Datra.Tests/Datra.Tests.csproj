@@ -17,6 +17,7 @@
                           OutputItemType="Analyzer" 
                           ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\Datra.SampleData\Datra.SampleData.csproj" />
+        <ProjectReference Include="..\Datra.SampleData2\Datra.SampleData2.csproj" />
         <ProjectReference Include="..\Datra\Datra.csproj" />
     </ItemGroup>
 

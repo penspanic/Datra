@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Datra.Generated;
+using Datra.SampleData.Generated;
 using Datra.Interfaces;
 using Datra.Logging;
 using Datra.SampleData.Models;

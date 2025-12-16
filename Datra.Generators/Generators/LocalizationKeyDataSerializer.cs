@@ -5,10 +5,10 @@ namespace Datra.Generators.Generators
 {
     internal static class LocalizationKeyDataSerializer
     {
-        public static string GenerateSerializer()
+        public static string GenerateSerializer(string namespaceName = "Datra.Generated")
         {
             var builder = new CodeBuilder();
-            
+
             // Add using statements
             builder.AddUsings(new[]
             {
@@ -18,8 +18,8 @@ namespace Datra.Generators.Generators
                 "Datra.Models",
                 "Datra.Configuration"
             });
-            
-            builder.BeginNamespace("Datra.Generated");
+
+            builder.BeginNamespace(namespaceName);
             
             // Begin class
             builder.BeginClass("LocalizationKeyDataSerializer", "public static");

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Datra;
 using Datra.Configuration;
 using Datra.DataTypes;
-using Datra.Generated;
+using Datra.SampleData.Generated;
 using Datra.Interfaces;
 using Datra.SampleData.Models;
 using Datra.Serializers;

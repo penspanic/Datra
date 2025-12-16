@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Datra.SampleData.Generated;
 using Datra.SampleData.Models;
 using Xunit;
 
@@ -6,7 +7,7 @@ namespace Datra.Tests
 {
     public class NestedTypeTests
     {
-        private readonly Generated.GameDataContext _context;
+        private readonly GameDataContext _context;
 
         public NestedTypeTests()
         {

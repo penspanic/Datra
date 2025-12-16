@@ -1,0 +1,11 @@
+Id,Name,Price,DailyLimit,IsAvailable
+potion_hp_small,Small HP Potion,100,10,true
+potion_hp_medium,Medium HP Potion,300,5,true
+potion_hp_large,Large HP Potion,800,3,true
+potion_mp_small,Small MP Potion,120,10,true
+potion_mp_medium,Medium MP Potion,350,5,true
+potion_mp_large,Large MP Potion,900,3,true
+scroll_teleport,Teleport Scroll,500,0,true
+scroll_identify,Identify Scroll,50,0,true
+bundle_starter,Starter Bundle,1500,1,true
+bundle_premium,Premium Bundle,5000,1,false

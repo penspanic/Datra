@@ -11,11 +11,13 @@ namespace Datra.Generators
     {
         private static readonly List<string> _logs = new List<string>();
         private static readonly Stopwatch _stopwatch = new Stopwatch();
+        private static bool _debugOutputAdded = false;
 
         public static void StartLogging()
         {
             _logs.Clear();
             _stopwatch.Restart();
+            _debugOutputAdded = false;
         }
 
         public static void Log(string message)
@@ -38,21 +40,25 @@ namespace Datra.Generators
 
         public static void AddDebugOutput(GeneratorExecutionContext context)
         {
-            if (_logs.Count > 0)
+            if (_debugOutputAdded || _logs.Count == 0)
             {
-                var sb = new StringBuilder();
-                sb.AppendLine("// Source Generator Debug Log");
-                sb.AppendLine($"// Generated at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-                sb.AppendLine($"// Total execution time: {_stopwatch.ElapsedMilliseconds}ms");
-                sb.AppendLine("//");
-                
-                foreach (var log in _logs)
-                {
-                    sb.AppendLine($"// {log}");
-                }
-
-                context.AddSource("GeneratorLog.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
+                return;
             }
+
+            _debugOutputAdded = true;
+
+            var sb = new StringBuilder();
+            sb.AppendLine("// Source Generator Debug Log");
+            sb.AppendLine($"// Generated at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"// Total execution time: {_stopwatch.ElapsedMilliseconds}ms");
+            sb.AppendLine("//");
+
+            foreach (var log in _logs)
+            {
+                sb.AppendLine($"// {log}");
+            }
+
+            context.AddSource("GeneratorLog.g.cs", SourceText.From(sb.ToString(), Encoding.UTF8));
         }
     }
 }

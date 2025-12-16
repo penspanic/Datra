@@ -70,64 +70,97 @@ namespace Datra.Generators
             
             GeneratorLogger.Log($"Successfully analyzed {dataModels.Count} data models");
 
-            // Use a dedicated namespace for the generated DataContext
-            // This avoids issues when model classes are spread across multiple namespaces
-            var namespaceName = "Datra.Generated";
-            GeneratorLogger.Log($"Using namespace: {namespaceName}");
-            
             // Get configuration from assembly attribute
-            string localizationKeysPath = "Localizations/LocalizationKeys.csv"; // default
-            string localizationDataPath = "Localizations/"; // default
-            string defaultLanguage = "en"; // default (ISO 639-1 code)
-            string contextName = "GameDataContext"; // default
-            string generatedNamespace = namespaceName; // use default
-            bool enableLocalization = false; // default
-            bool enableDebugLogging = false; // default
-            bool emitPhysicalFiles = false; // default
-            string physicalFilesPath = null; // default
-
             var attributes = compilation.Assembly.GetAttributes();
-            var configAttr = attributes.FirstOrDefault(a => 
+            var configAttr = attributes.FirstOrDefault(a =>
                 a.AttributeClass?.Name == "DatraConfigurationAttribute" ||
                 a.AttributeClass?.ToDisplayString() == "Datra.Attributes.DatraConfigurationAttribute");
-            
-            if (configAttr != null)
+
+            if (configAttr == null)
             {
-                foreach (var arg in configAttr.NamedArguments)
-                {
-                    switch (arg.Key)
-                    {
-                        case "EnableLocalization":
-                            enableLocalization = arg.Value.Value is bool b ? b : false;
-                            break;
-                        case "LocalizationKeyDataPath":
-                            localizationKeysPath = arg.Value.Value?.ToString() ?? localizationKeysPath;
-                            break;
-                        case "LocalizationDataPath":
-                            localizationDataPath = arg.Value.Value?.ToString() ?? localizationDataPath;
-                            break;
-                        case "DefaultLanguage":
-                            defaultLanguage = arg.Value.Value?.ToString() ?? defaultLanguage;
-                            break;
-                        case "DataContextName":
-                            contextName = arg.Value.Value?.ToString() ?? contextName;
-                            break;
-                        case "GeneratedNamespace":
-                            generatedNamespace = arg.Value.Value?.ToString() ?? generatedNamespace;
-                            break;
-                        case "EnableDebugLogging":
-                            enableDebugLogging = arg.Value.Value is bool debug ? debug : false;
-                            break;
-                        case "EmitPhysicalFiles":
-                            emitPhysicalFiles = arg.Value.Value is bool emit ? emit : false;
-                            break;
-                        case "PhysicalFilesPath":
-                            physicalFilesPath = arg.Value.Value?.ToString();
-                            break;
-                    }
-                }
-                GeneratorLogger.Log($"Found DatraConfigurationAttribute: EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, LocalizationDataPath={localizationDataPath}, DefaultLanguage={defaultLanguage}, DataContextName={contextName}, GeneratedNamespace={generatedNamespace}, EnableDebugLogging={enableDebugLogging}, EmitPhysicalFiles={emitPhysicalFiles}, PhysicalFilesPath={physicalFilesPath}");
+                // DatraConfigurationAttribute is required - emit diagnostic and return
+                var diagnostic = Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DATRA001",
+                        "Missing DatraConfiguration attribute",
+                        "Assembly must have [assembly: DatraConfiguration(\"ContextName\")] attribute. Example: [assembly: DatraConfiguration(\"GameData\")]",
+                        "Datra",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    Location.None);
+                context.ReportDiagnostic(diagnostic);
+                GeneratorLogger.LogError("DatraConfigurationAttribute is required but not found");
+                GeneratorLogger.AddDebugOutput(context);
+                return;
             }
+
+            // Read context name from constructor argument (required)
+            // The generated class will be named "{ContextName}Context" (e.g., "GameData" → "GameDataContext")
+            string contextName;
+            if (configAttr.ConstructorArguments.Length > 0 && configAttr.ConstructorArguments[0].Value is string ctorContextName)
+            {
+                contextName = ctorContextName + "Context";
+            }
+            else
+            {
+                var diagnostic = Diagnostic.Create(
+                    new DiagnosticDescriptor(
+                        "DATRA002",
+                        "Invalid DatraConfiguration attribute",
+                        "DatraConfiguration attribute requires context name as constructor argument. Example: [assembly: DatraConfiguration(\"GameData\")]",
+                        "Datra",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true),
+                    Location.None);
+                context.ReportDiagnostic(diagnostic);
+                GeneratorLogger.LogError("DatraConfigurationAttribute requires context name as constructor argument");
+                GeneratorLogger.AddDebugOutput(context);
+                return;
+            }
+
+            // Set defaults
+            string localizationKeysPath = "Localizations/LocalizationKeys.csv";
+            string localizationDataPath = "Localizations/";
+            string defaultLanguage = "en";
+            // Default namespace: {AssemblyName}.Generated
+            string generatedNamespace = $"{compilation.AssemblyName}.Generated";
+            bool enableLocalization = false;
+            bool enableDebugLogging = false;
+            bool emitPhysicalFiles = false;
+            string physicalFilesPath = null;
+
+            // Read optional named arguments
+            foreach (var arg in configAttr.NamedArguments)
+            {
+                switch (arg.Key)
+                {
+                    case "EnableLocalization":
+                        enableLocalization = arg.Value.Value is bool b ? b : false;
+                        break;
+                    case "LocalizationKeyDataPath":
+                        localizationKeysPath = arg.Value.Value?.ToString() ?? localizationKeysPath;
+                        break;
+                    case "LocalizationDataPath":
+                        localizationDataPath = arg.Value.Value?.ToString() ?? localizationDataPath;
+                        break;
+                    case "DefaultLanguage":
+                        defaultLanguage = arg.Value.Value?.ToString() ?? defaultLanguage;
+                        break;
+                    case "Namespace":
+                        generatedNamespace = arg.Value.Value?.ToString() ?? generatedNamespace;
+                        break;
+                    case "EnableDebugLogging":
+                        enableDebugLogging = arg.Value.Value is bool debug ? debug : false;
+                        break;
+                    case "EmitPhysicalFiles":
+                        emitPhysicalFiles = arg.Value.Value is bool emit ? emit : false;
+                        break;
+                    case "PhysicalFilesPath":
+                        physicalFilesPath = arg.Value.Value?.ToString();
+                        break;
+                }
+            }
+            GeneratorLogger.Log($"Found DatraConfigurationAttribute: ContextName={contextName}, Namespace={generatedNamespace}, EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, LocalizationDataPath={localizationDataPath}, DefaultLanguage={defaultLanguage}, EnableDebugLogging={enableDebugLogging}, EmitPhysicalFiles={emitPhysicalFiles}, PhysicalFilesPath={physicalFilesPath}");
 
             // Filter out localization models
             var filteredModels = dataModels
@@ -168,7 +201,7 @@ namespace Datra.Generators
             // Generate LocalizationKeyDataSerializer only if localization is enabled
             if (enableLocalization)
             {
-                var localizationSerializerCode = LocalizationKeyDataSerializer.GenerateSerializer();
+                var localizationSerializerCode = LocalizationKeyDataSerializer.GenerateSerializer(generatedNamespace);
                 context.AddSource("LocalizationKeyDataSerializer.g.cs", SourceText.From(localizationSerializerCode, Encoding.UTF8));
                 GeneratorLogger.Log("Generated LocalizationKeyDataSerializer.g.cs");
             }

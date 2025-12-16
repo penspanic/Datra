@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using Datra.Configuration;
-using Datra.Generated;
+using Datra.SampleData.Generated;
 using Datra.SampleData.Models;
 using Datra.Serializers;
 

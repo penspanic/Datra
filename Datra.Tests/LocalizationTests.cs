@@ -7,7 +7,7 @@ using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
 using Datra.Serializers;
-using Datra.Generated;
+using Datra.SampleData.Generated;
 
 namespace Datra.Tests
 {
