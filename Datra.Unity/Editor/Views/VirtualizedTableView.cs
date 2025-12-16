@@ -60,35 +60,64 @@ namespace Datra.Unity.Editor.Views
             tableContainer.style.flexGrow = 1;
             tableContainer.style.flexDirection = FlexDirection.Column;
 
-            // Create table header (separate from base class headerContainer)
+            // Create table header container with clipping
             var tableHeaderContainer = new VisualElement();
             tableHeaderContainer.AddToClassList("table-header-container");
             tableHeaderContainer.style.height = RowHeight;
-            tableHeaderContainer.style.overflow = Overflow.Hidden; // Clip header overflow
+            tableHeaderContainer.style.overflow = Overflow.Hidden;
 
+            // Create table header row
             headerRow = new VisualElement();
             headerRow.AddToClassList("table-header-row");
             headerRow.style.flexDirection = FlexDirection.Row;
             headerRow.style.height = RowHeight;
+            headerRow.style.position = Position.Relative;
 
             tableHeaderContainer.Add(headerRow);
             tableContainer.Add(tableHeaderContainer);
 
-            // Create virtualized list view
+            // Create virtualized list view with horizontal scrolling enabled
             listView = new ListView();
             listView.AddToClassList("table-body-list");
             listView.fixedItemHeight = RowHeight;
             listView.virtualizationMethod = CollectionVirtualizationMethod.FixedHeight;
             listView.selectionType = SelectionType.None;
             listView.style.flexGrow = 1;
+            listView.horizontalScrollingEnabled = true;
 
             // Set callbacks
             listView.makeItem = CreateRowTemplate;
             listView.bindItem = BindRow;
 
-            tableContainer.Add(listView);
+            // Sync header position with ListView's horizontal scroll
+            listView.RegisterCallback<GeometryChangedEvent>(evt => {
+                SyncHeaderWithListViewScroll();
+            });
 
+            tableContainer.Add(listView);
             contentContainer.Add(tableContainer);
+        }
+
+        /// <summary>
+        /// Syncs header row position with ListView's horizontal scroll
+        /// </summary>
+        private void SyncHeaderWithListViewScroll()
+        {
+            // Find ListView's internal ScrollView
+            var scrollView = listView?.Q<ScrollView>();
+            if (scrollView != null)
+            {
+                scrollView.horizontalScroller.valueChanged -= OnListViewHorizontalScroll;
+                scrollView.horizontalScroller.valueChanged += OnListViewHorizontalScroll;
+            }
+        }
+
+        private void OnListViewHorizontalScroll(float value)
+        {
+            if (headerRow != null)
+            {
+                headerRow.style.left = -value;
+            }
         }
 
         /// <summary>
