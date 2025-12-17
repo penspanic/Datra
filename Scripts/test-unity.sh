@@ -95,6 +95,17 @@ trap "rm -f $LOG_FILE" EXIT
     -logFile "$LOG_FILE" \
     2>&1 || true
 
+# Check for Unity already running
+if grep -q "another Unity instance is running\|Multiple Unity instances" "$LOG_FILE"; then
+    echo -e "${YELLOW}=== Unity Already Running ===${NC}"
+    echo ""
+    echo "Unity Editor is currently open with this project."
+    echo "Please close Unity Editor and run this script again,"
+    echo "or run tests directly from Unity Test Runner."
+    echo ""
+    exit 2  # Special exit code for "Unity running"
+fi
+
 # Parse test results
 if [ -f "$RESULTS_FILE" ]; then
     # Extract test counts from NUnit XML
