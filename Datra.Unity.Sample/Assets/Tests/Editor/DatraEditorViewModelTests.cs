@@ -280,6 +280,222 @@ namespace Datra.Unity.Tests
             Assert.IsTrue(propertyChangedCalled);
         }
 
+        [Test]
+        public void ViewModel_SelectLocalization_UpdatesState()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+            viewModel.SelectDataTypeCommand(typeof(string));
+
+            // Act
+            viewModel.SelectLocalizationCommand();
+
+            // Assert
+            Assert.IsNull(viewModel.SelectedDataType);
+            Assert.IsTrue(viewModel.IsLocalizationSelected);
+        }
+
+        [Test]
+        public void ViewModel_SelectDataType_ClearsLocalizationSelection()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+            viewModel.SelectLocalizationCommand();
+
+            // Act
+            viewModel.SelectDataTypeCommand(typeof(int));
+
+            // Assert
+            Assert.AreEqual(typeof(int), viewModel.SelectedDataType);
+            Assert.IsFalse(viewModel.IsLocalizationSelected);
+        }
+
+        [Test]
+        public void ViewModel_HasCurrentDataUnsavedChanges_ForDataType()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var mockChangeTracking = new MockChangeTrackingService();
+            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            viewModel.SelectDataTypeCommand(typeof(string));
+
+            // Assert - initially no changes
+            Assert.IsFalse(viewModel.HasCurrentDataUnsavedChanges);
+
+            // Act - mark the selected type as modified
+            mockChangeTracking.SetModified(typeof(string), true);
+
+            // Assert - now has changes for current data
+            Assert.IsTrue(viewModel.HasCurrentDataUnsavedChanges);
+        }
+
+        [Test]
+        public void ViewModel_HasCurrentDataUnsavedChanges_OnlyForSelectedType()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var mockChangeTracking = new MockChangeTrackingService();
+            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            viewModel.SelectDataTypeCommand(typeof(string));
+
+            // Mark a different type as modified
+            mockChangeTracking.SetModified(typeof(int), true);
+
+            // Assert - current data (string) has no changes
+            Assert.IsFalse(viewModel.HasCurrentDataUnsavedChanges);
+
+            // Assert - but there are overall unsaved changes
+            Assert.IsTrue(viewModel.HasAnyUnsavedChanges);
+        }
+
+        [Test]
+        public void ViewModel_HasUnsavedChanges_ForSpecificType()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var mockChangeTracking = new MockChangeTrackingService();
+            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+
+            mockChangeTracking.SetModified(typeof(string), true);
+
+            // Assert
+            Assert.IsTrue(viewModel.HasUnsavedChanges(typeof(string)));
+            Assert.IsFalse(viewModel.HasUnsavedChanges(typeof(int)));
+        }
+
+        [UnityTest]
+        public IEnumerator ViewModel_ForceSaveCurrentAsync_CallsDataServiceWithForceSave()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+            viewModel.SelectDataTypeCommand(typeof(string));
+
+            // Act
+            var saveTask = viewModel.ForceSaveCurrentAsync();
+            while (!saveTask.IsCompleted) yield return null;
+
+            // Assert
+            Assert.IsTrue(mockDataService.SaveWasCalled);
+            Assert.AreEqual(typeof(string), mockDataService.LastSavedType);
+        }
+
+        [UnityTest]
+        public IEnumerator ViewModel_ForceSaveAllAsync_CallsDataService()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            // Act
+            var saveTask = viewModel.ForceSaveAllAsync();
+            while (!saveTask.IsCompleted) yield return null;
+
+            // Assert
+            Assert.IsTrue(mockDataService.SaveAllWasCalled);
+        }
+
+        [Test]
+        public void ViewModel_ModifiedStateChanged_PropagatesFromChangeTracking()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var mockChangeTracking = new MockChangeTrackingService();
+            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+
+            Type changedType = null;
+            bool? hasChanges = null;
+            viewModel.OnModifiedStateChanged += (type, modified) =>
+            {
+                changedType = type;
+                hasChanges = modified;
+            };
+
+            // Act
+            mockChangeTracking.SetModified(typeof(string), true);
+
+            // Assert
+            Assert.AreEqual(typeof(string), changedType);
+            Assert.IsTrue(hasChanges);
+        }
+
+        [Test]
+        public void ViewModel_ProjectName_CanBeSetAndRetrieved()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            // Act
+            viewModel.ProjectName = "TestProject";
+
+            // Assert
+            Assert.AreEqual("TestProject", viewModel.ProjectName);
+        }
+
+        [Test]
+        public void ViewModel_DataTypes_ReturnsFromDataService()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            mockDataService.AddDataTypeInfo(new DataTypeInfo(
+                typeName: "System.String",
+                dataType: typeof(string),
+                filePath: "strings.csv",
+                propertyName: "Strings",
+                isSingleData: false
+            ));
+
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            // Assert
+            Assert.AreEqual(1, viewModel.DataTypes.Count);
+            Assert.AreEqual(typeof(string), viewModel.DataTypes[0].DataType);
+        }
+
+        [Test]
+        public void ViewModel_DataService_ExposesUnderlyingService()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            // Assert
+            Assert.AreSame(mockDataService, viewModel.DataService);
+        }
+
+        [Test]
+        public void ViewModel_ChangeTracking_ExposesUnderlyingService()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var mockChangeTracking = new MockChangeTrackingService();
+            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+
+            // Assert
+            Assert.AreSame(mockChangeTracking, viewModel.ChangeTracking);
+        }
+
+        [Test]
+        public void ViewModel_SaveWithNoSelection_RaisesFailedEvent()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            string failedMessage = null;
+            viewModel.OnOperationFailed += msg => failedMessage = msg;
+
+            // Act - save without selecting anything
+            viewModel.SaveCommand().Wait();
+
+            // Assert
+            Assert.IsNotNull(failedMessage);
+            Assert.That(failedMessage, Does.Contain("No data type selected"));
+        }
+
         #endregion
     }
 }
