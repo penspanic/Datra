@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Datra.Configuration;
+using Datra.Helpers;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Models;
@@ -174,7 +175,7 @@ namespace Datra.Services
                 return;
 
             // Parse header to find key column and language columns
-            var headers = ParseCsvLine(lines[0]);
+            var headers = CsvParsingHelper.ParseCsvLine(lines[0]);
             var keyColumnIndex = -1;
             var languageColumnIndices = new Dictionary<LanguageCode, int>();
 
@@ -218,7 +219,7 @@ namespace Datra.Services
             int startRow = 1;
             if (lines.Length > 1)
             {
-                var secondRowValues = ParseCsvLine(lines[1]);
+                var secondRowValues = CsvParsingHelper.ParseCsvLine(lines[1]);
                 // Check if second row looks like a type declaration (common pattern: int, string, etc.)
                 if (secondRowValues.Length > 0 && IsTypeDeclarationRow(secondRowValues))
                 {
@@ -229,7 +230,7 @@ namespace Datra.Services
             // Parse data rows
             for (int i = startRow; i < lines.Length; i++)
             {
-                var values = ParseCsvLine(lines[i]);
+                var values = CsvParsingHelper.ParseCsvLine(lines[i]);
                 if (values.Length <= keyColumnIndex)
                     continue;
 
@@ -481,7 +482,7 @@ namespace Datra.Services
             // Build data rows
             foreach (var key in allKeys.OrderBy(k => k))
             {
-                var rowParts = new List<string> { EscapeCsvValue(key) };
+                var rowParts = new List<string> { CsvParsingHelper.EscapeCsvField(key) };
 
                 foreach (var lang in languageCodes)
                 {
@@ -491,7 +492,7 @@ namespace Datra.Services
                     {
                         text = entry.Text ?? "";
                     }
-                    rowParts.Add(EscapeCsvValue(text));
+                    rowParts.Add(CsvParsingHelper.EscapeCsvField(text));
                 }
 
                 lines.Add(string.Join(",", rowParts));
@@ -500,21 +501,6 @@ namespace Datra.Services
             return string.Join("\n", lines);
         }
 
-        /// <summary>
-        /// Escapes a value for CSV format
-        /// </summary>
-        private string EscapeCsvValue(string value)
-        {
-            if (string.IsNullOrEmpty(value))
-                return "";
-
-            if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
-            {
-                return "\"" + value.Replace("\"", "\"\"") + "\"";
-            }
-            return value;
-        }
-        
         /// <summary>
         /// Builds CSV content from language dictionary
         /// </summary>
@@ -622,7 +608,7 @@ namespace Datra.Services
             // Skip header row
             for (int i = 1; i < lines.Length; i++)
             {
-                var parts = ParseCsvLine(lines[i]);
+                var parts = CsvParsingHelper.ParseCsvLine(lines[i]);
                 if (parts.Length >= 2 && !string.IsNullOrWhiteSpace(parts[0]))
                 {
                     // parts[0] = Id, parts[1] = Text, parts[2] = Context (optional)
@@ -638,48 +624,6 @@ namespace Datra.Services
             return result;
         }
         
-        /// <summary>
-        /// Parse a single CSV line handling quoted values
-        /// </summary>
-        private string[] ParseCsvLine(string line)
-        {
-            var values = new List<string>();
-            var inQuotes = false;
-            var currentValue = new System.Text.StringBuilder();
-            
-            for (int i = 0; i < line.Length; i++)
-            {
-                var c = line[i];
-                
-                if (c == '"')
-                {
-                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                    {
-                        // Escaped quote
-                        currentValue.Append('"');
-                        i++; // Skip next quote
-                    }
-                    else
-                    {
-                        inQuotes = !inQuotes;
-                    }
-                }
-                else if (c == ',' && !inQuotes)
-                {
-                    values.Add(currentValue.ToString().Trim());
-                    currentValue.Clear();
-                }
-                else
-                {
-                    currentValue.Append(c);
-                }
-            }
-            
-            // Add last value
-            values.Add(currentValue.ToString().Trim());
-
-            return values.ToArray();
-        }
 
         /// <summary>
         /// Deletes a localization key from all languages
