@@ -244,8 +244,8 @@ namespace Datra.Unity.Editor
             // Update navigation panel indicator
             navigationPanel.MarkTypeAsModified(dataType, hasChanges);
 
-            // Update toolbar modified state (check if ANY type is modified)
-            var anyModified = dataManager.Repositories.Keys.Any(t => dataManager.HasUnsavedChanges(t));
+            // Update toolbar modified state using ViewModel (check if ANY type is modified)
+            var anyModified = viewModel?.HasAnyUnsavedChanges ?? false;
             toolbar.SetModifiedState(anyModified);
 
             // Update current data modified state if it's the active panel
@@ -465,6 +465,9 @@ namespace Datra.Unity.Editor
         {
             if (localizationContext != null)
             {
+                // Update ViewModel state
+                viewModel?.SelectLocalization();
+
                 ShowLocalizationInspector();
 
                 // Set change tracker before setting context
@@ -507,6 +510,9 @@ namespace Datra.Unity.Editor
         {
             if (repositories.TryGetValue(dataType, out var repository))
             {
+                // Update ViewModel state
+                viewModel?.SelectDataType(dataType);
+
                 ShowDataInspector();
 
                 // Get change tracker for this data type
@@ -582,7 +588,8 @@ namespace Datra.Unity.Editor
         
         private void CloseTab(DataTab tab)
         {
-            if (dataManager != null && dataManager.HasUnsavedChanges(tab.DataType))
+            // Use ViewModel to check for unsaved changes
+            if (viewModel?.HasUnsavedChanges(tab.DataType) == true)
             {
                 if (!EditorUtility.DisplayDialog("Unsaved Changes",
                     $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?",
@@ -617,11 +624,10 @@ namespace Datra.Unity.Editor
 
         private async void SaveAllData()
         {
-            if (dataManager == null) return;
+            if (viewModel == null) return;
 
             // Check if there are any modifications
-            var hasModifications = dataManager.Repositories.Keys.Any(t => dataManager.HasUnsavedChanges(t));
-            if (!hasModifications)
+            if (!viewModel.HasAnyUnsavedChanges)
             {
                 // No modifications - suggest Force Save All
                 if (EditorUtility.DisplayDialog("No Changes",
@@ -636,19 +642,12 @@ namespace Datra.Unity.Editor
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(forceSave: false);
+                var success = await viewModel.SaveAllAsync();
 
                 // Refresh current view's modified state if it was saved
                 if (success)
                 {
-                    if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
-                    {
-                        dataInspectorPanel.RefreshModifiedState();
-                    }
-                    else if (currentInspectorPanel == localizationInspectorPanel)
-                    {
-                        localizationInspectorPanel.RefreshContent();
-                    }
+                    RefreshCurrentInspectorPanel();
                 }
             }
             finally
@@ -664,122 +663,65 @@ namespace Datra.Unity.Editor
 
         private async void SaveCurrentData()
         {
-            // Save currently selected/active data
-            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
-            {
-                var dataType = dataInspectorPanel.CurrentType;
+            if (viewModel == null) return;
 
-                // Check if there are modifications
-                if (!dataManager.HasUnsavedChanges(dataType))
-                {
-                    // No modifications - suggest Force Save
-                    if (EditorUtility.DisplayDialog("No Changes",
-                        $"{dataType.Name} has no unsaved changes.\n\nWould you like to Force Save anyway?",
-                        "Force Save", "Cancel"))
-                    {
-                        await ForceSaveData(dataType);
-                    }
-                }
-                else
-                {
-                    await SaveSpecificData(dataType);
-                }
-            }
-            else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
+            // Check if there are modifications in current data
+            if (!viewModel.HasCurrentDataUnsavedChanges)
             {
-                // Check if there are modifications in localization
-                if (!dataManager.HasUnsavedLocalizationChanges())
+                // No modifications - suggest Force Save
+                var typeName = viewModel.IsLocalizationSelected ? "Localization" : viewModel.SelectedDataType?.Name ?? "Data";
+                if (EditorUtility.DisplayDialog("No Changes",
+                    $"{typeName} has no unsaved changes.\n\nWould you like to Force Save anyway?",
+                    "Force Save", "Cancel"))
                 {
-                    // No modifications - suggest Force Save
-                    if (EditorUtility.DisplayDialog("No Changes",
-                        "Localization has no unsaved changes.\n\nWould you like to Force Save anyway?",
-                        "Force Save", "Cancel"))
-                    {
-                        await ForceSaveData(typeof(LocalizationContext));
-                    }
+                    await viewModel.ForceSaveCurrentAsync();
+                    RefreshCurrentInspectorPanel();
                 }
-                else
-                {
-                    await SaveSpecificData(typeof(LocalizationContext));
-                }
+                return;
+            }
+
+            var success = await viewModel.SaveCurrentAsync();
+            if (success)
+            {
+                RefreshCurrentInspectorPanel();
             }
         }
 
         private async Task<bool> SaveSpecificData(Type dataType)
         {
-            if (dataManager == null) return false;
+            if (viewModel?.DataService == null) return false;
 
-            var success = await dataManager.SaveAsync(dataType, forceSave: false);
+            var success = await viewModel.DataService.SaveAsync(dataType, forceSave: false);
             if (success)
             {
-                // Refresh the view's modified state to clear UI indicators
-                if (currentInspectorPanel == dataInspectorPanel)
-                {
-                    dataInspectorPanel.RefreshModifiedState();
-                }
-                else if (currentInspectorPanel == localizationInspectorPanel)
-                {
-                    localizationInspectorPanel.RefreshContent();
-                }
+                RefreshCurrentInspectorPanel();
             }
             return success;
         }
 
         private async void ForceSaveCurrentData()
         {
-            // Force save currently selected/active data (even if not modified)
-            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
-            {
-                await ForceSaveData(dataInspectorPanel.CurrentType);
-            }
-            else if (currentInspectorPanel == localizationInspectorPanel && localizationContext != null)
-            {
-                await ForceSaveData(typeof(LocalizationContext));
-            }
-        }
+            if (viewModel == null) return;
 
-        private async Task ForceSaveData(Type dataType)
-        {
-            if (dataManager == null) return;
-
-            // Force save bypasses modification check
-            var success = await dataManager.SaveAsync(dataType, forceSave: true);
+            var success = await viewModel.ForceSaveCurrentAsync();
             if (success)
             {
-                // Refresh the view's modified state to clear UI indicators
-                if (currentInspectorPanel == dataInspectorPanel)
-                {
-                    dataInspectorPanel.RefreshModifiedState();
-                }
-                else if (currentInspectorPanel == localizationInspectorPanel)
-                {
-                    localizationInspectorPanel.RefreshContent();
-                }
-
-                EditorUtility.DisplayDialog("Force Save", $"Force saved {dataType.Name} successfully!", "OK");
+                RefreshCurrentInspectorPanel();
             }
         }
 
         private async void ForceSaveAllData()
         {
-            if (dataManager == null) return;
+            if (viewModel == null) return;
 
             try
             {
                 toolbar.SetSaveButtonEnabled(false);
-                var success = await dataManager.SaveAllAsync(forceSave: true);
+                var success = await viewModel.ForceSaveAllAsync();
 
                 if (success)
                 {
-                    // Refresh current view's modified state
-                    if (currentInspectorPanel == dataInspectorPanel)
-                    {
-                        dataInspectorPanel.RefreshModifiedState();
-                    }
-                    else if (currentInspectorPanel == localizationInspectorPanel)
-                    {
-                        localizationInspectorPanel.RefreshContent();
-                    }
+                    RefreshCurrentInspectorPanel();
                 }
             }
             finally
@@ -788,25 +730,45 @@ namespace Datra.Unity.Editor
             }
         }
 
+        private void RefreshCurrentInspectorPanel()
+        {
+            if (currentInspectorPanel == dataInspectorPanel)
+            {
+                dataInspectorPanel.RefreshModifiedState();
+            }
+            else if (currentInspectorPanel == localizationInspectorPanel)
+            {
+                localizationInspectorPanel.RefreshContent();
+            }
+        }
+
         private void UpdateCurrentDataModifiedState()
         {
-            // Update the Save button state based on current data
-            if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
-            {
-                var isModified = dataManager?.HasUnsavedChanges(dataInspectorPanel.CurrentType) ?? false;
-                toolbar.SetCurrentDataModified(isModified);
-            }
+            // Update the Save button state based on current data using ViewModel
+            var isModified = viewModel?.HasCurrentDataUnsavedChanges ?? false;
+            toolbar.SetCurrentDataModified(isModified);
         }
 
         private async void ReloadData()
         {
-            if (dataManager == null) return;
+            if (viewModel == null) return;
+
+            // Check for unsaved changes and prompt user
+            if (viewModel.HasAnyUnsavedChanges)
+            {
+                if (!EditorUtility.DisplayDialog("Unsaved Changes",
+                    "There are unsaved changes. Reload anyway?",
+                    "Reload", "Cancel"))
+                {
+                    return;
+                }
+            }
 
             try
             {
                 toolbar.SetReloadButtonEnabled(false);
 
-                if (await dataManager.ReloadAllAsync(checkModified: true))
+                if (await viewModel.ReloadAsync())
                 {
                     // Refresh current view if data inspector is active
                     if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
