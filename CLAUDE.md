@@ -234,6 +234,89 @@ virtual, void, volatile, while
 
 프로퍼티 이름이 camelCase로 변환될 때 예약어면 `@` 접두사 추가됨.
 
+## Unity Editor 아키텍처 (MVVM)
+
+### 구조 개요
+
+```
+DatraEditorWindow (View - Unity UI)
+    │
+    ├── DatraDataManager (기존 로직, 실제 작업 수행)
+    │
+    └── DatraEditorViewModel (테스트용 추상화)
+        ├── DatraDataManagerAdapter (IDataService + IChangeTrackingService)
+        └── LocalizationEditorServiceAdapter (ILocalizationEditorService)
+```
+
+### 서비스 인터페이스
+
+| 인터페이스 | 역할 | 위치 |
+|-----------|------|------|
+| `IDataService` | 데이터 로드/저장/리로드 | `Editor/Services/Interfaces/` |
+| `IChangeTrackingService` | 변경 추적 통합 | `Editor/Services/Interfaces/` |
+| `ILocalizationEditorService` | 로컬라이제이션 편집 | `Editor/Services/Interfaces/` |
+
+### 주요 클래스
+
+```
+Datra.Unity/Editor/
+├── Services/
+│   ├── Interfaces/
+│   │   ├── IDataService.cs
+│   │   ├── IChangeTrackingService.cs
+│   │   └── ILocalizationEditorService.cs
+│   ├── DataService.cs
+│   ├── ChangeTrackingService.cs
+│   ├── LocalizationEditorService.cs
+│   └── DatraDataManagerAdapter.cs      # 기존 코드 래핑
+├── ViewModels/
+│   └── DatraEditorViewModel.cs         # 테스트 가능한 ViewModel
+├── DatraDataManager.cs                 # 기존 로직 (유지)
+└── DatraEditorWindow.cs                # Unity UI
+```
+
+### ViewModel 사용법
+
+```csharp
+// DatraEditorWindow에서 ViewModel 접근
+public DatraEditorViewModel ViewModel => viewModel;
+
+// ViewModel 주요 API
+viewModel.SelectDataTypeCommand(typeof(CharacterData));
+viewModel.SelectLocalizationCommand();
+await viewModel.SaveCommand();
+await viewModel.SaveAllCommand();
+await viewModel.ReloadCommand();
+
+// 상태 확인
+viewModel.SelectedDataType
+viewModel.IsLocalizationSelected
+viewModel.HasAnyUnsavedChanges
+viewModel.HasCurrentDataUnsavedChanges
+```
+
+### 테스트 방법
+
+Mock 서비스로 ViewModel 테스트 가능:
+
+```csharp
+// Datra.Unity.Sample/Assets/Tests/Editor/DatraEditorViewModelTests.cs
+var mockDataService = new MockDataService();
+var mockChangeTracking = new MockChangeTrackingService();
+var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+
+viewModel.SelectDataTypeCommand(typeof(string));
+await viewModel.SaveCommand();
+
+Assert.IsTrue(mockDataService.SaveWasCalled);
+```
+
+### 확장 시 주의사항
+
+1. **기존 로직 유지**: `DatraDataManager`의 로직은 그대로 유지
+2. **점진적 마이그레이션**: 새 기능은 ViewModel에서 먼저 구현 후 연결
+3. **테스트 먼저**: 새 로직 추가 시 Mock 테스트 먼저 작성
+
 ## Git 커밋 컨벤션
 
 - 기능 추가: `Add {feature description}`
