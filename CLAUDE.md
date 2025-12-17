@@ -156,6 +156,20 @@ hero_001,1001|1002|1003
 
 ## 테스트 방법
 
+### 통합 테스트 (권장)
+
+```bash
+# 전체 테스트 (빌드 + .NET 테스트 + Unity 테스트)
+./Scripts/test-all.sh
+
+# 옵션
+./Scripts/test-all.sh --skip-build      # 빌드 스킵
+./Scripts/test-all.sh --skip-unity      # Unity 테스트 스킵
+./Scripts/test-all.sh --unity-only      # Unity 테스트만
+```
+
+### .NET 테스트
+
 ```bash
 # 전체 테스트
 dotnet test Datra.Tests/Datra.Tests.csproj
@@ -163,6 +177,33 @@ dotnet test Datra.Tests/Datra.Tests.csproj
 # 특정 테스트
 dotnet test --filter "FullyQualifiedName~NestedTypeTests"
 ```
+
+### Unity 테스트
+
+```bash
+# Unity 컴파일만 체크
+./Scripts/test-unity-compile.sh
+
+# Unity 테스트 실행 (컴파일 체크 포함)
+./Scripts/test-unity.sh
+
+# 컴파일 체크 스킵
+./Scripts/test-unity.sh --skip-compile
+```
+
+**주의**: Unity Editor가 열려있으면 배치 모드 테스트 불가.
+이 경우 exit code 2 반환되며, Unity Editor의 Test Runner 창에서 직접 실행해야 함.
+
+### Unity 테스트 파일 위치
+
+```
+Datra.Unity.Sample/Assets/Tests/
+└── Editor/
+    ├── Datra.Unity.Tests.Editor.asmdef
+    └── DatraBasicTests.cs
+```
+
+테스트 결과는 `TestResults/unity-test-results.xml`에 저장됨.
 
 ## 디버깅 팁
 
