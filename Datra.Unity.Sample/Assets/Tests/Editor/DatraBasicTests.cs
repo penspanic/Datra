@@ -30,7 +30,7 @@ namespace Datra.Unity.Tests
         public void DataContext_CanBeCreated()
         {
             // Arrange & Act
-            var provider = new ResourcesRawDataProvider("Data");
+            var provider = new ResourcesRawDataProvider();
             var context = new GameDataContext(provider);
 
             // Assert
@@ -63,21 +63,21 @@ namespace Datra.Unity.Tests
         }
 
         [Test]
-        public void PooledPrefab_HasExpectedProperties()
+        public void PooledPrefab_HasExpectedFields()
         {
-            // Verify PooledPrefab struct has expected properties
+            // Verify PooledPrefab struct has expected fields
             var type = typeof(PooledPrefab);
 
-            Assert.IsNotNull(type.GetProperty("Path"), "Path property should exist");
-            Assert.IsNotNull(type.GetProperty("InitialCount"), "InitialCount property should exist");
-            Assert.IsNotNull(type.GetProperty("MaxCount"), "MaxCount property should exist");
+            Assert.IsNotNull(type.GetField("Path"), "Path field should exist");
+            Assert.IsNotNull(type.GetField("InitialCount"), "InitialCount field should exist");
+            Assert.IsNotNull(type.GetField("MaxCount"), "MaxCount field should exist");
         }
 
         [UnityTest]
         public IEnumerator DataContext_CanLoadData()
         {
             // Arrange
-            var provider = new ResourcesRawDataProvider("Data");
+            var provider = new ResourcesRawDataProvider();
             var context = new GameDataContext(provider);
 
             // Act
@@ -93,16 +93,14 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.Message}");
             }
 
-            var characters = context.Character.GetAll();
-            Assert.IsNotNull(characters);
-            Assert.Greater(characters.Count, 0, "Should have loaded at least one character");
+            Assert.Greater(context.Character.Count, 0, "Should have loaded at least one character");
         }
 
         [UnityTest]
         public IEnumerator CharacterData_NestedType_IsDeserialized()
         {
             // Arrange
-            var provider = new ResourcesRawDataProvider("Data");
+            var provider = new ResourcesRawDataProvider();
             var context = new GameDataContext(provider);
 
             // Act
@@ -118,12 +116,11 @@ namespace Datra.Unity.Tests
             }
 
             // Assert - verify nested type is properly deserialized
-            var characters = context.Character.GetAll();
-            Assert.Greater(characters.Count, 0);
+            Assert.Greater(context.Character.Count, 0);
 
-            var firstChar = characters.Values.GetEnumerator();
-            firstChar.MoveNext();
-            var character = firstChar.Current;
+            var enumerator = context.Character.Values.GetEnumerator();
+            enumerator.MoveNext();
+            var character = enumerator.Current;
 
             // TestPooledPrefab should be initialized (not null/default for struct)
             Assert.IsNotNull(character.TestPooledPrefab.Path,
