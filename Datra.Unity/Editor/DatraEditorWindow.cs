@@ -31,19 +31,14 @@ namespace Datra.Unity.Editor
         private VisualElement contentArea;
         private VisualElement inspectorContainer;
         
-        // Tab Management
-        private class DataTab
+        // Tab Management - UI mapping for ViewModel tabs
+        private class DataTabUI
         {
-            public Type DataType { get; set; }
-            public IDataRepository Repository { get; set; }
-            public IDataContext DataContext { get; set; }
+            public TabViewModel ViewModel { get; set; }
             public VisualElement TabButton { get; set; }
-            public VisualElement Content { get; set; }
-            public bool IsModified { get; set; }
         }
-        
-        private List<DataTab> openTabs = new List<DataTab>();
-        private DataTab activeTab;
+
+        private Dictionary<TabViewModel, DataTabUI> tabUIMap = new Dictionary<TabViewModel, DataTabUI>();
         
         // Data Management
         private IDataContext dataContext;
@@ -305,8 +300,10 @@ namespace Datra.Unity.Editor
             // Set project name on ViewModel
             viewModel.ProjectName = Application.productName;
 
-            // Note: ViewModel events are already handled by DatraDataManager events
-            // The ViewModel is primarily for enabling unit testing and future refactoring
+            // Subscribe to tab events
+            viewModel.OnTabOpened += OnViewModelTabOpened;
+            viewModel.OnTabClosed += OnViewModelTabClosed;
+            viewModel.OnActiveTabChanged += OnViewModelActiveTabChanged;
         }
 
         private void CreateChangeTrackerForRepository(Type dataType, object repository)
@@ -526,92 +523,91 @@ namespace Datra.Unity.Editor
         
         public void AddDataTab(Type dataType, IDataRepository repository, IDataContext context)
         {
-            // Check if tab already exists
-            var existingTab = openTabs.FirstOrDefault(t => t.DataType == dataType);
-            if (existingTab != null)
-            {
-                ActivateTab(existingTab);
-                return;
-            }
-            
-            // Create new tab
-            var tab = new DataTab
-            {
-                DataType = dataType,
-                Repository = repository,
-                DataContext = context
-            };
-            
-            // Create tab button
-            var tabButton = new Button(() => ActivateTab(tab));
+            // Delegate to ViewModel - it will fire events that we handle
+            viewModel?.OpenTab(dataType);
+        }
+
+        private void OnViewModelTabOpened(TabViewModel tab)
+        {
+            // Create UI for the new tab
+            var tabButton = new Button(() => viewModel.ActivateTab(tab));
             tabButton.AddToClassList("tab-button");
             tabButton.style.flexDirection = FlexDirection.Row;
-            
-            var tabLabel = new Label(dataType.Name);
+
+            var tabLabel = new Label(tab.DisplayName);
             tabLabel.style.marginRight = 8;
             tabButton.Add(tabLabel);
-            
+
             // Close button
-            var closeButton = new Button(() => CloseTab(tab));
+            var closeButton = new Button(() => RequestCloseTab(tab));
             closeButton.text = "×";
             closeButton.AddToClassList("tab-close-button");
             tabButton.Add(closeButton);
-            
-            tab.TabButton = tabButton;
+
             tabContainer.Add(tabButton);
-            
+
+            // Store UI mapping
+            tabUIMap[tab] = new DataTabUI { ViewModel = tab, TabButton = tabButton };
+
             // Show tab container if this is the first tab
-            if (openTabs.Count == 0)
+            if (tabUIMap.Count == 1)
             {
                 tabContainer.style.display = DisplayStyle.Flex;
             }
-            
-            openTabs.Add(tab);
-            ActivateTab(tab);
         }
-        
-        private void ActivateTab(DataTab tab)
+
+        private void OnViewModelActiveTabChanged(TabViewModel tab)
         {
-            // Deactivate current tab
-            if (activeTab != null)
+            // Update UI for all tabs
+            foreach (var kvp in tabUIMap)
             {
-                activeTab.TabButton.RemoveFromClassList("active");
+                if (kvp.Key == tab)
+                {
+                    kvp.Value.TabButton.AddToClassList("active");
+                }
+                else
+                {
+                    kvp.Value.TabButton.RemoveFromClassList("active");
+                }
             }
-            
-            activeTab = tab;
-            tab.TabButton.AddToClassList("active");
-            
+
             // Update inspector with tab data
-            ShowDataInspector();
-            dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType, changeTrackers.GetValueOrDefault(tab.DataType));
+            if (tab != null)
+            {
+                ShowDataInspector();
+                dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType, changeTrackers.GetValueOrDefault(tab.DataType));
+            }
         }
-        
-        private void CloseTab(DataTab tab)
+
+        private void RequestCloseTab(TabViewModel tab)
         {
-            // Use ViewModel to check for unsaved changes
+            // Check for unsaved changes before closing
             if (viewModel?.HasUnsavedChanges(tab.DataType) == true)
             {
                 if (!EditorUtility.DisplayDialog("Unsaved Changes",
-                    $"The {tab.DataType.Name} tab has unsaved changes. Close anyway?",
+                    $"The {tab.DisplayName} tab has unsaved changes. Close anyway?",
                     "Close", "Cancel"))
                 {
                     return;
                 }
             }
 
-            openTabs.Remove(tab);
-            tabContainer.Remove(tab.TabButton);
+            viewModel?.CloseTab(tab);
+        }
+
+        private void OnViewModelTabClosed(TabViewModel tab)
+        {
+            // Remove UI for the closed tab
+            if (tabUIMap.TryGetValue(tab, out var tabUI))
+            {
+                tabContainer.Remove(tabUI.TabButton);
+                tabUIMap.Remove(tab);
+            }
 
             // Hide tab container if no tabs
-            if (openTabs.Count == 0)
+            if (tabUIMap.Count == 0)
             {
                 tabContainer.style.display = DisplayStyle.None;
-                activeTab = null;
-            }
-            else if (activeTab == tab)
-            {
-                // Activate another tab
-                ActivateTab(openTabs[0]);
             }
         }
         

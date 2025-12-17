@@ -27,6 +27,7 @@ namespace Datra.Unity.Editor.ViewModels
         private bool _isInitialized;
         private string _projectName;
         private readonly List<TabViewModel> _openTabs = new List<TabViewModel>();
+        private TabViewModel _activeTab;
 
         // Commands (simple delegate-based)
         public Func<Task<bool>> SaveCommand { get; }
@@ -77,6 +78,12 @@ namespace Datra.Unity.Editor.ViewModels
         }
 
         public IReadOnlyList<TabViewModel> OpenTabs => _openTabs;
+        public TabViewModel ActiveTab
+        {
+            get => _activeTab;
+            private set => SetField(ref _activeTab, value);
+        }
+
         public IReadOnlyList<DataTypeInfo> DataTypes => _dataService?.GetDataTypeInfos() ?? Array.Empty<DataTypeInfo>();
         public IDataService DataService => _dataService;
         public IChangeTrackingService ChangeTracking => _changeTracking;
@@ -87,6 +94,9 @@ namespace Datra.Unity.Editor.ViewModels
         public event Action<string> OnOperationCompleted;
         public event Action<string> OnOperationFailed;
         public event Action<Type, bool> OnModifiedStateChanged;
+        public event Action<TabViewModel> OnTabOpened;
+        public event Action<TabViewModel> OnTabClosed;
+        public event Action<TabViewModel> OnActiveTabChanged;
 
         public DatraEditorViewModel(
             IDataService dataService,
@@ -288,6 +298,7 @@ namespace Datra.Unity.Editor.ViewModels
             var existingTab = _openTabs.FirstOrDefault(t => t.DataType == dataType);
             if (existingTab != null)
             {
+                ActivateTab(existingTab);
                 return existingTab;
             }
 
@@ -295,14 +306,43 @@ namespace Datra.Unity.Editor.ViewModels
             var tab = new TabViewModel(dataType, repository, _dataService.DataContext);
             _openTabs.Add(tab);
             OnPropertyChanged(nameof(OpenTabs));
+            OnTabOpened?.Invoke(tab);
 
+            ActivateTab(tab);
             return tab;
+        }
+
+        public void ActivateTab(TabViewModel tab)
+        {
+            if (tab == null || ActiveTab == tab) return;
+
+            ActiveTab = tab;
+            OnActiveTabChanged?.Invoke(tab);
         }
 
         public void CloseTab(TabViewModel tab)
         {
+            var index = _openTabs.IndexOf(tab);
+            if (index < 0) return;
+
             _openTabs.Remove(tab);
             OnPropertyChanged(nameof(OpenTabs));
+            OnTabClosed?.Invoke(tab);
+
+            // If closing active tab, activate another one
+            if (ActiveTab == tab)
+            {
+                if (_openTabs.Count > 0)
+                {
+                    var newIndex = Math.Min(index, _openTabs.Count - 1);
+                    ActivateTab(_openTabs[newIndex]);
+                }
+                else
+                {
+                    ActiveTab = null;
+                    OnActiveTabChanged?.Invoke(null);
+                }
+            }
         }
 
         public bool HasUnsavedChanges(Type dataType)
