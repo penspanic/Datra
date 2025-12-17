@@ -61,9 +61,30 @@ namespace Datra.Attributes
         /// <summary>
         /// Path to the LocalizationData files directory (language-specific CSV files).
         /// Files should be named using ISO 639-1 codes (e.g., en.csv, ko.csv, ja.csv).
+        /// Only used when UseSingleFileLocalization is false.
         /// Default: "Localizations/"
         /// </summary>
         public string LocalizationDataPath { get; set; } = "Localizations/";
+
+        /// <summary>
+        /// Use single-file localization format instead of per-language files.
+        /// When true, all languages are stored in a single CSV file with horizontal layout.
+        /// Format: Key,~Description,ko,en,ja,zh-TW (columns starting with ~ are metadata)
+        /// Default: false
+        /// </summary>
+        public bool UseSingleFileLocalization { get; set; } = false;
+
+        /// <summary>
+        /// Path to the single localization file when UseSingleFileLocalization is true.
+        /// Default: "Localization.csv"
+        /// </summary>
+        public string SingleLocalizationFilePath { get; set; } = "Localization.csv";
+
+        /// <summary>
+        /// The column name that contains the localization key in single-file mode.
+        /// Default: "Key"
+        /// </summary>
+        public string LocalizationKeyColumn { get; set; } = "Key";
 
         /// <summary>
         /// Default language code to use for localization (ISO 639-1 code).

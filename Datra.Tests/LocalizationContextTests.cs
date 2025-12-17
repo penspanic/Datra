@@ -403,5 +403,232 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             Assert.Contains("Main Menu", savedContent);
             Assert.Contains("First Login", savedContent);
         }
+
+        #region Single-File Localization Tests
+
+        private class SingleFileTestRawDataProvider : IRawDataProvider
+        {
+            private readonly Dictionary<string, string> _files = new Dictionary<string, string>();
+
+            public SingleFileTestRawDataProvider()
+            {
+                // Add test single-file localization CSV (horizontal format)
+                _files["Localization.csv"] = @"Key,~Description,ko,en,ja,zh-TW
+Button_Start,시작 버튼,시작,Start,スタート,開始
+Button_Exit,종료 버튼,종료,Exit,終了,結束
+Message_Welcome,환영 메시지,환영합니다!,Welcome!,ようこそ！,歡迎！";
+            }
+
+            public void AddFile(string path, string content) => _files[path] = content;
+            public string GetFile(string path) => _files.TryGetValue(path, out var content) ? content : null!;
+
+            public bool Exists(string path) => _files.ContainsKey(path);
+
+            public Task<byte[]> LoadAsync(string path)
+            {
+                if (_files.TryGetValue(path, out var content))
+                    return Task.FromResult(System.Text.Encoding.UTF8.GetBytes(content));
+                throw new System.IO.FileNotFoundException($"File not found: {path}");
+            }
+
+            public Task<string> LoadTextAsync(string path)
+            {
+                if (_files.TryGetValue(path, out var content))
+                    return Task.FromResult(content);
+                throw new System.IO.FileNotFoundException($"File not found: {path}");
+            }
+
+            public Task SaveAsync(string path, byte[] data)
+            {
+                _files[path] = System.Text.Encoding.UTF8.GetString(data);
+                return Task.CompletedTask;
+            }
+
+            public Task SaveTextAsync(string path, string text)
+            {
+                _files[path] = text;
+                return Task.CompletedTask;
+            }
+
+            public string[] GetFiles(string directory, string searchPattern = "*", bool recursive = false)
+            {
+                return _files.Keys.Where(k => k.StartsWith(directory)).ToArray();
+            }
+
+            public string ResolveFilePath(string path) => path;
+        }
+
+        [Fact]
+        public async Task SingleFile_LoadsAllLanguages()
+        {
+            // Arrange
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "Key"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+
+            // Act
+            await context.InitializeAsync();
+
+            // Assert - All languages should be loaded
+            var availableLanguages = context.GetAvailableLanguages().ToList();
+            Assert.Contains(LanguageCode.Ko, availableLanguages);
+            Assert.Contains(LanguageCode.En, availableLanguages);
+            Assert.Contains(LanguageCode.Ja, availableLanguages);
+            Assert.Contains(LanguageCode.ZhTW, availableLanguages);
+        }
+
+        [Fact]
+        public async Task SingleFile_GetText_ReturnsCorrectTranslation()
+        {
+            // Arrange
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "Key",
+                defaultLanguage: "ko"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+            await context.InitializeAsync();
+
+            // Act & Assert - Korean (default)
+            Assert.Equal("시작", context.GetText("Button_Start"));
+            Assert.Equal("환영합니다!", context.GetText("Message_Welcome"));
+
+            // Switch to English
+            await context.LoadLanguageAsync(LanguageCode.En);
+            Assert.Equal("Start", context.GetText("Button_Start"));
+            Assert.Equal("Welcome!", context.GetText("Message_Welcome"));
+
+            // Switch to Japanese
+            await context.LoadLanguageAsync(LanguageCode.Ja);
+            Assert.Equal("スタート", context.GetText("Button_Start"));
+            Assert.Equal("ようこそ！", context.GetText("Message_Welcome"));
+        }
+
+        [Fact]
+        public async Task SingleFile_SetText_UpdatesValue()
+        {
+            // Arrange
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "Key",
+                defaultLanguage: "en"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+            await context.InitializeAsync();
+
+            // Act
+            context.SetText("Button_Start", "Begin");
+
+            // Assert
+            Assert.Equal("Begin", context.GetText("Button_Start"));
+        }
+
+        [Fact]
+        public async Task SingleFile_Save_WritesHorizontalFormat()
+        {
+            // Arrange
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "Key",
+                defaultLanguage: "en"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+            await context.InitializeAsync();
+
+            // Act - Modify and save
+            context.SetText("Button_Start", "Begin", LanguageCode.En);
+            await context.SaveCurrentLanguageAsync();
+
+            // Assert - Check saved content
+            var savedContent = rawDataProvider.GetFile("Localization.csv");
+            Assert.Contains("Key,", savedContent); // Header starts with Key column
+            Assert.Contains("Button_Start", savedContent);
+            Assert.Contains("Begin", savedContent); // Updated English value
+            Assert.Contains("시작", savedContent); // Korean value preserved
+        }
+
+        [Fact]
+        public async Task SingleFile_WithTypeRow_SkipsTypeRow()
+        {
+            // Arrange - CSV with type declaration row (like PetroHunter format)
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            rawDataProvider.AddFile("Localization.csv", @"Key,~Description,ko,en
+string,~string,string,string
+Button_Start,시작 버튼,시작,Start
+Button_Exit,종료 버튼,종료,Exit");
+
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "Key",
+                defaultLanguage: "ko"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+
+            // Act
+            await context.InitializeAsync();
+
+            // Assert - Should skip the type row and load actual data
+            Assert.Equal("시작", context.GetText("Button_Start"));
+            Assert.Equal("종료", context.GetText("Button_Exit"));
+
+            // Should NOT have "string" as a key
+            Assert.Equal("[Missing: string]", context.GetText("string"));
+        }
+
+        [Fact]
+        public async Task SingleFile_WithCustomKeyColumn_Works()
+        {
+            // Arrange - CSV with StringId as key column (like PetroHunter format)
+            var rawDataProvider = new SingleFileTestRawDataProvider();
+            rawDataProvider.AddFile("Localization.csv", @"Id,StringId,~Description,ko,en
+int,string,~string,string,string
+0,Name_Hero,영웅 이름,영웅,Hero
+1,Name_Villain,악당 이름,악당,Villain");
+
+            var config = new Configuration.DatraConfigurationValue(
+                enableLocalization: true,
+                useSingleFileLocalization: true,
+                singleLocalizationFilePath: "Localization.csv",
+                localizationKeyColumn: "StringId",
+                defaultLanguage: "en"
+            );
+
+            var context = new LocalizationContext(rawDataProvider, config: config);
+
+            // Act
+            await context.InitializeAsync();
+
+            // Assert - Should use StringId as key
+            Assert.Equal("Hero", context.GetText("Name_Hero"));
+            Assert.Equal("Villain", context.GetText("Name_Villain"));
+
+            // Switch to Korean
+            await context.LoadLanguageAsync(LanguageCode.Ko);
+            Assert.Equal("영웅", context.GetText("Name_Hero"));
+            Assert.Equal("악당", context.GetText("Name_Villain"));
+        }
+
+        #endregion
     }
 }

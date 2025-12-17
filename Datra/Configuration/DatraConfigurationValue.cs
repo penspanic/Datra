@@ -21,7 +21,22 @@ namespace Datra.Configuration
         /// Path to the LocalizationData files directory (language-specific CSV files)
         /// </summary>
         public string LocalizationDataPath { get; }
-        
+
+        /// <summary>
+        /// Use single-file localization format instead of per-language files
+        /// </summary>
+        public bool UseSingleFileLocalization { get; }
+
+        /// <summary>
+        /// Path to the single localization file when UseSingleFileLocalization is true
+        /// </summary>
+        public string SingleLocalizationFilePath { get; }
+
+        /// <summary>
+        /// The column name that contains the localization key in single-file mode
+        /// </summary>
+        public string LocalizationKeyColumn { get; }
+
         /// <summary>
         /// Default language code to use for localization (ISO 639-1 code)
         /// </summary>
@@ -68,6 +83,9 @@ namespace Datra.Configuration
             bool enableLocalization = false,
             string localizationKeyDataPath = "Localizations/LocalizationKeys.csv",
             string localizationDataPath = "Localizations/",
+            bool useSingleFileLocalization = false,
+            string singleLocalizationFilePath = "Localization.csv",
+            string localizationKeyColumn = "Key",
             string defaultLanguage = "en",
             string dataContextName = "GameDataContext",
             string generatedNamespace = "Datra.Generated",
@@ -80,6 +98,9 @@ namespace Datra.Configuration
             EnableLocalization = enableLocalization;
             LocalizationKeyDataPath = localizationKeyDataPath;
             LocalizationDataPath = localizationDataPath;
+            UseSingleFileLocalization = useSingleFileLocalization;
+            SingleLocalizationFilePath = singleLocalizationFilePath;
+            LocalizationKeyColumn = localizationKeyColumn;
             DefaultLanguage = defaultLanguage;
             DataContextName = dataContextName;
             GeneratedNamespace = generatedNamespace;

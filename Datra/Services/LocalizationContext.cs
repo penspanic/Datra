@@ -88,11 +88,17 @@ namespace Datra.Services
         /// </summary>
         public async Task InitializeAsync()
         {
-            // Load LocalizationKeys.csv
-            await LoadMasterKeysAsync();
-
-            // Detect available languages
-            DetectAvailableLanguages();
+            if (_config.UseSingleFileLocalization)
+            {
+                // Single-file mode: load all languages from one file
+                await LoadSingleFileLocalizationAsync();
+            }
+            else
+            {
+                // Multi-file mode: load master keys and detect available languages
+                await LoadMasterKeysAsync();
+                DetectAvailableLanguages();
+            }
         }
 
         /// <summary>
@@ -140,6 +146,133 @@ namespace Datra.Services
             if (_keyRepository != null)
                 await _keyRepository.LoadAsync();
         }
+
+        /// <summary>
+        /// Loads localization data from a single horizontal CSV file
+        /// </summary>
+        private async Task LoadSingleFileLocalizationAsync()
+        {
+            var filePath = _config.SingleLocalizationFilePath;
+            if (!_rawDataProvider.Exists(filePath))
+            {
+                throw new InvalidOperationException($"Single localization file not found at: {filePath}");
+            }
+
+            var rawData = await _rawDataProvider.LoadTextAsync(filePath);
+            ParseHorizontalCsvData(rawData);
+        }
+
+        /// <summary>
+        /// Parses horizontal CSV format where each row is a key and columns are languages
+        /// Format: Key,~Description,ko,en,ja,zh-TW
+        /// Columns starting with ~ are metadata and skipped
+        /// </summary>
+        private void ParseHorizontalCsvData(string csvContent)
+        {
+            var lines = csvContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            if (lines.Length == 0)
+                return;
+
+            // Parse header to find key column and language columns
+            var headers = ParseCsvLine(lines[0]);
+            var keyColumnIndex = -1;
+            var languageColumnIndices = new Dictionary<LanguageCode, int>();
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var header = headers[i].Trim();
+
+                // Check if this is the key column
+                if (header.Equals(_config.LocalizationKeyColumn, StringComparison.OrdinalIgnoreCase))
+                {
+                    keyColumnIndex = i;
+                    continue;
+                }
+
+                // Skip metadata columns (starting with ~)
+                if (header.StartsWith("~"))
+                    continue;
+
+                // Try to parse as language code
+                var langCode = LanguageCodeExtensions.TryParse(header);
+                if (langCode.HasValue)
+                {
+                    languageColumnIndices[langCode.Value] = i;
+                    _availableLanguages.Add(langCode.Value);
+
+                    // Initialize language dictionary
+                    if (!_languageData.ContainsKey(langCode.Value))
+                    {
+                        _languageData[langCode.Value] = new Dictionary<string, LocalizationEntry>();
+                    }
+                }
+            }
+
+            if (keyColumnIndex < 0)
+            {
+                throw new InvalidOperationException(
+                    $"Key column '{_config.LocalizationKeyColumn}' not found in localization file header");
+            }
+
+            // Determine start row (skip type declaration row if present)
+            int startRow = 1;
+            if (lines.Length > 1)
+            {
+                var secondRowValues = ParseCsvLine(lines[1]);
+                // Check if second row looks like a type declaration (common pattern: int, string, etc.)
+                if (secondRowValues.Length > 0 && IsTypeDeclarationRow(secondRowValues))
+                {
+                    startRow = 2;
+                }
+            }
+
+            // Parse data rows
+            for (int i = startRow; i < lines.Length; i++)
+            {
+                var values = ParseCsvLine(lines[i]);
+                if (values.Length <= keyColumnIndex)
+                    continue;
+
+                var key = values[keyColumnIndex].Trim();
+                if (string.IsNullOrWhiteSpace(key))
+                    continue;
+
+                // Add text for each language
+                foreach (var kvp in languageColumnIndices)
+                {
+                    var langCode = kvp.Key;
+                    var colIndex = kvp.Value;
+
+                    var text = colIndex < values.Length ? values[colIndex] : "";
+                    _languageData[langCode][key] = new LocalizationEntry
+                    {
+                        Text = text,
+                        Context = ""
+                    };
+                }
+            }
+        }
+
+        /// <summary>
+        /// Checks if a row looks like a type declaration (e.g., "int", "string", etc.)
+        /// </summary>
+        private bool IsTypeDeclarationRow(string[] values)
+        {
+            var typeKeywords = new[] { "int", "string", "float", "bool", "double", "long" };
+            int typeCount = 0;
+
+            foreach (var value in values)
+            {
+                var trimmed = value.Trim().ToLowerInvariant();
+                if (typeKeywords.Contains(trimmed) || trimmed.StartsWith("~"))
+                {
+                    typeCount++;
+                }
+            }
+
+            // If more than half the columns look like types, it's probably a type row
+            return typeCount > values.Length / 2;
+        }
         
         private void DetectAvailableLanguages()
         {
@@ -163,26 +296,37 @@ namespace Datra.Services
         /// </summary>
         public async Task LoadLanguageAsync(LanguageCode languageCode)
         {
-            // No null check needed for enum
-            
+            // In single-file mode, all languages are already loaded during initialization
+            if (_config.UseSingleFileLocalization)
+            {
+                if (_languageData.ContainsKey(languageCode))
+                {
+                    _currentLanguageCode = languageCode;
+                    return;
+                }
+                throw new InvalidOperationException(
+                    $"Language '{languageCode.ToIsoCode()}' not found in single localization file");
+            }
+
+            // Multi-file mode: load from separate file
             // Check if already loaded
             if (_languageData.ContainsKey(languageCode))
             {
                 _currentLanguageCode = languageCode;
                 return;
             }
-            
+
             // Load language data using config path with ISO code
             var dataPath = System.IO.Path.Combine(_config.LocalizationDataPath, languageCode.GetFileName());
             if (!_rawDataProvider.Exists(dataPath))
             {
                 throw new InvalidOperationException($"Localization file for language '{languageCode.ToIsoCode()}' not found at {dataPath}");
             }
-            
+
             // For now, use a simple CSV parsing approach
             var rawData = await _rawDataProvider.LoadTextAsync(dataPath);
             var languageDict = ParseCsvData(rawData);
-            
+
             _languageData[languageCode] = languageDict;
             _currentLanguageCode = languageCode;
         }
@@ -268,7 +412,14 @@ namespace Datra.Services
         /// </summary>
         public async Task SaveCurrentLanguageAsync()
         {
-            await SaveLanguageAsync(_currentLanguageCode);
+            if (_config.UseSingleFileLocalization)
+            {
+                await SaveSingleFileLocalizationAsync();
+            }
+            else
+            {
+                await SaveLanguageAsync(_currentLanguageCode);
+            }
         }
 
         /// <summary>
@@ -276,6 +427,13 @@ namespace Datra.Services
         /// </summary>
         public async Task SaveLanguageAsync(LanguageCode language)
         {
+            if (_config.UseSingleFileLocalization)
+            {
+                // In single-file mode, save all languages together
+                await SaveSingleFileLocalizationAsync();
+                return;
+            }
+
             if (!_languageData.ContainsKey(language))
                 return;
 
@@ -283,6 +441,78 @@ namespace Datra.Services
             var csvContent = BuildCsvContent(_languageData[language]);
 
             await _rawDataProvider.SaveTextAsync(dataPath, csvContent);
+        }
+
+        /// <summary>
+        /// Saves all localization data to a single horizontal CSV file
+        /// </summary>
+        private async Task SaveSingleFileLocalizationAsync()
+        {
+            var csvContent = BuildHorizontalCsvContent();
+            await _rawDataProvider.SaveTextAsync(_config.SingleLocalizationFilePath, csvContent);
+        }
+
+        /// <summary>
+        /// Builds horizontal CSV content with all languages
+        /// </summary>
+        private string BuildHorizontalCsvContent()
+        {
+            var lines = new List<string>();
+
+            // Build header: Key,~Description,lang1,lang2,...
+            var languageCodes = _availableLanguages.OrderBy(l => l.ToIsoCode()).ToList();
+            var headerParts = new List<string> { _config.LocalizationKeyColumn };
+            foreach (var lang in languageCodes)
+            {
+                headerParts.Add(lang.ToIsoCode());
+            }
+            lines.Add(string.Join(",", headerParts));
+
+            // Collect all unique keys across all languages
+            var allKeys = new HashSet<string>();
+            foreach (var langData in _languageData.Values)
+            {
+                foreach (var key in langData.Keys)
+                {
+                    allKeys.Add(key);
+                }
+            }
+
+            // Build data rows
+            foreach (var key in allKeys.OrderBy(k => k))
+            {
+                var rowParts = new List<string> { EscapeCsvValue(key) };
+
+                foreach (var lang in languageCodes)
+                {
+                    var text = "";
+                    if (_languageData.TryGetValue(lang, out var langDict) &&
+                        langDict.TryGetValue(key, out var entry))
+                    {
+                        text = entry.Text ?? "";
+                    }
+                    rowParts.Add(EscapeCsvValue(text));
+                }
+
+                lines.Add(string.Join(",", rowParts));
+            }
+
+            return string.Join("\n", lines);
+        }
+
+        /// <summary>
+        /// Escapes a value for CSV format
+        /// </summary>
+        private string EscapeCsvValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "";
+
+            if (value.Contains(",") || value.Contains("\"") || value.Contains("\n") || value.Contains("\r"))
+            {
+                return "\"" + value.Replace("\"", "\"\"") + "\"";
+            }
+            return value;
         }
         
         /// <summary>
