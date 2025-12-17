@@ -6,6 +6,7 @@
         "UnityEditor.TestRunner",
         "Datra",
         "Datra.Unity",
+        "Datra.Unity.Editor",
         "Datra Sample Data"
     ],
     "includePlatforms": [
