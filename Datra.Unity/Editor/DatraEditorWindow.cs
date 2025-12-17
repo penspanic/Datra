@@ -11,7 +11,9 @@ using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
 using Datra.Unity.Editor.Panels;
+using Datra.Unity.Editor.Services;
 using Datra.Unity.Editor.Utilities;
+using Datra.Unity.Editor.ViewModels;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor
@@ -54,10 +56,18 @@ namespace Datra.Unity.Editor
         // Change trackers for each data type
         internal Dictionary<Type, IRepositoryChangeTracker> changeTrackers = new Dictionary<Type, IRepositoryChangeTracker>();
 
+        // ViewModel and Services (new architecture)
+        private DatraEditorViewModel viewModel;
+        private DatraDataManagerAdapter dataServiceAdapter;
+        private LocalizationEditorServiceAdapter localizationServiceAdapter;
+
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
         public IReadOnlyDictionary<Type, IDataRepository> Repositories => repositories;
         public IReadOnlyDictionary<Type, DataTypeInfo> DataTypeInfoMap => dataTypeInfoMap;
+
+        // Public accessor for ViewModel (enables testing and external access)
+        public DatraEditorViewModel ViewModel => viewModel;
         
         // Window State
         private string currentProjectName;
@@ -208,6 +218,9 @@ namespace Datra.Unity.Editor
                     dataManager.OnDataChanged += OnManagerDataChanged;
                     dataManager.OnLocalizationChanged += OnManagerLocalizationChanged;
 
+                    // Create service adapters and ViewModel (new architecture)
+                    InitializeViewModel();
+
                     isInitialized = true;
 
                     // Set project name
@@ -261,6 +274,39 @@ namespace Datra.Unity.Editor
         {
             // The LocalizationView subscribes to LocalizationContext events directly
             // This event is for other components that might need to react to localization changes
+        }
+
+        /// <summary>
+        /// Initialize the ViewModel and service adapters.
+        /// This enables the new MVVM architecture while maintaining backward compatibility.
+        /// </summary>
+        private void InitializeViewModel()
+        {
+            if (dataManager == null) return;
+
+            // Create service adapters that wrap the existing DatraDataManager
+            dataServiceAdapter = new DatraDataManagerAdapter(dataManager);
+
+            // Create localization service adapter if available
+            if (localizationContext != null && localizationChangeTracker != null)
+            {
+                localizationServiceAdapter = new LocalizationEditorServiceAdapter(
+                    localizationContext,
+                    localizationChangeTracker,
+                    dataManager);
+            }
+
+            // Create the ViewModel with service adapters
+            viewModel = new DatraEditorViewModel(
+                dataServiceAdapter,
+                dataServiceAdapter, // DatraDataManagerAdapter implements both IDataService and IChangeTrackingService
+                localizationServiceAdapter);
+
+            // Set project name on ViewModel
+            viewModel.ProjectName = Application.productName;
+
+            // Note: ViewModel events are already handled by DatraDataManager events
+            // The ViewModel is primarily for enabling unit testing and future refactoring
         }
 
         private void CreateChangeTrackerForRepository(Type dataType, object repository)
