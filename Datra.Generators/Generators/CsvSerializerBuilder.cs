@@ -564,59 +564,6 @@ namespace Datra.Generators.Generators
             }
         }
 
-        private string GetCsvPropertyParseCode(PropertyInfo prop, string rawValueVar, string varName, string configVar)
-        {
-            // Handle array types
-            if (prop.IsArray)
-            {
-                return GetArrayParseCode(prop, rawValueVar, varName, configVar);
-            }
-
-            // Handle DataRef types
-            if (prop.IsDataRef)
-            {
-                if (prop.DataRefKeyType == "string")
-                {
-                    return $"new {prop.Type} {{ Value = {rawValueVar} }}";
-                }
-                else if (prop.DataRefKeyType == "int")
-                {
-                    return $"new {prop.Type} {{ Value = int.TryParse({rawValueVar}, out var {varName}RefVal) ? {varName}RefVal : 0 }}";
-                }
-            }
-
-            // Handle enums using enhanced metadata
-            if (prop.IsEnum)
-            {
-                // Use Type which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
-                return $"global::System.Enum.TryParse<{prop.Type}>({rawValueVar}, true, out var {varName}Val) ? {varName}Val : default({prop.Type})";
-            }
-
-            // Handle basic types using CleanTypeName to avoid issues with fully qualified names
-            var cleanType = prop.CleanTypeName ?? prop.Type;
-            switch (cleanType)
-            {
-                case "string":
-                case "System.String":
-                    return rawValueVar;
-                case "int":
-                case "System.Int32":
-                    return $"int.TryParse({rawValueVar}, out var {varName}Val) ? {varName}Val : 0";
-                case "float":
-                case "System.Single":
-                    return $"float.TryParse({rawValueVar}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0f";
-                case "double":
-                case "System.Double":
-                    return $"double.TryParse({rawValueVar}, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var {varName}Val) ? {varName}Val : 0.0";
-                case "bool":
-                case "System.Boolean":
-                    return $"bool.TryParse({rawValueVar}, out var {varName}Val) ? {varName}Val : false";
-                default:
-                    // Fallback for unknown types
-                    return $"default({prop.Type})";
-            }
-        }
-        
         private string GetArrayParseCodeWithHelper(PropertyInfo prop, string getValueCode, string varName, string configVar, string loggerVar, string lineNumberVar, string fileName)
         {
             var arrayDelimiter = $"{configVar}.CsvArrayDelimiter";
@@ -668,57 +615,6 @@ namespace Datra.Generators.Generators
             }
         }
 
-        private string GetArrayParseCode(PropertyInfo prop, string getValueCode, string varName, string configVar)
-        {
-            var arrayDelimiter = $"{configVar}.CsvArrayDelimiter";
-            var elementType = prop.ElementType;
-
-            // Handle DataRef array types
-            if (prop.IsDataRef)
-            {
-                if (prop.DataRefKeyType == "string")
-                {
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = x }}).ToArray()";
-                }
-                else if (prop.DataRefKeyType == "int")
-                {
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => new {elementType} {{ Value = int.TryParse(x, out var val) ? val : 0 }}).ToArray()";
-                }
-            }
-
-            // Handle enum arrays using enhanced metadata
-            if (prop.ElementIsEnum)
-            {
-                // Use ElementType which already has global:: prefix from ToDisplayString(FullyQualifiedFormat)
-                return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => global::System.Enum.TryParse<{elementType}>(x, true, out var val) ? val : default({elementType})).ToArray()";
-            }
-
-            // Handle basic type arrays
-            // Use CleanElementType to avoid issues with fully qualified names
-            var cleanType = prop.CleanElementType ?? elementType;
-            switch (cleanType)
-            {
-                case "string":
-                case "System.String":
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries)";
-                case "int":
-                case "System.Int32":
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => int.TryParse(x, out var val) ? val : 0).ToArray()";
-                case "float":
-                case "System.Single":
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => float.TryParse(x, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var val) ? val : 0f).ToArray()";
-                case "double":
-                case "System.Double":
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => double.TryParse(x, global::System.Globalization.NumberStyles.Float, global::System.Globalization.CultureInfo.InvariantCulture, out var val) ? val : 0.0).ToArray()";
-                case "bool":
-                case "System.Boolean":
-                    return $"({getValueCode}).Split({arrayDelimiter}, global::System.StringSplitOptions.RemoveEmptyEntries).Select(x => bool.TryParse(x, out var val) ? val : false).ToArray()";
-                default:
-                    // Fallback for unknown types - return empty array
-                    return $"new {elementType}[0]";
-            }
-        }
-        
         private string GetCsvSerializeCode(PropertyInfo prop, string itemVar, string configVar)
         {
             // Handle array types
