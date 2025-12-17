@@ -137,8 +137,6 @@ namespace Datra.Unity.Editor.ViewModels
 
         public void SelectDataType(Type dataType)
         {
-            if (dataType == null) return;
-
             SelectedDataType = dataType;
             IsLocalizationSelected = false;
             OnPropertyChanged(nameof(HasCurrentDataUnsavedChanges));
@@ -146,8 +144,6 @@ namespace Datra.Unity.Editor.ViewModels
 
         public void SelectLocalization()
         {
-            if (_localization?.IsAvailable != true) return;
-
             SelectedDataType = null;
             IsLocalizationSelected = true;
             OnPropertyChanged(nameof(HasCurrentDataUnsavedChanges));
@@ -259,8 +255,6 @@ namespace Datra.Unity.Editor.ViewModels
 
         private async Task<bool> SaveLocalizationAsync()
         {
-            if (_localization == null) return false;
-
             var success = await _localization.SaveAsync();
             if (success)
             {
@@ -275,8 +269,6 @@ namespace Datra.Unity.Editor.ViewModels
 
         private async Task<bool> ForceSaveLocalizationAsync()
         {
-            if (_localization == null) return false;
-
             var success = await _localization.SaveAsync(forceSave: true);
             if (success)
             {
@@ -300,8 +292,6 @@ namespace Datra.Unity.Editor.ViewModels
             }
 
             var repository = _dataService.GetRepository(dataType);
-            if (repository == null) return null;
-
             var tab = new TabViewModel(dataType, repository, _dataService.DataContext);
             _openTabs.Add(tab);
             OnPropertyChanged(nameof(OpenTabs));
@@ -311,8 +301,6 @@ namespace Datra.Unity.Editor.ViewModels
 
         public void CloseTab(TabViewModel tab)
         {
-            if (tab == null) return;
-
             _openTabs.Remove(tab);
             OnPropertyChanged(nameof(OpenTabs));
         }

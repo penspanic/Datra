@@ -140,6 +140,20 @@ namespace Datra.Unity.Tests
         }
 
         [Test]
+        public void ViewModel_SelectDataType_WithNull_SetsNullType()
+        {
+            // Arrange
+            var mockDataService = new MockDataService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
+
+            // Act - null is allowed, will set SelectedDataType to null
+            viewModel.SelectDataTypeCommand(null);
+
+            // Assert
+            Assert.IsNull(viewModel.SelectedDataType);
+        }
+
+        [Test]
         public void ViewModel_HasAnyUnsavedChanges_ReturnsCorrectValue()
         {
             // Arrange
