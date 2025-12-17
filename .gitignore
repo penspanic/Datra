@@ -3,3 +3,5 @@ bin
 obj
 .idea
 Output/
+TestResults/
+unity-compile-error.log
