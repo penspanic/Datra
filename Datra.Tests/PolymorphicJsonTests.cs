@@ -69,7 +69,7 @@ namespace Datra.Tests
             _output.WriteLine($"  Objectives: {mainQuest.Objectives.Count}");
             foreach (var obj in mainQuest.Objectives)
             {
-                _output.WriteLine($"    - [{obj.GetType().Name}] {obj.DescriptionText}");
+                _output.WriteLine($"    - [{obj.GetType().Name}] {obj.Description}");
             }
         }
 
@@ -147,14 +147,14 @@ namespace Datra.Tests
                     new KillObjective
                     {
                         Id = "kill_01",
-                        DescriptionText = "Kill dragons",
+                        Description = "Kill dragons",
                         TargetEnemyId = "enemy_dragon",
                         RequiredCount = 3
                     },
                     new CollectObjective
                     {
                         Id = "collect_01",
-                        DescriptionText = "Collect dragon scales",
+                        Description = "Collect dragon scales",
                         TargetItemId = 5001,
                         RequiredAmount = 5
                     }
@@ -188,14 +188,14 @@ namespace Datra.Tests
                     new TalkObjective
                     {
                         Id = "talk_01",
-                        DescriptionText = "Talk to event NPC",
+                        Description = "Talk to event NPC",
                         TargetNpcId = "npc_event",
                         DialogueKeys = new[] { "event_start", "event_end" }
                     },
                     new LocationObjective
                     {
                         Id = "location_01",
-                        DescriptionText = "Go to event area",
+                        Description = "Go to event area",
                         LocationId = "event_zone",
                         Radius = 10.0f
                     }

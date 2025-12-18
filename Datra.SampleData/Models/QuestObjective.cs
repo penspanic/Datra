@@ -14,17 +14,14 @@ namespace Datra.SampleData.Models
         public string Id { get; set; }
 
         /// <summary>
-        /// Direct description text for backwards compatibility with existing JSON.
-        /// Use this when description is stored directly in the data file.
+        /// Description text from the data file (fallback/debug).
         /// </summary>
-        [JsonProperty("Description")]
-        public string DescriptionText { get; set; }
+        public string Description { get; set; }
 
         /// <summary>
         /// Nested locale reference for objective description.
         /// The actual locale key is evaluated at runtime with indices:
         /// e.g., "QuestData.quest_001.Objectives#0.Description"
-        /// Use this when description should come from localization system.
         /// </summary>
         [NestedLocale]
         [JsonIgnore]
