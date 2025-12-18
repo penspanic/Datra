@@ -13,9 +13,12 @@ Datra is a comprehensive data management system for game development that suppor
 - **Multiple Data Format Support**: CSV, JSON, and YAML file formats
 - **Automatic Code Generation**: Uses C# Source Generators to eliminate boilerplate code
 - **Type Safety**: Strong typing with compile-time validation
+- **Polymorphic JSON Support**: Abstract classes and inheritance with automatic type handling
+- **Collection Support**: List<T>, Dictionary<K,V>, and arrays with full editor support
 - **Platform Independent**: Works in Unity and standard .NET applications
 - **Async/Await Support**: All I/O operations are asynchronous
 - **Repository Pattern**: Clean architecture with repository pattern implementation
+- **Unity Editor Integration**: Visual data editing with Table/Form views and popup editors
 - **Unity Package Support**: Can be imported as Unity packages
 
 ## 🎬 Unity Editor Demo
@@ -27,11 +30,14 @@ Datra provides a powerful Unity Editor window for managing and visualizing your 
 </p>
 
 The editor window features:
-- Real-time data visualization and editing
-- Support for multiple data formats (CSV, JSON, YAML)
-- Automatic code generation integration
-- Type-safe data management
-- Intuitive UI for game designers and developers
+- **Real-time data visualization and editing** with Table View and Form View
+- **Support for multiple data formats** (CSV, JSON, YAML)
+- **Collection editing** with popup editors for List<T> and Dictionary<K,V>
+- **Polymorphic type support** with automatic derived type discovery
+- **Collapsible elements** in collection editors for better organization
+- **Reorder support** with up/down buttons for list elements
+- **Type-safe data management** with compile-time validation
+- **Change tracking** with modified indicators and revert functionality
 
 ## 🔥 Key Features & Examples
 
@@ -158,6 +164,78 @@ public partial class CharacterData : ITableData<string>
     public StatType[] Stats { get; set; }    // Array of enums
 }
 ```
+
+### 🧬 Polymorphic JSON Support
+
+Use abstract classes or interfaces with multiple implementations. Datra automatically handles type discrimination in JSON:
+
+```csharp
+// Base abstract class for quest objectives
+public abstract class QuestObjective
+{
+    public string Id { get; set; }
+    public string Description { get; set; }
+    public bool IsCompleted { get; set; }
+}
+
+// Concrete implementations
+public class KillObjective : QuestObjective
+{
+    public string TargetEnemyId { get; set; }
+    public int RequiredCount { get; set; }
+    public int CurrentCount { get; set; }
+}
+
+public class TalkObjective : QuestObjective
+{
+    public string TargetNpcId { get; set; }
+    public List<string> DialogueKeys { get; set; }
+}
+
+public class CollectObjective : QuestObjective
+{
+    public int TargetItemId { get; set; }
+    public int RequiredAmount { get; set; }
+}
+
+// Use polymorphic list in your data model
+[TableData("Quests.json", Format = DataFormat.Json)]
+public partial class QuestData : ITableData<string>
+{
+    public string Id { get; set; }
+    public List<QuestObjective> Objectives { get; set; }  // Polymorphic list
+    public Dictionary<string, int> RewardItems { get; set; }
+}
+```
+
+In JSON files, the `$type` field stores the concrete type:
+```json
+{
+  "Id": "quest_main_001",
+  "Objectives": [
+    {
+      "$type": "MyGame.Models.TalkObjective",
+      "Id": "obj_001",
+      "Description": "Talk to the village elder",
+      "TargetNpcId": "npc_elder_001",
+      "DialogueKeys": ["dialogue_intro_001", "dialogue_intro_002"]
+    },
+    {
+      "$type": "MyGame.Models.KillObjective",
+      "Id": "obj_002",
+      "Description": "Defeat the slimes",
+      "TargetEnemyId": "enemy_slime",
+      "RequiredCount": 5
+    }
+  ]
+}
+```
+
+The Unity Editor automatically discovers derived types using `TypeCache` and provides a dropdown for adding new elements:
+
+<p align="center">
+  <img src="docs/images/polymorphic-editor.png" alt="Polymorphic Type Editor" width="400">
+</p>
 
 ### 🏠 Nested Type Support
 
@@ -401,11 +479,18 @@ Datra is designed to work seamlessly with Unity. The example Unity project (`Dat
 
 ### Unity-Specific Features
 
+- **Custom Editor Window** for intuitive data management
+- **Table View & Form View** for different editing workflows
+- **Collection Editors** with popup windows for complex types:
+  - List<T> editing with add/remove/reorder
+  - Dictionary<K,V> editing with key-value pairs
+  - Polymorphic type selection dropdown
+  - Collapsible elements for large collections
+- **Asset Reference Fields** with drag-and-drop support
+- **Localization Integration** with LocaleRef editing
 - Conditional compilation for Unity-specific code paths
 - Unity package manifest support
 - Compatible with Unity 2020.3 and later
-- Custom Editor UI for intuitive data management
-- Real-time data preview and editing capabilities
 
 ## 📊 Supported Data Formats
 
