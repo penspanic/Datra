@@ -1,14 +1,6 @@
 [
   {
     "Id": 1001,
-    "Name": {
-      "Key": "ItemData.1001.name",
-      "HasValue": true
-    },
-    "Description": {
-      "Key": "ItemData.1001.description",
-      "HasValue": true
-    },
     "Price": 100,
     "Type": "Weapon",
     "Attack": 10,
@@ -16,19 +8,10 @@
     "IconSpritePath": "",
     "DroppedItemPrefabPath": "",
     "UseSoundPath": "",
-    "EffectPrefabPath": "",
-    "Ref": 1001
+    "EffectPrefabPath": ""
   },
   {
     "Id": 1002,
-    "Name": {
-      "Key": "ItemData.1002.name",
-      "HasValue": true
-    },
-    "Description": {
-      "Key": "ItemData.1002.description",
-      "HasValue": true
-    },
     "Price": 150,
     "Type": "Armor",
     "Attack": 0,
@@ -36,19 +19,10 @@
     "IconSpritePath": "",
     "DroppedItemPrefabPath": "",
     "UseSoundPath": "",
-    "EffectPrefabPath": "",
-    "Ref": 1002
+    "EffectPrefabPath": ""
   },
   {
     "Id": 2001,
-    "Name": {
-      "Key": "ItemData.2001.name",
-      "HasValue": true
-    },
-    "Description": {
-      "Key": "ItemData.2001.description",
-      "HasValue": true
-    },
     "Price": 50,
     "Type": "Consumable",
     "Attack": 0,
@@ -56,19 +30,10 @@
     "IconSpritePath": "",
     "DroppedItemPrefabPath": "",
     "UseSoundPath": "",
-    "EffectPrefabPath": "",
-    "Ref": 2001
+    "EffectPrefabPath": ""
   },
   {
     "Id": 3001,
-    "Name": {
-      "Key": "ItemData.3001.name",
-      "HasValue": true
-    },
-    "Description": {
-      "Key": "ItemData.3001.description",
-      "HasValue": true
-    },
     "Price": 500,
     "Type": "Weapon",
     "Attack": 15,
@@ -76,19 +41,10 @@
     "IconSpritePath": "",
     "DroppedItemPrefabPath": "",
     "UseSoundPath": "",
-    "EffectPrefabPath": "",
-    "Ref": 3001
+    "EffectPrefabPath": ""
   },
   {
     "Id": 3002,
-    "Name": {
-      "Key": "ItemData.3002.name",
-      "HasValue": true
-    },
-    "Description": {
-      "Key": "ItemData.3002.description",
-      "HasValue": true
-    },
     "Price": 1000,
     "Type": "Armor",
     "Attack": 0,
@@ -96,7 +52,6 @@
     "IconSpritePath": "",
     "DroppedItemPrefabPath": "",
     "UseSoundPath": "",
-    "EffectPrefabPath": "",
-    "Ref": 3002
+    "EffectPrefabPath": ""
   }
 ]

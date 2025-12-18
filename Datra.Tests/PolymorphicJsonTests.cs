@@ -230,6 +230,39 @@ namespace Datra.Tests
         }
 
         [Fact]
+        public void Serialize_DataClass_ShouldExcludeGetterOnlyProperties()
+        {
+            // Arrange - ItemData has getter-only properties: Name (LocaleRef), Description (LocaleRef), Ref (IntDataRef)
+#pragma warning disable DATRA001
+            var item = new ItemData
+            {
+                Id = 9999,
+                Price = 100,
+                Type = ItemType.Weapon,
+                Attack = 10,
+                Defense = 0,
+                IconSpritePath = "path/to/icon"
+            };
+#pragma warning restore DATRA001
+
+            // Act
+            var json = _serializer.SerializeSingle(item);
+            _output.WriteLine("Serialized JSON:");
+            _output.WriteLine(json);
+
+            // Assert - should NOT contain getter-only properties
+            Assert.DoesNotContain("\"Name\"", json);        // LocaleRef getter-only
+            Assert.DoesNotContain("\"Description\"", json); // LocaleRef getter-only
+            Assert.DoesNotContain("\"Ref\"", json);         // IntDataRef getter-only
+
+            // Assert - should contain writable properties
+            Assert.Contains("\"Id\"", json);
+            Assert.Contains("\"Price\"", json);
+            Assert.Contains("\"Type\"", json);
+            Assert.Contains("\"Attack\"", json);
+        }
+
+        [Fact]
         public async Task AllQuestTypes_ShouldLoadCorrectly()
         {
             // Arrange

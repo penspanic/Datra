@@ -8,20 +8,23 @@
     "Objectives": [
       {
         "$type": "Datra.SampleData.Models.TalkObjective",
+        "TargetNpcId": "npc_elder_001",
+        "DialogueKeys": [
+          "dialogue_intro_001",
+          "dialogue_intro_002"
+        ],
         "Id": "obj_001",
         "Description": "Talk to the village elder",
-        "IsCompleted": false,
-        "TargetNpcId": "npc_elder_001",
-        "DialogueKeys": ["dialogue_intro_001", "dialogue_intro_002"]
+        "IsCompleted": false
       },
       {
         "$type": "Datra.SampleData.Models.KillObjective",
-        "Id": "obj_002",
-        "Description": "Defeat the slimes",
-        "IsCompleted": false,
         "TargetEnemyId": "enemy_slime",
         "RequiredCount": 5,
-        "CurrentCount": 0
+        "CurrentCount": 0,
+        "Id": "obj_002",
+        "Description": "Defeat the slimes",
+        "IsCompleted": false
       }
     ],
     "RewardItems": {
@@ -38,27 +41,29 @@
     "Objectives": [
       {
         "$type": "Datra.SampleData.Models.CollectObjective",
-        "Id": "obj_001",
-        "Description": "Collect healing herbs",
-        "IsCompleted": false,
         "TargetItemId": 2001,
         "RequiredAmount": 10,
-        "CurrentAmount": 0
+        "CurrentAmount": 0,
+        "Id": "obj_001",
+        "Description": "Collect healing herbs",
+        "IsCompleted": false
       },
       {
         "$type": "Datra.SampleData.Models.LocationObjective",
+        "LocationId": "location_forest_shrine",
+        "Radius": 5.0,
         "Id": "obj_002",
         "Description": "Reach the forest shrine",
-        "IsCompleted": false,
-        "LocationId": "location_forest_shrine",
-        "Radius": 5.0
+        "IsCompleted": false
       }
     ],
     "RewardItems": {
       "1002": 1,
       "2001": 5
     },
-    "PrerequisiteQuests": ["quest_main_001"]
+    "PrerequisiteQuests": [
+      "quest_main_001"
+    ]
   },
   {
     "Id": "quest_side_001",
@@ -69,21 +74,21 @@
     "Objectives": [
       {
         "$type": "Datra.SampleData.Models.KillObjective",
-        "Id": "obj_001",
-        "Description": "Hunt wild boars",
-        "IsCompleted": false,
         "TargetEnemyId": "enemy_boar",
         "RequiredCount": 3,
-        "CurrentCount": 0
+        "CurrentCount": 0,
+        "Id": "obj_001",
+        "Description": "Hunt wild boars",
+        "IsCompleted": false
       },
       {
         "$type": "Datra.SampleData.Models.CollectObjective",
-        "Id": "obj_002",
-        "Description": "Collect boar tusks",
-        "IsCompleted": false,
         "TargetItemId": 3001,
         "RequiredAmount": 3,
-        "CurrentAmount": 0
+        "CurrentAmount": 0,
+        "Id": "obj_002",
+        "Description": "Collect boar tusks",
+        "IsCompleted": false
       }
     ],
     "RewardItems": {},
@@ -98,12 +103,12 @@
     "Objectives": [
       {
         "$type": "Datra.SampleData.Models.KillObjective",
-        "Id": "obj_001",
-        "Description": "Defeat any monsters",
-        "IsCompleted": false,
         "TargetEnemyId": "*",
         "RequiredCount": 10,
-        "CurrentCount": 0
+        "CurrentCount": 0,
+        "Id": "obj_001",
+        "Description": "Defeat any monsters",
+        "IsCompleted": false
       }
     ],
     "RewardItems": {

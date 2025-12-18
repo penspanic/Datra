@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Reflection;
 using Datra.Converters;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 namespace Datra.Serializers
 {
@@ -20,6 +22,7 @@ namespace Datra.Serializers
             NullValueHandling = NullValueHandling.Ignore,
             TypeNameHandling = TypeNameHandling.Auto,
             SerializationBinder = new PortableTypeBinder(),
+            ContractResolver = new WritablePropertiesOnlyContractResolver(),
             Converters = new List<JsonConverter>
             {
                 new DataRefJsonConverter(),
@@ -36,5 +39,28 @@ namespace Datra.Serializers
             SerializationBinder = new PortableTypeBinder(),
             NullValueHandling = NullValueHandling.Ignore
         };
+    }
+
+    /// <summary>
+    /// Contract resolver that only serializes properties with setters.
+    /// Excludes getter-only properties like generated Ref and LocaleRef properties.
+    /// </summary>
+    public class WritablePropertiesOnlyContractResolver : DefaultContractResolver
+    {
+        protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization)
+        {
+            var property = base.CreateProperty(member, memberSerialization);
+
+            if (member is PropertyInfo propInfo)
+            {
+                // Only serialize if the property has a setter
+                if (!propInfo.CanWrite)
+                {
+                    property.ShouldSerialize = _ => false;
+                }
+            }
+
+            return property;
+        }
     }
 }

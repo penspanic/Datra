@@ -30,6 +30,8 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             RegisterHandler(new DataRefArrayFieldHandler());   // Priority 35
             RegisterHandler(new NestedTypeFieldHandler());     // Priority 30
             RegisterHandler(new EnumArrayFieldHandler());      // Priority 25
+            RegisterHandler(new DictionaryFieldHandler());     // Priority 23
+            RegisterHandler(new ListFieldHandler());           // Priority 22
             RegisterHandler(new ArrayFieldHandler());          // Priority 20
 
             // Basic type handlers (Priority 0)
@@ -96,22 +98,66 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         private static VisualElement CreateUnsupportedField(FieldCreationContext context)
         {
-            Debug.LogWarning($"[FieldTypeRegistry] Unsupported type: {context.FieldType.FullName}");
-
             var container = new VisualElement();
             container.AddToClassList("unsupported-field-container");
 
+            var displayValue = GetDisplayValueForUnsupportedType(context.FieldType, context.Value);
+
             var readOnlyField = new TextField();
-            readOnlyField.value = context.Value?.ToString() ?? "null";
+            readOnlyField.value = displayValue;
             readOnlyField.isReadOnly = true;
             readOnlyField.AddToClassList("unsupported-field");
             container.Add(readOnlyField);
 
-            var typeInfo = new Label($"Type: {context.FieldType.Name}");
-            typeInfo.AddToClassList("type-info");
-            container.Add(typeInfo);
-
             return container;
+        }
+
+        private static string GetDisplayValueForUnsupportedType(Type type, object value)
+        {
+            if (value == null) return "(null)";
+
+            // Handle arrays
+            if (type.IsArray)
+            {
+                var array = value as Array;
+                return $"[{array?.Length ?? 0} items]";
+            }
+
+            // Handle generic collection types
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+
+                // List<T>
+                if (genericDef == typeof(List<>))
+                {
+                    var countProp = type.GetProperty("Count");
+                    var count = countProp?.GetValue(value) ?? 0;
+                    return $"[{count} items]";
+                }
+
+                // Dictionary<K,V>
+                if (genericDef == typeof(Dictionary<,>))
+                {
+                    var countProp = type.GetProperty("Count");
+                    var count = countProp?.GetValue(value) ?? 0;
+                    return $"{{{count} entries}}";
+                }
+            }
+
+            // Handle ICollection interface (catches other collection types)
+            if (value is System.Collections.ICollection collection)
+            {
+                return $"[{collection.Count} items]";
+            }
+
+            // Default: use ToString but truncate if too long
+            var str = value.ToString();
+            if (str.Length > 50)
+            {
+                str = str.Substring(0, 47) + "...";
+            }
+            return str;
         }
 
         /// <summary>
