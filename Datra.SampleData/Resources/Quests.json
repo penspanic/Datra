@@ -7,7 +7,7 @@
     "RewardExp": 50,
     "Objectives": [
       {
-        "$type": "Datra.SampleData.Models.TalkObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.TalkObjective",
         "Id": "obj_001",
         "Description": "Talk to the village elder",
         "IsCompleted": false,
@@ -15,7 +15,7 @@
         "DialogueKeys": ["dialogue_intro_001", "dialogue_intro_002"]
       },
       {
-        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.KillObjective",
         "Id": "obj_002",
         "Description": "Defeat the slimes",
         "IsCompleted": false,
@@ -37,7 +37,7 @@
     "RewardExp": 200,
     "Objectives": [
       {
-        "$type": "Datra.SampleData.Models.CollectObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.CollectObjective",
         "Id": "obj_001",
         "Description": "Collect healing herbs",
         "IsCompleted": false,
@@ -46,7 +46,7 @@
         "CurrentAmount": 0
       },
       {
-        "$type": "Datra.SampleData.Models.LocationObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.LocationObjective",
         "Id": "obj_002",
         "Description": "Reach the forest shrine",
         "IsCompleted": false,
@@ -68,7 +68,7 @@
     "RewardExp": 75,
     "Objectives": [
       {
-        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.KillObjective",
         "Id": "obj_001",
         "Description": "Hunt wild boars",
         "IsCompleted": false,
@@ -77,7 +77,7 @@
         "CurrentCount": 0
       },
       {
-        "$type": "Datra.SampleData.Models.CollectObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.CollectObjective",
         "Id": "obj_002",
         "Description": "Collect boar tusks",
         "IsCompleted": false,
@@ -97,7 +97,7 @@
     "RewardExp": 25,
     "Objectives": [
       {
-        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "$type": "Datra.SampleData.Models.KillObjective",
         "Id": "obj_001",
         "Description": "Defeat any monsters",
         "IsCompleted": false,

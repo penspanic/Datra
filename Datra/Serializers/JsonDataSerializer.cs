@@ -18,6 +18,8 @@ namespace Datra.Serializers
             NullValueHandling = NullValueHandling.Ignore,
             // Enable polymorphic type handling - embeds $type for abstract/interface types
             TypeNameHandling = TypeNameHandling.Auto,
+            // Use portable binder to avoid assembly name issues across environments (Unity, .NET)
+            SerializationBinder = new PortableTypeBinder(),
             Converters = new List<JsonConverter>
             {
                 new DataRefJsonConverter(),
