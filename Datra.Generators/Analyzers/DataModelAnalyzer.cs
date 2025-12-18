@@ -125,6 +125,23 @@ namespace Datra.Generators.Analyzers
                 GeneratorLogger.Log($"Format value for {classSymbol.Name}: '{formatValue}'");
             }
 
+            // Parse MultiFile property
+            var multiFileArg = dataAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "MultiFile");
+            var isMultiFile = multiFileArg.Value.Value is bool b && b;
+
+            // Parse Label property
+            var labelArg = dataAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Label");
+            var label = labelArg.Value.Value?.ToString();
+
+            // Parse Pattern property
+            var patternArg = dataAttribute.NamedArguments.FirstOrDefault(arg => arg.Key == "Pattern");
+            var pattern = patternArg.Value.Value?.ToString() ?? "*.json";
+
+            if (isMultiFile)
+            {
+                GeneratorLogger.Log($"Multi-file mode enabled for {classSymbol.Name}, Label: {label ?? "(none)"}, Pattern: {pattern}");
+            }
+
             var modelInfo = new DataModelInfo
             {
                 TypeName = classSymbol.ToDisplayString(FullyQualifiedFormat),
@@ -132,7 +149,10 @@ namespace Datra.Generators.Analyzers
                 IsTableData = isTableData,
                 FilePath = filePath,
                 Format = formatValue,
-                Properties = GetProperties(classSymbol)
+                Properties = GetProperties(classSymbol),
+                IsMultiFile = isMultiFile,
+                Label = label,
+                FilePattern = pattern
             };
 
             if (isTableData)

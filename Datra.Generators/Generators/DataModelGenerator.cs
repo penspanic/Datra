@@ -230,7 +230,7 @@ namespace Datra.Generators.Generators
             if (format == "Csv")
             {
                 codeBuilder.AddBlankLine();
-                
+
                 // CSV Deserialize method without serializer
                 codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeCsv(string data, global::Datra.Configuration.DatraConfigurationValue config = null, global::Datra.Interfaces.ISerializationLogger logger = null)");
                 var csvBuilder2 = new CsvSerializerBuilder();
@@ -243,6 +243,18 @@ namespace Datra.Generators.Generators
                 codeBuilder.BeginMethod($"public static string SerializeCsv(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table, global::Datra.Configuration.DatraConfigurationValue config = null, global::Datra.Interfaces.ISerializationLogger logger = null)");
                 var csvBuilder3 = new CsvSerializerBuilder();
                 csvBuilder3.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+            }
+
+            // Generate DeserializeSingleItem for multi-file mode (JSON only)
+            if (model.IsMultiFile)
+            {
+                codeBuilder.AddBlankLine();
+                codeBuilder.AppendLine("/// <summary>");
+                codeBuilder.AppendLine("/// Deserialize a single item from JSON (for multi-file mode)");
+                codeBuilder.AppendLine("/// </summary>");
+                codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingleItem(string data, global::Datra.Serializers.IDataSerializer serializer)");
+                codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");
                 codeBuilder.EndMethod();
             }
         }

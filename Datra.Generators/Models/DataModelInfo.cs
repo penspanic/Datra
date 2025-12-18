@@ -20,6 +20,21 @@ namespace Datra.Generators.Models
         public string SourceFilePath { get; set; }
 
         /// <summary>
+        /// Multi-file mode: each file in folder/label contains a single data item
+        /// </summary>
+        public bool IsMultiFile { get; set; }
+
+        /// <summary>
+        /// Addressables label for multi-file loading (Unity only)
+        /// </summary>
+        public string Label { get; set; }
+
+        /// <summary>
+        /// File pattern for multi-file mode (e.g., "*.json")
+        /// </summary>
+        public string FilePattern { get; set; } = "*.json";
+
+        /// <summary>
         /// Get properties that should be included in serialization.
         /// Excludes: FixedLocale (computed properties that cannot be serialized)
         /// </summary>

@@ -1,4 +1,5 @@
 #if ENABLE_ADDRESSABLES
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Datra.Interfaces;
@@ -8,6 +9,10 @@ using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Datra.Unity.Addressables.Runtime.Providers
 {
+    /// <summary>
+    /// Addressables-based data provider for Unity runtime.
+    /// Supports both single-file and multi-file (label-based) loading.
+    /// </summary>
     public class AddressableRawDataProvider : IRawDataProvider
     {
         private readonly string _basePath;
@@ -32,6 +37,47 @@ namespace Datra.Unity.Addressables.Runtime.Providers
             var text = textAsset.text;
             global::UnityEngine.AddressableAssets.Addressables.Release(handle);
             return text;
+        }
+
+        /// <summary>
+        /// Load multiple text files by Addressables label.
+        /// The folderPathOrLabel parameter is treated as an Addressables label.
+        /// The pattern parameter is ignored for Addressables (use labels instead).
+        /// </summary>
+        public async Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPathOrLabel, string pattern = "*.json")
+        {
+            var result = new Dictionary<string, string>();
+
+            // In Addressables, folderPathOrLabel is treated as a label
+            var label = folderPathOrLabel;
+            if (!string.IsNullOrEmpty(_basePath))
+            {
+                // If basePath is set, prepend it (though typically labels don't use paths)
+                label = CombinePath(_basePath, folderPathOrLabel);
+            }
+
+            // Load all assets with the specified label
+            var handle = global::UnityEngine.AddressableAssets.Addressables.LoadAssetsAsync<TextAsset>(
+                label,
+                null // No callback per asset
+            );
+
+            var textAssets = await handle.Task;
+
+            if (textAssets != null)
+            {
+                foreach (var textAsset in textAssets)
+                {
+                    if (textAsset != null)
+                    {
+                        // Use asset name as key
+                        result[textAsset.name] = textAsset.text;
+                    }
+                }
+            }
+
+            global::UnityEngine.AddressableAssets.Addressables.Release(handle);
+            return result;
         }
 
         public Task SaveTextAsync(string path, string content)

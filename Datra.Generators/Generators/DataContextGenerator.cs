@@ -156,6 +156,20 @@ namespace Datra.Generators.Generators
 
         private void GenerateTableRepository(CodeBuilder builder, DataModelInfo model, string simpleTypeName, bool isCsvFormat)
         {
+            // Multi-file mode: use MultiFileKeyValueDataRepository
+            if (model.IsMultiFile)
+            {
+                builder.AppendLine($"{model.PropertyName} = new MultiFileKeyValueDataRepository<{model.KeyType}, {model.TypeName}>(");
+                builder.AppendLine($"    \"{model.FilePath}\",");
+                builder.AppendLine($"    \"{model.FilePattern}\",");
+                builder.AppendLine($"    RawDataProvider,");
+                builder.AppendLine($"    SerializerFactory,");
+                builder.AppendLine($"    (data, serializer) => {simpleTypeName}Serializer.DeserializeSingleItem(data, serializer)");
+                builder.AppendLine(");");
+                builder.AppendLine($"RegisterRepository(\"{model.PropertyName}\", {model.PropertyName});");
+                return;
+            }
+
             if (isCsvFormat)
             {
                 // Use CSV-specific constructor
