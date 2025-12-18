@@ -16,8 +16,10 @@ namespace Datra.Serializers
         {
             Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore,
-            Converters = new List<JsonConverter> 
-            { 
+            // Enable polymorphic type handling - embeds $type for abstract/interface types
+            TypeNameHandling = TypeNameHandling.Auto,
+            Converters = new List<JsonConverter>
+            {
                 new DataRefJsonConverter(),
                 new Newtonsoft.Json.Converters.StringEnumConverter()
             }

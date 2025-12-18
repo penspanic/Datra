@@ -1,0 +1,114 @@
+[
+  {
+    "Id": "quest_main_001",
+    "Type": "Main",
+    "RequiredLevel": 1,
+    "RewardGold": 100,
+    "RewardExp": 50,
+    "Objectives": [
+      {
+        "$type": "Datra.SampleData.Models.TalkObjective, Datra.SampleData",
+        "Id": "obj_001",
+        "Description": "Talk to the village elder",
+        "IsCompleted": false,
+        "TargetNpcId": "npc_elder_001",
+        "DialogueKeys": ["dialogue_intro_001", "dialogue_intro_002"]
+      },
+      {
+        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "Id": "obj_002",
+        "Description": "Defeat the slimes",
+        "IsCompleted": false,
+        "TargetEnemyId": "enemy_slime",
+        "RequiredCount": 5,
+        "CurrentCount": 0
+      }
+    ],
+    "RewardItems": {
+      "1001": 1
+    },
+    "PrerequisiteQuests": []
+  },
+  {
+    "Id": "quest_main_002",
+    "Type": "Main",
+    "RequiredLevel": 5,
+    "RewardGold": 500,
+    "RewardExp": 200,
+    "Objectives": [
+      {
+        "$type": "Datra.SampleData.Models.CollectObjective, Datra.SampleData",
+        "Id": "obj_001",
+        "Description": "Collect healing herbs",
+        "IsCompleted": false,
+        "TargetItemId": 2001,
+        "RequiredAmount": 10,
+        "CurrentAmount": 0
+      },
+      {
+        "$type": "Datra.SampleData.Models.LocationObjective, Datra.SampleData",
+        "Id": "obj_002",
+        "Description": "Reach the forest shrine",
+        "IsCompleted": false,
+        "LocationId": "location_forest_shrine",
+        "Radius": 5.0
+      }
+    ],
+    "RewardItems": {
+      "1002": 1,
+      "2001": 5
+    },
+    "PrerequisiteQuests": ["quest_main_001"]
+  },
+  {
+    "Id": "quest_side_001",
+    "Type": "Side",
+    "RequiredLevel": 3,
+    "RewardGold": 150,
+    "RewardExp": 75,
+    "Objectives": [
+      {
+        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "Id": "obj_001",
+        "Description": "Hunt wild boars",
+        "IsCompleted": false,
+        "TargetEnemyId": "enemy_boar",
+        "RequiredCount": 3,
+        "CurrentCount": 0
+      },
+      {
+        "$type": "Datra.SampleData.Models.CollectObjective, Datra.SampleData",
+        "Id": "obj_002",
+        "Description": "Collect boar tusks",
+        "IsCompleted": false,
+        "TargetItemId": 3001,
+        "RequiredAmount": 3,
+        "CurrentAmount": 0
+      }
+    ],
+    "RewardItems": {},
+    "PrerequisiteQuests": []
+  },
+  {
+    "Id": "quest_daily_001",
+    "Type": "Daily",
+    "RequiredLevel": 1,
+    "RewardGold": 50,
+    "RewardExp": 25,
+    "Objectives": [
+      {
+        "$type": "Datra.SampleData.Models.KillObjective, Datra.SampleData",
+        "Id": "obj_001",
+        "Description": "Defeat any monsters",
+        "IsCompleted": false,
+        "TargetEnemyId": "*",
+        "RequiredCount": 10,
+        "CurrentCount": 0
+      }
+    ],
+    "RewardItems": {
+      "2001": 2
+    },
+    "PrerequisiteQuests": []
+  }
+]
