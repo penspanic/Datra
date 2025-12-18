@@ -636,12 +636,39 @@ namespace Datra.Unity.Editor.Views
                 return $"[{array?.Length ?? 0} items]";
             }
 
-            if (type.IsGenericType &&
-                (type.GetGenericTypeDefinition() == typeof(StringDataRef<>) ||
-                 type.GetGenericTypeDefinition() == typeof(IntDataRef<>)))
+            // Handle generic collection types
+            if (type.IsGenericType)
             {
-                var keyValue = type.GetProperty("Value")?.GetValue(value);
-                return keyValue != null ? $"→ {keyValue}" : "(None)";
+                var genericDef = type.GetGenericTypeDefinition();
+
+                // DataRef types
+                if (genericDef == typeof(StringDataRef<>) || genericDef == typeof(IntDataRef<>))
+                {
+                    var keyValue = type.GetProperty("Value")?.GetValue(value);
+                    return keyValue != null ? $"→ {keyValue}" : "(None)";
+                }
+
+                // List<T>
+                if (genericDef == typeof(List<>))
+                {
+                    var countProp = type.GetProperty("Count");
+                    var count = countProp?.GetValue(value) ?? 0;
+                    return $"[{count} items]";
+                }
+
+                // Dictionary<K,V>
+                if (genericDef == typeof(Dictionary<,>))
+                {
+                    var countProp = type.GetProperty("Count");
+                    var count = countProp?.GetValue(value) ?? 0;
+                    return $"{{{count} entries}}";
+                }
+            }
+
+            // Handle ICollection interface (catches other collection types)
+            if (value is System.Collections.ICollection collection)
+            {
+                return $"[{collection.Count} items]";
             }
 
             return value.ToString();

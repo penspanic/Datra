@@ -17,12 +17,7 @@ namespace Datra.Unity.Editor.Utilities
         where TValue : class
     {
         // JSON settings for deep clone/comparison (supports polymorphic types)
-        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
-        {
-            TypeNameHandling = TypeNameHandling.Auto,
-            SerializationBinder = new PortableTypeBinder(),
-            NullValueHandling = NullValueHandling.Ignore
-        };
+        private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
 
         // Baseline snapshot (taken at load time)
         private Dictionary<TKey, TValue> _baseline = new Dictionary<TKey, TValue>();

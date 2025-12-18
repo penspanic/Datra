@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
 using Datra.Interfaces;
-using Datra.Converters;
 
 namespace Datra.Serializers
 {
@@ -12,20 +11,7 @@ namespace Datra.Serializers
     /// </summary>
     public class JsonDataSerializer : IDataSerializer
     {
-        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            Formatting = Formatting.Indented,
-            NullValueHandling = NullValueHandling.Ignore,
-            // Enable polymorphic type handling - embeds $type for abstract/interface types
-            TypeNameHandling = TypeNameHandling.Auto,
-            // Use portable binder to avoid assembly name issues across environments (Unity, .NET)
-            SerializationBinder = new PortableTypeBinder(),
-            Converters = new List<JsonConverter>
-            {
-                new DataRefJsonConverter(),
-                new Newtonsoft.Json.Converters.StringEnumConverter()
-            }
-        };
+        private readonly JsonSerializerSettings _settings = DatraJsonSettings.CreateDefault();
         
         public T DeserializeSingle<T>(string text) where T : class, new()
         {
