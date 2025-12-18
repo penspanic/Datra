@@ -153,8 +153,8 @@ namespace Datra.Tests
             var characterDesc = LocaleRef.CreateFixed("CharacterInfo", "hero", "Desc");
 
             // Assert
-            Assert.Equal("ItemInfo.sword_001.name", itemName.Key);
-            Assert.Equal("CharacterInfo.hero.desc", characterDesc.Key);
+            Assert.Equal("ItemInfo.sword_001.Name", itemName.Key);
+            Assert.Equal("CharacterInfo.hero.Desc", characterDesc.Key);
         }
 
         [Fact]
@@ -165,8 +165,8 @@ namespace Datra.Tests
             var characterDesc = LocaleRef.CreateFixed<CharacterInfo>("hero", "Desc");
 
             // Assert
-            Assert.Equal("ItemInfo.sword_001.name", itemName.Key);
-            Assert.Equal("CharacterInfo.hero.desc", characterDesc.Key);
+            Assert.Equal("ItemInfo.sword_001.Name", itemName.Key);
+            Assert.Equal("CharacterInfo.hero.Desc", characterDesc.Key);
         }
 
         [Fact]

@@ -28,8 +28,8 @@ namespace Datra.Tests
             var quest = context.Quest.Values.First(q => q.Id == "quest_main_001");
 
             // Assert - Fixed locale keys (note: property names are lowercase)
-            Assert.Equal("QuestData.quest_main_001.name", quest.Name.Key);
-            Assert.Equal("QuestData.quest_main_001.description", quest.Description.Key);
+            Assert.Equal("QuestData.quest_main_001.Name", quest.Name.Key);
+            Assert.Equal("QuestData.quest_main_001.Description", quest.Description.Key);
 
             _output.WriteLine($"Quest: {quest.Id}");
             _output.WriteLine($"  Name Key: {quest.Name.Key}");
@@ -73,8 +73,8 @@ namespace Datra.Tests
                 _output.WriteLine($"  Description Key: {quest.Description.Key}");
 
                 // Verify fixed key format (note: property names are lowercase)
-                Assert.Equal($"QuestData.{quest.Id}.name", quest.Name.Key);
-                Assert.Equal($"QuestData.{quest.Id}.description", quest.Description.Key);
+                Assert.Equal($"QuestData.{quest.Id}.Name", quest.Name.Key);
+                Assert.Equal($"QuestData.{quest.Id}.Description", quest.Description.Key);
 
                 for (int i = 0; i < quest.Objectives.Count; i++)
                 {
