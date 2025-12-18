@@ -1,0 +1,23 @@
+{
+  "name": "com.penspanic.datra.editor",
+  "version": "1.0.0",
+  "displayName": "Datra Editor",
+  "description": "Platform-independent editor services for Datra",
+  "unity": "2020.3",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "dependencies": {
+    "com.penspanic.datra": "1.0.0"
+  },
+  "keywords": [
+    "data",
+    "editor",
+    "change-tracking"
+  ],
+  "author": {
+    "name": "penspanic",
+    "email": "penspanic@gmail.com",
+    "url": "https://github.com/penspanic"
+  }
+}

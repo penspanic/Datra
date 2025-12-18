@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.penspanic.datra": "file:../../Datra",
+    "com.penspanic.datra.editor": "file:../../Datra.Editor",
     "com.penspanic.datra.sampledata": "file:../../Datra.SampleData",
     "com.penspanic.datra.unity": "file:../../Datra.Unity",
     "com.unity.2d.animation": "12.0.2",
