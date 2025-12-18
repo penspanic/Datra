@@ -789,6 +789,38 @@ namespace Datra.Unity.Editor.Views
                 });
         }
 
+        /// <summary>
+        /// Evaluates a nested locale reference to a concrete LocaleRef using the provided context.
+        /// </summary>
+        public LocaleRef EvaluateNestedLocale(NestedLocaleRef nestedLocale, object rootObject, int elementIndex, object element)
+        {
+            if (!nestedLocale.HasValue)
+                return new LocaleRef { Key = string.Empty };
+
+            // Build the prefix from root object's type and Id
+            var rootType = rootObject?.GetType();
+            if (rootType == null)
+                return new LocaleRef { Key = nestedLocale.PathTemplate };
+
+            var typeName = rootType.Name;
+
+            // Get the Id property value
+            var idProperty = rootType.GetProperty("Id");
+            var idValue = idProperty?.GetValue(rootObject)?.ToString() ?? string.Empty;
+
+            var prefix = $"{typeName}.{idValue}";
+
+            // Evaluate the nested locale with the first segment (collection name) and index
+            // For NestedLocaleRef.Create("Objectives", "Description"), the first segment is "Objectives"
+            if (nestedLocale.Segments.Length > 0)
+            {
+                var collectionSegment = nestedLocale.Segments[0];
+                return nestedLocale.Evaluate(prefix, collectionSegment, elementIndex);
+            }
+
+            return nestedLocale.EvaluateNoCache(prefix);
+        }
+
         #endregion
     }
 }

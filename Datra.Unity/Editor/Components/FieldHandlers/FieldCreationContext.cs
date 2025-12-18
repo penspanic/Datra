@@ -124,5 +124,20 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         /// Check if this is an array element context
         /// </summary>
         public bool IsArrayElement => Property == null && Member == null;
+
+        /// <summary>
+        /// The index of this element in a collection (for nested locale evaluation)
+        /// </summary>
+        public int? CollectionElementIndex { get; set; }
+
+        /// <summary>
+        /// The root data object that owns this element (for nested locale evaluation)
+        /// </summary>
+        public object RootDataObject { get; set; }
+
+        /// <summary>
+        /// The element object containing this property (for nested locale evaluation)
+        /// </summary>
+        public object CollectionElement { get; set; }
     }
 }

@@ -24,6 +24,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
             // Register handlers in priority order (higher priority first)
             // Specialized handlers should be registered with higher priority
+            RegisterHandler(new NestedLocaleRefFieldHandler()); // Priority 101
             RegisterHandler(new LocaleRefFieldHandler());      // Priority 100
             RegisterHandler(new AssetStringFieldHandler());    // Priority 50
             RegisterHandler(new DataRefFieldHandler());        // Priority 40

@@ -7,6 +7,8 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
+using Datra.Attributes;
+using Datra.Localization;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
@@ -415,7 +417,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
             if (element != null)
             {
-                CreateFieldsForElement(fieldsContainer, element, actualType, collectionContainer, declaredElementType, context);
+                CreateFieldsForElement(fieldsContainer, element, actualType, collectionContainer, declaredElementType, context, index);
             }
 
             foldout.Add(fieldsContainer);
@@ -430,7 +432,8 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             Type actualType,
             VisualElement collectionContainer,
             Type declaredElementType,
-            FieldCreationContext context)
+            FieldCreationContext context,
+            int elementIndex = -1)
         {
             // For primitive types, create a single field
             if (IsPrimitiveOrSimpleType(actualType))
@@ -444,8 +447,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             }
 
             // For complex types, create fields for each property
+            // Include writable properties and read-only properties with [NestedLocale] attribute
             var properties = actualType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.CanWrite)
+                .Where(p => p.CanRead && (p.CanWrite || p.GetCustomAttribute<NestedLocaleAttribute>() != null))
                 .ToList();
 
             foreach (var prop in properties)
@@ -461,11 +465,46 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 propContainer.Add(label);
 
                 var propValue = prop.GetValue(element);
-                var propField = CreateSimpleField(prop.PropertyType, propValue, newValue =>
+                VisualElement propField;
+
+                // Check if this property needs special handling via FieldTypeRegistry
+                var hasNestedLocale = prop.GetCustomAttribute<NestedLocaleAttribute>() != null;
+                if (hasNestedLocale && prop.PropertyType == typeof(NestedLocaleRef) && context.LocaleProvider != null)
                 {
-                    prop.SetValue(element, newValue);
-                    UpdateCollectionValue(collectionContainer, declaredElementType, context);
-                });
+                    // Create a context with collection element info for nested locale evaluation
+                    var nestedContext = new FieldCreationContext(
+                        prop,
+                        element,
+                        propValue,
+                        DatraFieldLayoutMode.Form,
+                        newValue =>
+                        {
+                            // NestedLocaleRef is read-only, changes are tracked via LocalizationContext
+                            UpdateCollectionValue(collectionContainer, declaredElementType, context);
+                        },
+                        context.LocaleProvider)
+                    {
+                        CollectionElementIndex = elementIndex,
+                        RootDataObject = context.Target,  // The root data object (e.g., QuestData)
+                        CollectionElement = element       // The element containing the nested locale
+                    };
+
+                    propField = FieldTypeRegistry.CreateField(nestedContext);
+                }
+                else if (prop.CanWrite)
+                {
+                    propField = CreateSimpleField(prop.PropertyType, propValue, newValue =>
+                    {
+                        prop.SetValue(element, newValue);
+                        UpdateCollectionValue(collectionContainer, declaredElementType, context);
+                    });
+                }
+                else
+                {
+                    // Read-only property without special handling - skip
+                    continue;
+                }
+
                 propField.style.flexGrow = 1;
                 propContainer.Add(propField);
 
