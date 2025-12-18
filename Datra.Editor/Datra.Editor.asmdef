@@ -1,14 +1,10 @@
 {
-    "name": "Datra.Unity.Editor",
-    "rootNamespace": "Datra.Unity.Editor",
+    "name": "Datra.Editor",
+    "rootNamespace": "Datra.Editor",
     "references": [
-        "Datra",
-        "Datra.Editor",
-        "Datra.Unity"
+        "Datra"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
@@ -16,5 +12,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": false
+    "noEngineReferences": true
 }

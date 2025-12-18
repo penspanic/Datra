@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
+using Datra.Editor.Interfaces;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
@@ -457,13 +458,5 @@ namespace Datra.Unity.Editor
                     return Task.FromResult(false);
             }
         }
-    }
-
-    /// <summary>
-    /// Interface for change trackers that can notify when modified state changes
-    /// </summary>
-    public interface INotifyModifiedStateChanged
-    {
-        event Action<bool> OnModifiedStateChanged;
     }
 }
