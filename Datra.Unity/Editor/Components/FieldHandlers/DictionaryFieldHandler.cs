@@ -104,33 +104,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
             var entries = GetDictionaryEntries(dictionary);
 
-            // Header
-            var headerContainer = new VisualElement();
-            headerContainer.AddToClassList("dictionary-header");
-            headerContainer.style.flexDirection = FlexDirection.Row;
-            headerContainer.style.justifyContent = Justify.SpaceBetween;
-            headerContainer.style.alignItems = Align.Center;
-            headerContainer.style.marginBottom = 4;
-
-            var sizeLabel = new Label($"Size: {entries.Count}");
-            sizeLabel.AddToClassList("dictionary-size-label");
-            headerContainer.Add(sizeLabel);
-
-            var addButton = new Button(() => AddEntry(container, keyType, valueType, context));
-            addButton.text = "+";
-            addButton.tooltip = "Add entry";
-            addButton.AddToClassList("dictionary-add-button");
-            addButton.style.width = 24;
-            addButton.style.height = 20;
-            headerContainer.Add(addButton);
-
-            container.Add(headerContainer);
-
             // Entries container
             var entriesContainer = new VisualElement();
             entriesContainer.AddToClassList("dictionary-entries");
-            entriesContainer.style.marginLeft = 16;
-            container.Add(entriesContainer);
 
             // Add existing entries
             foreach (var entry in entries)
@@ -139,11 +115,69 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 entriesContainer.Add(entryContainer);
             }
 
+            Foldout foldout = null;
+
+            if (context.IsPopupEditor)
+            {
+                // Popup mode: no foldout, direct layout
+                entriesContainer.style.marginLeft = 0;
+                container.Add(entriesContainer);
+
+                // Add button at bottom
+                var addContainer = new VisualElement();
+                addContainer.style.flexDirection = FlexDirection.Row;
+                addContainer.style.justifyContent = Justify.FlexEnd;
+                addContainer.style.marginTop = 8;
+
+                var addButton = new Button(() => AddEntry(container, keyType, valueType, context));
+                addButton.text = "+";
+                addButton.tooltip = "Add entry";
+                addButton.AddToClassList("dictionary-add-button");
+                addButton.style.width = 24;
+                addButton.style.height = 20;
+                addContainer.Add(addButton);
+
+                container.Add(addContainer);
+            }
+            else
+            {
+                // Form mode: wrap in foldout
+                foldout = new Foldout();
+                foldout.text = $"Size: {entries.Count}";
+                foldout.value = false; // Collapsed by default
+                foldout.AddToClassList("dictionary-foldout");
+
+                entriesContainer.style.marginLeft = 8;
+                foldout.Add(entriesContainer);
+
+                // Add button container (inside foldout)
+                var addContainer = new VisualElement();
+                addContainer.style.flexDirection = FlexDirection.Row;
+                addContainer.style.justifyContent = Justify.FlexEnd;
+                addContainer.style.marginTop = 4;
+
+                var addButton = new Button(() =>
+                {
+                    AddEntry(container, keyType, valueType, context);
+                    foldout.value = true; // Expand when adding
+                });
+                addButton.text = "+";
+                addButton.tooltip = "Add entry";
+                addButton.AddToClassList("dictionary-add-button");
+                addButton.style.width = 24;
+                addButton.style.height = 20;
+                addContainer.Add(addButton);
+
+                foldout.Add(addContainer);
+                container.Add(foldout);
+            }
+
             container.userData = new DictionaryUserData
             {
                 EntriesContainer = entriesContainer,
                 KeyType = keyType,
-                ValueType = valueType
+                ValueType = valueType,
+                Foldout = foldout
             };
 
             return container;
@@ -355,10 +389,10 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         private void UpdateSizeLabel(VisualElement dictionaryContainer, int count)
         {
-            var sizeLabel = dictionaryContainer.Q<Label>(className: "dictionary-size-label");
-            if (sizeLabel != null)
+            var userData = dictionaryContainer.userData as DictionaryUserData;
+            if (userData?.Foldout != null)
             {
-                sizeLabel.text = $"Size: {count}";
+                userData.Foldout.text = $"Size: {count}";
             }
         }
 
@@ -403,6 +437,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             public VisualElement EntriesContainer { get; set; }
             public Type KeyType { get; set; }
             public Type ValueType { get; set; }
+            public Foldout Foldout { get; set; }
         }
     }
 }

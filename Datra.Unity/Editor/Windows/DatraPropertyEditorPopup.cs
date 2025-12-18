@@ -50,29 +50,36 @@ namespace Datra.Unity.Editor.Windows
         private void CreateGUI()
         {
             if (property == null || target == null) return;
-            
+
             var root = rootVisualElement;
+            root.style.flexDirection = FlexDirection.Column;
             root.style.paddingTop = 10;
             root.style.paddingBottom = 10;
             root.style.paddingLeft = 10;
             root.style.paddingRight = 10;
-            
+
             // Create header
             var header = new Label(ObjectNames.NicifyVariableName(property.Name));
             header.style.fontSize = 14;
             header.style.unityFontStyleAndWeight = FontStyle.Bold;
             header.style.marginBottom = 10;
+            header.style.flexShrink = 0;
             root.Add(header);
-            
-            // Create property field in Form mode
-            propertyField = new DatraPropertyField(target, property, DatraFieldLayoutMode.Form);
+
+            // Create scroll view for content
+            var scrollView = new ScrollView(ScrollViewMode.Vertical);
+            scrollView.style.flexGrow = 1;
+            scrollView.style.flexShrink = 1;
+            root.Add(scrollView);
+
+            // Create property field in Form mode with popup flag (no foldout wrapper)
+            propertyField = new DatraPropertyField(target, property, DatraFieldLayoutMode.Form, null, isPopupEditor: true);
             propertyField.OnValueChanged += (propName, newValue) => {
                 onValueChanged?.Invoke();
             };
-            propertyField.style.flexGrow = 1;
-            root.Add(propertyField);
-            
-            // Create footer with buttons
+            scrollView.Add(propertyField);
+
+            // Create footer with buttons (fixed at bottom)
             var footer = new VisualElement();
             footer.style.flexDirection = FlexDirection.Row;
             footer.style.justifyContent = Justify.FlexEnd;
@@ -80,12 +87,14 @@ namespace Datra.Unity.Editor.Windows
             footer.style.paddingTop = 10;
             footer.style.borderTopWidth = 1;
             footer.style.borderTopColor = new Color(0.2f, 0.2f, 0.2f);
-            
+            footer.style.flexShrink = 0;
+
             var closeButton = new Button(() => Close());
             closeButton.text = "Close";
             closeButton.style.width = 80;
+            closeButton.style.height = 24;
             footer.Add(closeButton);
-            
+
             root.Add(footer);
         }
     }

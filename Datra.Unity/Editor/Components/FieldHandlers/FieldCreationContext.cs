@@ -55,6 +55,11 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         public ILocaleProvider LocaleProvider { get; }
 
         /// <summary>
+        /// Whether this field is being edited in a popup editor (skip foldout wrapper)
+        /// </summary>
+        public bool IsPopupEditor { get; }
+
+        /// <summary>
         /// Create context for a property field
         /// </summary>
         public FieldCreationContext(
@@ -63,7 +68,8 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             object value,
             DatraFieldLayoutMode layoutMode,
             Action<object> onValueChanged,
-            ILocaleProvider localeProvider = null)
+            ILocaleProvider localeProvider = null,
+            bool isPopupEditor = false)
         {
             Property = property;
             FieldType = property.PropertyType;
@@ -72,6 +78,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             LayoutMode = layoutMode;
             OnValueChanged = onValueChanged;
             LocaleProvider = localeProvider;
+            IsPopupEditor = isPopupEditor;
         }
 
         /// <summary>

@@ -128,15 +128,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
             var elements = collection != null ? GetElementsAsList(collection) : new List<object>();
 
-            // Header with size and add button
-            var headerContainer = CreateHeaderContainer(elements.Count, elementType, container, context);
-            container.Add(headerContainer);
-
             // Elements container
             var elementsContainer = new VisualElement();
             elementsContainer.AddToClassList("collection-elements");
-            elementsContainer.style.marginLeft = 16;
-            container.Add(elementsContainer);
 
             // Add existing elements
             for (int i = 0; i < elements.Count; i++)
@@ -145,10 +139,42 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 elementsContainer.Add(elementContainer);
             }
 
+            Foldout foldout = null;
+
+            if (context.IsPopupEditor)
+            {
+                // Popup mode: no foldout, direct layout
+                // Add button at top (so it's always visible)
+                var headerContainer = CreateHeaderContainerSimple(elements.Count, elementType, container, context);
+                headerContainer.style.marginBottom = 8;
+                container.Add(headerContainer);
+
+                elementsContainer.style.marginLeft = 0;
+                container.Add(elementsContainer);
+            }
+            else
+            {
+                // Form mode: wrap in foldout
+                foldout = new Foldout();
+                foldout.text = GetFoldoutText(elements, elementType);
+                foldout.value = false; // Collapsed by default
+                foldout.AddToClassList("collection-foldout");
+
+                elementsContainer.style.marginLeft = 8;
+                foldout.Add(elementsContainer);
+
+                // Header container (inside foldout)
+                var headerContainer = CreateHeaderContainer(elements.Count, elementType, container, foldout, context);
+                foldout.Add(headerContainer);
+
+                container.Add(foldout);
+            }
+
             container.userData = new CollectionUserData
             {
                 ElementsContainer = elementsContainer,
-                ElementType = elementType
+                ElementType = elementType,
+                Foldout = foldout
             };
 
             return container;
@@ -158,18 +184,86 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             int count,
             Type elementType,
             VisualElement collectionContainer,
+            Foldout foldout,
             FieldCreationContext context)
         {
             var headerContainer = new VisualElement();
             headerContainer.AddToClassList("collection-header");
             headerContainer.style.flexDirection = FlexDirection.Row;
-            headerContainer.style.justifyContent = Justify.SpaceBetween;
+            headerContainer.style.justifyContent = Justify.FlexEnd;
             headerContainer.style.alignItems = Align.Center;
+            headerContainer.style.marginTop = 4;
             headerContainer.style.marginBottom = 4;
 
-            var sizeLabel = new Label($"Size: {count}");
-            sizeLabel.AddToClassList("collection-size-label");
-            headerContainer.Add(sizeLabel);
+            // Check if element type is polymorphic
+            var derivedTypes = GetDerivedTypes(elementType);
+
+            if (derivedTypes.Count > 1)
+            {
+                // Polymorphic: dropdown + add button
+                var addContainer = new VisualElement();
+                addContainer.style.flexDirection = FlexDirection.Row;
+                addContainer.style.alignItems = Align.Center;
+
+                var typeDropdown = new PopupField<Type>(
+                    derivedTypes,
+                    0,
+                    FormatTypeName,
+                    FormatTypeName);
+                typeDropdown.AddToClassList("collection-type-dropdown");
+                typeDropdown.style.minWidth = 100;
+                addContainer.Add(typeDropdown);
+
+                var addButton = new Button(() =>
+                {
+                    var selectedType = typeDropdown.value;
+                    AddElement(collectionContainer, selectedType, context);
+                    foldout.value = true; // Expand when adding
+                });
+                addButton.text = "+";
+                addButton.tooltip = "Add element";
+                addButton.AddToClassList("collection-add-button");
+                addButton.style.width = 24;
+                addButton.style.height = 20;
+                addButton.style.marginLeft = 4;
+                addContainer.Add(addButton);
+
+                headerContainer.Add(addContainer);
+            }
+            else
+            {
+                // Non-polymorphic: simple add button
+                var addButton = new Button(() =>
+                {
+                    AddElement(collectionContainer, elementType, context);
+                    foldout.value = true; // Expand when adding
+                });
+                addButton.text = "+";
+                addButton.tooltip = "Add element";
+                addButton.AddToClassList("collection-add-button");
+                addButton.style.width = 24;
+                addButton.style.height = 20;
+                headerContainer.Add(addButton);
+            }
+
+            return headerContainer;
+        }
+
+        /// <summary>
+        /// Create header container for popup mode (no foldout)
+        /// </summary>
+        protected virtual VisualElement CreateHeaderContainerSimple(
+            int count,
+            Type elementType,
+            VisualElement collectionContainer,
+            FieldCreationContext context)
+        {
+            var headerContainer = new VisualElement();
+            headerContainer.AddToClassList("collection-header");
+            headerContainer.style.flexDirection = FlexDirection.Row;
+            headerContainer.style.justifyContent = Justify.FlexEnd;
+            headerContainer.style.alignItems = Align.Center;
+            headerContainer.style.marginTop = 8;
 
             // Check if element type is polymorphic
             var derivedTypes = GetDerivedTypes(elementType);
@@ -242,11 +336,10 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             elementContainer.style.borderLeftColor = new Color(0.4f, 0.6f, 0.8f, 0.8f);
             elementContainer.userData = element;
 
-            // Header row with index, type name, and remove button
+            // Header row with index, type name, reorder buttons, and remove button
             var headerRow = new VisualElement();
             headerRow.style.flexDirection = FlexDirection.Row;
             headerRow.style.alignItems = Align.Center;
-            headerRow.style.marginBottom = 4;
 
             var indexLabel = new Label($"[{index}]");
             indexLabel.AddToClassList("collection-element-index");
@@ -270,6 +363,26 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             spacer.style.flexGrow = 1;
             headerRow.Add(spacer);
 
+            // Move up button
+            var moveUpButton = new Button(() => MoveElement(elementContainer, collectionContainer, declaredElementType, context, -1));
+            moveUpButton.text = "▲";
+            moveUpButton.tooltip = "Move up";
+            moveUpButton.AddToClassList("collection-move-button");
+            moveUpButton.style.width = 20;
+            moveUpButton.style.height = 20;
+            moveUpButton.style.marginRight = 2;
+            headerRow.Add(moveUpButton);
+
+            // Move down button
+            var moveDownButton = new Button(() => MoveElement(elementContainer, collectionContainer, declaredElementType, context, 1));
+            moveDownButton.text = "▼";
+            moveDownButton.tooltip = "Move down";
+            moveDownButton.AddToClassList("collection-move-button");
+            moveDownButton.style.width = 20;
+            moveDownButton.style.height = 20;
+            moveDownButton.style.marginRight = 4;
+            headerRow.Add(moveDownButton);
+
             // Remove button
             var removeButton = new Button(() => RemoveElement(elementContainer, collectionContainer, declaredElementType, context));
             removeButton.text = "−";
@@ -281,17 +394,32 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
             elementContainer.Add(headerRow);
 
-            // Fields for the element
+            // Create foldout for fields (expanded by default)
+            var foldout = new Foldout();
+            foldout.text = "";
+            foldout.value = true; // Expanded by default
+            foldout.style.marginLeft = 0;
+            foldout.style.marginTop = 0;
+
+            // Hide the foldout's own toggle text (we use our header row instead)
+            var toggle = foldout.Q<Toggle>();
+            if (toggle != null)
+            {
+                toggle.style.marginBottom = 0;
+                toggle.style.marginTop = 0;
+            }
+
+            // Fields container inside foldout
             var fieldsContainer = new VisualElement();
             fieldsContainer.AddToClassList("collection-element-fields");
-            fieldsContainer.style.marginLeft = 8;
 
             if (element != null)
             {
                 CreateFieldsForElement(fieldsContainer, element, actualType, collectionContainer, declaredElementType, context);
             }
 
-            elementContainer.Add(fieldsContainer);
+            foldout.Add(fieldsContainer);
+            elementContainer.Add(foldout);
 
             return elementContainer;
         }
@@ -468,17 +596,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             var elementsContainer = userData.ElementsContainer;
             elementsContainer.Remove(elementToRemove);
 
-            // Update indices
-            var elements = elementsContainer.Query<VisualElement>(className: "collection-element").ToList();
-            for (int i = 0; i < elements.Count; i++)
-            {
-                var indexLabel = elements[i].Q<Label>(className: "collection-element-index");
-                if (indexLabel != null)
-                {
-                    indexLabel.text = $"[{i}]";
-                }
-            }
-
+            UpdateAllIndices(collectionContainer);
             UpdateCollectionValue(collectionContainer, elementType, context);
             UpdateSizeLabel(collectionContainer, elementsContainer.childCount);
         }
@@ -515,13 +633,96 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             context.OnValueChanged?.Invoke(newCollection);
         }
 
+        protected void MoveElement(
+            VisualElement elementToMove,
+            VisualElement collectionContainer,
+            Type elementType,
+            FieldCreationContext context,
+            int direction)
+        {
+            var userData = collectionContainer.userData as CollectionUserData;
+            if (userData == null) return;
+
+            var elementsContainer = userData.ElementsContainer;
+            var elements = elementsContainer.Query<VisualElement>(className: "collection-element").ToList();
+            var currentIndex = elements.IndexOf(elementToMove);
+
+            if (currentIndex < 0) return;
+
+            var newIndex = currentIndex + direction;
+            if (newIndex < 0 || newIndex >= elements.Count) return;
+
+            // Remove and reinsert at new position
+            elementsContainer.Remove(elementToMove);
+            elementsContainer.Insert(newIndex, elementToMove);
+
+            // Update all indices
+            UpdateAllIndices(collectionContainer);
+            UpdateCollectionValue(collectionContainer, elementType, context);
+        }
+
+        protected void UpdateAllIndices(VisualElement collectionContainer)
+        {
+            var userData = collectionContainer.userData as CollectionUserData;
+            if (userData == null) return;
+
+            var elementsContainer = userData.ElementsContainer;
+            var elements = elementsContainer.Query<VisualElement>(className: "collection-element").ToList();
+
+            for (int i = 0; i < elements.Count; i++)
+            {
+                var indexLabel = elements[i].Q<Label>(className: "collection-element-index");
+                if (indexLabel != null)
+                {
+                    indexLabel.text = $"[{i}]";
+                }
+            }
+        }
+
         protected void UpdateSizeLabel(VisualElement collectionContainer, int count)
         {
-            var sizeLabel = collectionContainer.Q<Label>(className: "collection-size-label");
-            if (sizeLabel != null)
+            var userData = collectionContainer.userData as CollectionUserData;
+            if (userData?.Foldout != null)
             {
-                sizeLabel.text = $"Size: {count}";
+                var elementsContainer = userData.ElementsContainer;
+                var elements = elementsContainer.Query<VisualElement>(className: "collection-element").ToList();
+                var elementsList = elements.Select(e => e.userData).ToList();
+                userData.Foldout.text = GetFoldoutText(elementsList, userData.ElementType);
             }
+        }
+
+        /// <summary>
+        /// Get foldout display text with element type summary
+        /// </summary>
+        protected string GetFoldoutText(IList elements, Type elementType)
+        {
+            if (elements == null || elements.Count == 0)
+                return "Size: 0";
+
+            // For polymorphic types, show type names
+            if (IsPolymorphicType(elementType))
+            {
+                var typeNames = new List<string>();
+                foreach (var element in elements)
+                {
+                    if (element != null)
+                    {
+                        var typeName = FormatTypeName(element.GetType());
+                        typeNames.Add(typeName);
+                    }
+                }
+
+                if (typeNames.Count > 0)
+                {
+                    // Show up to 5 types, then "..."
+                    var displayNames = typeNames.Count <= 5
+                        ? string.Join(", ", typeNames)
+                        : string.Join(", ", typeNames.Take(5)) + ", ...";
+                    return $"Size: {elements.Count} ({displayNames})";
+                }
+            }
+
+            return $"Size: {elements.Count}";
         }
 
         #endregion
@@ -605,6 +806,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         {
             public VisualElement ElementsContainer { get; set; }
             public Type ElementType { get; set; }
+            public Foldout Foldout { get; set; }
         }
     }
 }

@@ -69,16 +69,21 @@ namespace Datra.Unity.Editor.Components
             return property.CanWrite;
         }
 
+        // Whether this field is being edited in a popup editor
+        private bool isPopupEditor;
+
         public DatraPropertyField(
             object target,
             PropertyInfo property,
             DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
-            ILocaleProvider localeProvider = null)
+            ILocaleProvider localeProvider = null,
+            bool isPopupEditor = false)
         {
             this.target = target;
             this.property = property;
             this.layoutMode = layoutMode;
             this.localeProvider = localeProvider;
+            this.isPopupEditor = isPopupEditor;
 
             AddToClassList("datra-property-field");
             AddToClassList($"layout-{layoutMode.ToString().ToLower()}");
@@ -132,36 +137,40 @@ namespace Datra.Unity.Editor.Components
             {
                 // Form/Inline layout: full header with label
                 Add(fieldContainer);
-                
-                // Header with label and indicators
-                var headerContainer = new VisualElement();
-                headerContainer.AddToClassList("property-field-header");
-                
-                if (layoutMode == DatraFieldLayoutMode.Inline)
+
+                // Skip header in popup mode (title already shows property name)
+                if (!isPopupEditor)
                 {
-                    headerContainer.style.flexDirection = FlexDirection.Row;
-                    headerContainer.style.alignItems = Align.Center;
+                    // Header with label and indicators
+                    var headerContainer = new VisualElement();
+                    headerContainer.AddToClassList("property-field-header");
+
+                    if (layoutMode == DatraFieldLayoutMode.Inline)
+                    {
+                        headerContainer.style.flexDirection = FlexDirection.Row;
+                        headerContainer.style.alignItems = Align.Center;
+                    }
+
+                    fieldContainer.Add(headerContainer);
+
+                    // Property label
+                    propertyLabel = new Label(ObjectNames.NicifyVariableName(property.Name));
+                    propertyLabel.AddToClassList("property-field-label");
+                    headerContainer.Add(propertyLabel);
+
+                    // Modified indicator
+                    modifiedIndicator = new VisualElement();
+                    modifiedIndicator.AddToClassList("property-modified-indicator");
+                    modifiedIndicator.tooltip = "This field has been modified";
+                    headerContainer.Add(modifiedIndicator);
+
+                    // Revert button
+                    revertButton = new Button(() => RevertValue());
+                    revertButton.text = "↺";
+                    revertButton.tooltip = "Revert to original value";
+                    revertButton.AddToClassList("property-revert-button");
+                    headerContainer.Add(revertButton);
                 }
-                
-                fieldContainer.Add(headerContainer);
-                
-                // Property label
-                propertyLabel = new Label(ObjectNames.NicifyVariableName(property.Name));
-                propertyLabel.AddToClassList("property-field-label");
-                headerContainer.Add(propertyLabel);
-                
-                // Modified indicator
-                modifiedIndicator = new VisualElement();
-                modifiedIndicator.AddToClassList("property-modified-indicator");
-                modifiedIndicator.tooltip = "This field has been modified";
-                headerContainer.Add(modifiedIndicator);
-                
-                // Revert button
-                revertButton = new Button(() => RevertValue());
-                revertButton.text = "↺";
-                revertButton.tooltip = "Revert to original value";
-                revertButton.AddToClassList("property-revert-button");
-                headerContainer.Add(revertButton);
                 
                 // Input container (separate for form mode)
                 if (layoutMode == DatraFieldLayoutMode.Form)
@@ -244,7 +253,8 @@ namespace Datra.Unity.Editor.Components
                     property.SetValue(target, newValue);
                     OnFieldValueChanged(newValue);
                 },
-                localeProvider);
+                localeProvider,
+                isPopupEditor);
 
             return FieldTypeRegistry.CreateField(context);
         }
@@ -269,9 +279,13 @@ namespace Datra.Unity.Editor.Components
             {
                 AddToClassList("modified-cell");
                 AddToClassList("field-modified");
-                modifiedIndicator.style.display = DisplayStyle.Flex;
-                revertButton.style.display = DisplayStyle.Flex;
-                modifiedIndicator.tooltip = "Modified";
+                if (modifiedIndicator != null)
+                {
+                    modifiedIndicator.style.display = DisplayStyle.Flex;
+                    modifiedIndicator.tooltip = "Modified";
+                }
+                if (revertButton != null)
+                    revertButton.style.display = DisplayStyle.Flex;
 
                 // In table mode, also add modified-cell class to parent table-cell
                 if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
@@ -283,8 +297,10 @@ namespace Datra.Unity.Editor.Components
             {
                 RemoveFromClassList("modified-cell");
                 RemoveFromClassList("field-modified");
-                modifiedIndicator.style.display = DisplayStyle.None;
-                revertButton.style.display = DisplayStyle.None;
+                if (modifiedIndicator != null)
+                    modifiedIndicator.style.display = DisplayStyle.None;
+                if (revertButton != null)
+                    revertButton.style.display = DisplayStyle.None;
 
                 // In table mode, also remove modified-cell class from parent table-cell
                 if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
