@@ -4,9 +4,9 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
+using Datra.Editor.Interfaces;
 using Datra.Interfaces;
-using Datra.Localization;
-using Datra.Unity.Editor.Services;
+using Datra.Services;
 
 namespace Datra.Unity.Editor.ViewModels
 {
@@ -17,9 +17,8 @@ namespace Datra.Unity.Editor.ViewModels
     public class DatraEditorViewModel : INotifyPropertyChanged
     {
         // Services
-        private readonly IDataService _dataService;
-        private readonly IChangeTrackingService _changeTracking;
-        private readonly ILocalizationEditorService _localization;
+        private readonly IDataEditorService _dataService;
+        private readonly ILocaleEditorService _localization;
 
         // State
         private Type _selectedDataType;
@@ -62,7 +61,7 @@ namespace Datra.Unity.Editor.ViewModels
         }
 
         public bool HasAnyUnsavedChanges =>
-            _changeTracking?.HasAnyUnsavedChanges() == true ||
+            _dataService?.HasAnyChanges() == true ||
             _localization?.HasUnsavedChanges() == true;
 
         public bool HasCurrentDataUnsavedChanges
@@ -72,7 +71,7 @@ namespace Datra.Unity.Editor.ViewModels
                 if (IsLocalizationSelected)
                     return _localization?.HasUnsavedChanges() == true;
                 if (SelectedDataType != null)
-                    return _changeTracking?.HasUnsavedChanges(SelectedDataType) == true;
+                    return _dataService?.HasChanges(SelectedDataType) == true;
                 return false;
             }
         }
@@ -85,9 +84,8 @@ namespace Datra.Unity.Editor.ViewModels
         }
 
         public IReadOnlyList<DataTypeInfo> DataTypes => _dataService?.GetDataTypeInfos() ?? Array.Empty<DataTypeInfo>();
-        public IDataService DataService => _dataService;
-        public IChangeTrackingService ChangeTracking => _changeTracking;
-        public ILocalizationEditorService Localization => _localization;
+        public IDataEditorService DataService => _dataService;
+        public ILocaleEditorService Localization => _localization;
 
         // Events
         public event PropertyChangedEventHandler PropertyChanged;
@@ -99,12 +97,10 @@ namespace Datra.Unity.Editor.ViewModels
         public event Action<TabViewModel> OnActiveTabChanged;
 
         public DatraEditorViewModel(
-            IDataService dataService,
-            IChangeTrackingService changeTracking = null,
-            ILocalizationEditorService localization = null)
+            IDataEditorService dataService,
+            ILocaleEditorService localization = null)
         {
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
-            _changeTracking = changeTracking;
             _localization = localization;
 
             // Setup commands
@@ -122,9 +118,9 @@ namespace Datra.Unity.Editor.ViewModels
 
         private void SubscribeToEvents()
         {
-            if (_changeTracking != null)
+            if (_dataService != null)
             {
-                _changeTracking.OnModifiedStateChanged += (type, hasChanges) =>
+                _dataService.OnModifiedStateChanged += (type, hasChanges) =>
                 {
                     OnModifiedStateChanged?.Invoke(type, hasChanges);
                     OnPropertyChanged(nameof(HasAnyUnsavedChanges));
@@ -136,7 +132,7 @@ namespace Datra.Unity.Editor.ViewModels
             {
                 _localization.OnModifiedStateChanged += (hasChanges) =>
                 {
-                    OnModifiedStateChanged?.Invoke(typeof(Datra.Services.LocalizationContext), hasChanges);
+                    OnModifiedStateChanged?.Invoke(typeof(LocalizationContext), hasChanges);
                     OnPropertyChanged(nameof(HasAnyUnsavedChanges));
                     OnPropertyChanged(nameof(HasCurrentDataUnsavedChanges));
                 };
@@ -347,9 +343,9 @@ namespace Datra.Unity.Editor.ViewModels
 
         public bool HasUnsavedChanges(Type dataType)
         {
-            if (dataType == typeof(Datra.Services.LocalizationContext))
+            if (dataType == typeof(LocalizationContext))
                 return _localization?.HasUnsavedChanges() == true;
-            return _changeTracking?.HasUnsavedChanges(dataType) == true;
+            return _dataService?.HasChanges(dataType) == true;
         }
 
         // INotifyPropertyChanged Implementation

@@ -12,6 +12,7 @@ using UnityEditor.UIElements;
 using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Interfaces;
 using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Views

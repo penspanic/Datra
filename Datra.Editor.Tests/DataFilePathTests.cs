@@ -1,5 +1,6 @@
 #nullable enable
 using Datra.Editor;
+using Datra.Editor.Interfaces;
 using Xunit;
 
 namespace Datra.Editor.Tests

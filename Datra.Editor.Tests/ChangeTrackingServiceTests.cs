@@ -1,5 +1,6 @@
 #nullable enable
 using Datra.Editor;
+using Datra.Editor.Interfaces;
 using Datra.Editor.Services;
 using Xunit;
 

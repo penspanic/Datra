@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Datra.Editor.Interfaces;
 using Datra.Interfaces;
 using Datra.Localization;
+using Datra.Services;
 using Datra.Unity.Editor.Services;
 using Datra.Unity.Editor.ViewModels;
 using NUnit.Framework;
@@ -20,14 +23,15 @@ namespace Datra.Unity.Tests
         #region Mock Implementations
 
         /// <summary>
-        /// Mock implementation of IDataService for testing
+        /// Mock implementation of IDataEditorService for testing
         /// </summary>
-        private class MockDataService : IDataService
+        private class MockDataEditorService : IDataEditorService
         {
             public IDataContext DataContext => null;
             public IReadOnlyDictionary<Type, IDataRepository> Repositories { get; } = new Dictionary<Type, IDataRepository>();
 
             public event Action<Type> OnDataChanged;
+            public event Action<Type, bool> OnModifiedStateChanged;
 
             public bool SaveWasCalled { get; private set; }
             public bool SaveAllWasCalled { get; private set; }
@@ -36,6 +40,7 @@ namespace Datra.Unity.Tests
             public bool ShouldSucceed { get; set; } = true;
 
             private List<DataTypeInfo> _dataTypeInfos = new List<DataTypeInfo>();
+            private HashSet<Type> _modifiedTypes = new HashSet<Type>();
 
             public void AddDataTypeInfo(DataTypeInfo info)
             {
@@ -70,27 +75,9 @@ namespace Datra.Unity.Tests
                 return Task.FromResult(ShouldSucceed);
             }
 
-            public void TriggerDataChanged(Type type) => OnDataChanged?.Invoke(type);
-        }
-
-        /// <summary>
-        /// Mock implementation of IChangeTrackingService for testing
-        /// </summary>
-        private class MockChangeTrackingService : IChangeTrackingService
-        {
-            private HashSet<Type> _modifiedTypes = new HashSet<Type>();
-
-            public event Action<Type, bool> OnModifiedStateChanged;
-
-            public bool HasUnsavedChanges(Type dataType) => _modifiedTypes.Contains(dataType);
-            public bool HasAnyUnsavedChanges() => _modifiedTypes.Count > 0;
+            public bool HasChanges(Type dataType) => _modifiedTypes.Contains(dataType);
+            public bool HasAnyChanges() => _modifiedTypes.Count > 0;
             public IEnumerable<Type> GetModifiedTypes() => _modifiedTypes;
-
-            public void InitializeBaseline(Type dataType) { }
-            public void InitializeAllBaselines() { }
-            public void ResetChanges(Type dataType) => _modifiedTypes.Remove(dataType);
-            public void RegisterType(Type dataType, object repository) { }
-            public void UnregisterType(Type dataType) { }
 
             public void SetModified(Type dataType, bool isModified)
             {
@@ -101,6 +88,8 @@ namespace Datra.Unity.Tests
 
                 OnModifiedStateChanged?.Invoke(dataType, isModified);
             }
+
+            public void TriggerDataChanged(Type type) => OnDataChanged?.Invoke(type);
         }
 
         #endregion
@@ -111,7 +100,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_CanBeCreated_WithDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
 
             // Act
             var viewModel = new DatraEditorViewModel(mockDataService);
@@ -127,7 +116,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_SelectDataType_UpdatesState()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
             var testType = typeof(string);
 
@@ -143,7 +132,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_SelectDataType_WithNull_SetsNullType()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Act - null is allowed, will set SelectedDataType to null
@@ -157,15 +146,14 @@ namespace Datra.Unity.Tests
         public void ViewModel_HasAnyUnsavedChanges_ReturnsCorrectValue()
         {
             // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            var mockDataService = new MockDataEditorService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Assert - initially no changes
             Assert.IsFalse(viewModel.HasAnyUnsavedChanges);
 
             // Act - mark a type as modified
-            mockChangeTracking.SetModified(typeof(string), true);
+            mockDataService.SetModified(typeof(string), true);
 
             // Assert - now has changes
             Assert.IsTrue(viewModel.HasAnyUnsavedChanges);
@@ -175,7 +163,7 @@ namespace Datra.Unity.Tests
         public IEnumerator ViewModel_SaveCommand_CallsDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
             var testType = typeof(string);
             viewModel.SelectDataTypeCommand(testType);
@@ -193,7 +181,7 @@ namespace Datra.Unity.Tests
         public IEnumerator ViewModel_SaveAllCommand_CallsDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Act
@@ -208,7 +196,7 @@ namespace Datra.Unity.Tests
         public IEnumerator ViewModel_ReloadCommand_CallsDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Act
@@ -223,7 +211,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_RaisesOperationCompleted_OnSuccessfulSave()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             mockDataService.ShouldSucceed = true;
             var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
@@ -243,7 +231,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_RaisesOperationFailed_OnFailedSave()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             mockDataService.ShouldSucceed = false;
             var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
@@ -263,7 +251,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_PropertyChanged_RaisedOnStateChange()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             var propertyChangedCalled = false;
@@ -284,7 +272,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_SelectLocalization_UpdatesState()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
 
@@ -300,7 +288,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_SelectDataType_ClearsLocalizationSelection()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectLocalizationCommand();
 
@@ -316,16 +304,15 @@ namespace Datra.Unity.Tests
         public void ViewModel_HasCurrentDataUnsavedChanges_ForDataType()
         {
             // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            var mockDataService = new MockDataEditorService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
 
             // Assert - initially no changes
             Assert.IsFalse(viewModel.HasCurrentDataUnsavedChanges);
 
             // Act - mark the selected type as modified
-            mockChangeTracking.SetModified(typeof(string), true);
+            mockDataService.SetModified(typeof(string), true);
 
             // Assert - now has changes for current data
             Assert.IsTrue(viewModel.HasCurrentDataUnsavedChanges);
@@ -335,13 +322,12 @@ namespace Datra.Unity.Tests
         public void ViewModel_HasCurrentDataUnsavedChanges_OnlyForSelectedType()
         {
             // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            var mockDataService = new MockDataEditorService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
 
             // Mark a different type as modified
-            mockChangeTracking.SetModified(typeof(int), true);
+            mockDataService.SetModified(typeof(int), true);
 
             // Assert - current data (string) has no changes
             Assert.IsFalse(viewModel.HasCurrentDataUnsavedChanges);
@@ -354,11 +340,10 @@ namespace Datra.Unity.Tests
         public void ViewModel_HasUnsavedChanges_ForSpecificType()
         {
             // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            var mockDataService = new MockDataEditorService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
 
-            mockChangeTracking.SetModified(typeof(string), true);
+            mockDataService.SetModified(typeof(string), true);
 
             // Assert
             Assert.IsTrue(viewModel.HasUnsavedChanges(typeof(string)));
@@ -369,7 +354,7 @@ namespace Datra.Unity.Tests
         public IEnumerator ViewModel_ForceSaveCurrentAsync_CallsDataServiceWithForceSave()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
             viewModel.SelectDataTypeCommand(typeof(string));
 
@@ -386,7 +371,7 @@ namespace Datra.Unity.Tests
         public IEnumerator ViewModel_ForceSaveAllAsync_CallsDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Act
@@ -398,12 +383,11 @@ namespace Datra.Unity.Tests
         }
 
         [Test]
-        public void ViewModel_ModifiedStateChanged_PropagatesFromChangeTracking()
+        public void ViewModel_ModifiedStateChanged_PropagatesFromDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
+            var mockDataService = new MockDataEditorService();
+            var viewModel = new DatraEditorViewModel(mockDataService);
 
             Type changedType = null;
             bool? hasChanges = null;
@@ -414,7 +398,7 @@ namespace Datra.Unity.Tests
             };
 
             // Act
-            mockChangeTracking.SetModified(typeof(string), true);
+            mockDataService.SetModified(typeof(string), true);
 
             // Assert
             Assert.AreEqual(typeof(string), changedType);
@@ -425,7 +409,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_ProjectName_CanBeSetAndRetrieved()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Act
@@ -439,7 +423,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_DataTypes_ReturnsFromDataService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             mockDataService.AddDataTypeInfo(new DataTypeInfo(
                 typeName: "System.String",
                 dataType: typeof(string),
@@ -459,7 +443,7 @@ namespace Datra.Unity.Tests
         public void ViewModel_DataService_ExposesUnderlyingService()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             // Assert
@@ -467,22 +451,10 @@ namespace Datra.Unity.Tests
         }
 
         [Test]
-        public void ViewModel_ChangeTracking_ExposesUnderlyingService()
-        {
-            // Arrange
-            var mockDataService = new MockDataService();
-            var mockChangeTracking = new MockChangeTrackingService();
-            var viewModel = new DatraEditorViewModel(mockDataService, mockChangeTracking);
-
-            // Assert
-            Assert.AreSame(mockChangeTracking, viewModel.ChangeTracking);
-        }
-
-        [Test]
         public void ViewModel_SaveWithNoSelection_RaisesFailedEvent()
         {
             // Arrange
-            var mockDataService = new MockDataService();
+            var mockDataService = new MockDataEditorService();
             var viewModel = new DatraEditorViewModel(mockDataService);
 
             string failedMessage = null;

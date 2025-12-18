@@ -8,6 +8,7 @@ using UnityEditor.UIElements;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 using Datra.Unity.Editor.Views;
 
 namespace Datra.Unity.Editor.Panels

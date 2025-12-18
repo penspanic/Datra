@@ -5,6 +5,7 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "Datra",
+        "Datra.Editor",
         "Datra.Unity",
         "Datra.Unity.Editor",
         "Datra Sample Data"

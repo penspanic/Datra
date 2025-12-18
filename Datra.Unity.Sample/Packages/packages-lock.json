@@ -8,6 +8,14 @@
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       }
     },
+    "com.penspanic.datra.editor": {
+      "version": "file:../../Datra.Editor",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.penspanic.datra": "1.0.0"
+      }
+    },
     "com.penspanic.datra.sampledata": {
       "version": "file:../../Datra.SampleData",
       "depth": 0,

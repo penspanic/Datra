@@ -2,88 +2,112 @@
 using System;
 using System.IO;
 
-namespace Datra.Editor
+namespace Datra.Editor.Interfaces
 {
     /// <summary>
-    /// Type-safe wrapper for data file paths.
-    /// Provides path normalization and comparison.
+    /// Type-safe wrapper for file paths in the data system.
+    /// Provides path normalization and validation.
     /// </summary>
     public readonly struct DataFilePath : IEquatable<DataFilePath>
     {
         private readonly string _value;
 
+        /// <summary>
+        /// Empty path value
+        /// </summary>
+        public static readonly DataFilePath Empty = new DataFilePath(string.Empty);
+
         public DataFilePath(string value)
         {
-            _value = NormalizePath(value ?? throw new ArgumentNullException(nameof(value)));
+            _value = NormalizePath(value);
         }
 
         /// <summary>
-        /// Whether this path is valid (non-empty)
+        /// The normalized file path value
+        /// </summary>
+        public string Value => _value ?? string.Empty;
+
+        /// <summary>
+        /// Whether this path has a valid value
         /// </summary>
         public bool IsValid => !string.IsNullOrEmpty(_value);
 
         /// <summary>
-        /// Gets the file name without directory
+        /// Get just the file name portion
         /// </summary>
-        public string FileName => Path.GetFileName(_value);
+        public string FileName => Path.GetFileName(_value ?? string.Empty);
 
         /// <summary>
-        /// Gets the file extension (including dot)
+        /// Get the directory portion
         /// </summary>
-        public string Extension => Path.GetExtension(_value);
+        public string Directory => NormalizePath(Path.GetDirectoryName(_value ?? string.Empty) ?? string.Empty);
 
         /// <summary>
-        /// Gets the directory path
+        /// Get the file extension
         /// </summary>
-        public string Directory => Path.GetDirectoryName(_value) ?? string.Empty;
-
-        public override string ToString() => _value ?? string.Empty;
-
-        public static explicit operator string(DataFilePath path) => path._value;
-        public static implicit operator DataFilePath(string path) => new(path);
-
-        public bool Equals(DataFilePath other) =>
-            string.Equals(_value, other._value, StringComparison.OrdinalIgnoreCase);
-
-        public override bool Equals(object? obj) => obj is DataFilePath other && Equals(other);
-
-        public override int GetHashCode() =>
-            _value?.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0;
-
-        public static bool operator ==(DataFilePath left, DataFilePath right) => left.Equals(right);
-        public static bool operator !=(DataFilePath left, DataFilePath right) => !left.Equals(right);
+        public string Extension => Path.GetExtension(_value ?? string.Empty);
 
         /// <summary>
-        /// Empty/null path
+        /// Get the file name without extension
         /// </summary>
-        public static readonly DataFilePath Empty = new(string.Empty);
+        public string FileNameWithoutExtension => Path.GetFileNameWithoutExtension(_value ?? string.Empty);
 
         /// <summary>
-        /// Check if path is null or empty
+        /// Combine this path with another path segment
         /// </summary>
-        public static bool IsNullOrEmpty(DataFilePath? path)
+        public DataFilePath Combine(string path)
         {
-            if (path == null)
-                return true;
-            return !path.Value.IsValid;
+            if (string.IsNullOrEmpty(_value))
+                return new DataFilePath(path);
+            if (string.IsNullOrEmpty(path))
+                return this;
+            return new DataFilePath(_value + "/" + path);
         }
 
         /// <summary>
-        /// Combine with another path segment
+        /// Check if a path is null or empty
         /// </summary>
-        public DataFilePath Combine(string segment) =>
-            new(Path.Combine(_value, segment));
+        public static bool IsNullOrEmpty(DataFilePath? path)
+        {
+            return !path.HasValue || !path.Value.IsValid;
+        }
 
-        /// <summary>
-        /// Normalize path separators to forward slash
-        /// </summary>
         private static string NormalizePath(string path)
         {
             if (string.IsNullOrEmpty(path))
                 return string.Empty;
 
             // Normalize to forward slashes for cross-platform consistency
-            return path.Replace('\\', '/').TrimEnd('/');
+            var normalized = path.Replace('\\', '/');
+
+            // Remove trailing slash
+            if (normalized.Length > 1 && normalized.EndsWith("/"))
+                normalized = normalized.TrimEnd('/');
+
+            return normalized;
         }
+
+        public override string ToString() => _value ?? string.Empty;
+
+        public override int GetHashCode()
+        {
+            return StringComparer.OrdinalIgnoreCase.GetHashCode(_value ?? string.Empty);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is DataFilePath other && Equals(other);
+        }
+
+        public bool Equals(DataFilePath other)
+        {
+            return StringComparer.OrdinalIgnoreCase.Equals(_value, other._value);
+        }
+
+        public static bool operator ==(DataFilePath left, DataFilePath right) => left.Equals(right);
+        public static bool operator !=(DataFilePath left, DataFilePath right) => !left.Equals(right);
+
+        public static implicit operator string(DataFilePath path) => path.Value;
+        public static implicit operator DataFilePath(string path) => new DataFilePath(path);
     }
 }

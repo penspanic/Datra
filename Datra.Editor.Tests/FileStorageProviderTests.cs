@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Datra.Editor;
+using Datra.Editor.Interfaces;
 using Datra.Editor.Providers;
 using Xunit;
 

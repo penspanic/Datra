@@ -8,6 +8,7 @@ using DatraPropertyField = Datra.Unity.Editor.Components.DatraPropertyField;
 using Datra.DataTypes;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;

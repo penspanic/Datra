@@ -13,6 +13,7 @@ using Datra.Services;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Services;
 using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 using Datra.Unity.Editor.ViewModels;
 using Datra.Unity.Editor.Windows;
 
@@ -294,7 +295,6 @@ namespace Datra.Unity.Editor
             // Create the ViewModel with service adapters
             viewModel = new DatraEditorViewModel(
                 dataServiceAdapter,
-                dataServiceAdapter, // DatraDataManagerAdapter implements both IDataService and IChangeTrackingService
                 localizationServiceAdapter);
 
             // Set project name on ViewModel

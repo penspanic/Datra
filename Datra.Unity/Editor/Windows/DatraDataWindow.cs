@@ -10,6 +10,7 @@ using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Views;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 using UnityEditor.UIElements;
 
 namespace Datra.Unity.Editor.Windows

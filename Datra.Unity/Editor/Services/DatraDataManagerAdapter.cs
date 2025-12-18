@@ -11,10 +11,10 @@ using Datra.Unity.Editor.Utilities;
 namespace Datra.Unity.Editor.Services
 {
     /// <summary>
-    /// Adapter that wraps existing DatraDataManager to expose service interfaces.
+    /// Adapter that wraps existing DatraDataManager to expose IDataEditorService.
     /// This enables gradual migration to the new architecture.
     /// </summary>
-    public class DatraDataManagerAdapter : IDataService, IChangeTrackingService
+    public class DatraDataManagerAdapter : IDataEditorService
     {
         private readonly DatraDataManager _manager;
 
@@ -27,12 +27,13 @@ namespace Datra.Unity.Editor.Services
             _manager.OnModifiedStateChanged += (type, hasChanges) => OnModifiedStateChanged?.Invoke(type, hasChanges);
         }
 
-        #region IDataService Implementation
+        #region IDataEditorService Implementation
 
         public IDataContext DataContext => _manager.DataContext;
         public IReadOnlyDictionary<Type, IDataRepository> Repositories => _manager.Repositories;
 
         public event Action<Type> OnDataChanged;
+        public event Action<Type, bool> OnModifiedStateChanged;
 
         public IReadOnlyList<DataTypeInfo> GetDataTypeInfos()
         {
@@ -65,18 +66,12 @@ namespace Datra.Unity.Editor.Services
             return _manager.ReloadAllAsync(checkModified: false);
         }
 
-        #endregion
-
-        #region IChangeTrackingService Implementation
-
-        public event Action<Type, bool> OnModifiedStateChanged;
-
-        public bool HasUnsavedChanges(Type dataType)
+        public bool HasChanges(Type dataType)
         {
             return _manager.HasUnsavedChanges(dataType);
         }
 
-        public bool HasAnyUnsavedChanges()
+        public bool HasAnyChanges()
         {
             return _manager.Repositories.Keys.Any(t => _manager.HasUnsavedChanges(t));
         }
@@ -84,31 +79,6 @@ namespace Datra.Unity.Editor.Services
         public IEnumerable<Type> GetModifiedTypes()
         {
             return _manager.Repositories.Keys.Where(t => _manager.HasUnsavedChanges(t));
-        }
-
-        public void InitializeBaseline(Type dataType)
-        {
-            // Handled internally by DatraDataManager after save
-        }
-
-        public void InitializeAllBaselines()
-        {
-            // Handled internally by DatraDataManager after save
-        }
-
-        public void ResetChanges(Type dataType)
-        {
-            // Not directly supported - would need to reload
-        }
-
-        public void RegisterType(Type dataType, object repository)
-        {
-            // Not supported - types are registered during initialization
-        }
-
-        public void UnregisterType(Type dataType)
-        {
-            // Not supported
         }
 
         #endregion
@@ -120,9 +90,9 @@ namespace Datra.Unity.Editor.Services
     }
 
     /// <summary>
-    /// Adapter that wraps LocalizationChangeTracker to expose ILocalizationEditorService.
+    /// Adapter that wraps LocalizationChangeTracker to expose ILocaleEditorService.
     /// </summary>
-    public class LocalizationEditorServiceAdapter : ILocalizationEditorService
+    public class LocalizationEditorServiceAdapter : ILocaleEditorService
     {
         private readonly LocalizationContext _context;
         private readonly LocalizationChangeTracker _changeTracker;
@@ -152,9 +122,9 @@ namespace Datra.Unity.Editor.Services
         private void SubscribeToContextEvents()
         {
             _context.SubscribeToEditorEvents(
-                onTextChanged: (key, language) => OnTranslationChanged?.Invoke(key, language),
-                onKeyAdded: key => OnTranslationChanged?.Invoke(key, CurrentLanguage),
-                onKeyDeleted: key => OnTranslationChanged?.Invoke(key, CurrentLanguage)
+                onTextChanged: (key, language) => OnTextChanged?.Invoke(key, language),
+                onKeyAdded: key => OnTextChanged?.Invoke(key, CurrentLanguage),
+                onKeyDeleted: key => OnTextChanged?.Invoke(key, CurrentLanguage)
             );
         }
 
@@ -168,7 +138,7 @@ namespace Datra.Unity.Editor.Services
         public IReadOnlyList<LanguageCode> LoadedLanguages =>
             _context?.GetLoadedLanguages()?.ToList() ?? new List<LanguageCode>();
 
-        public event Action<string, LanguageCode> OnTranslationChanged;
+        public event Action<string, LanguageCode> OnTextChanged;
         public event Action<LanguageCode> OnLanguageChanged;
         public event Action<bool> OnModifiedStateChanged;
 
@@ -190,12 +160,12 @@ namespace Datra.Unity.Editor.Services
             }
         }
 
-        public string GetTranslation(string key) => _context?.GetText(key) ?? string.Empty;
+        public string GetText(string key) => _context?.GetText(key) ?? string.Empty;
 
-        public string GetTranslation(string key, LanguageCode language) =>
+        public string GetText(string key, LanguageCode language) =>
             _context?.GetText(key, language) ?? string.Empty;
 
-        public void SetTranslation(string key, string value, LanguageCode language)
+        public void SetText(string key, string value, LanguageCode language)
         {
             _context?.SetText(key, value, language);
         }
@@ -232,6 +202,16 @@ namespace Datra.Unity.Editor.Services
             if (_changeTracker != null && !_changeTracker.IsLanguageInitialized(language))
             {
                 _changeTracker.InitializeLanguage(language);
+            }
+        }
+
+        public void InitializeAllBaselines()
+        {
+            if (_changeTracker == null) return;
+
+            foreach (var language in LoadedLanguages)
+            {
+                InitializeBaseline(language);
             }
         }
     }

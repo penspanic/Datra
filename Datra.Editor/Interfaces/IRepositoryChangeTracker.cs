@@ -1,9 +1,11 @@
+#nullable enable
 using System.Collections.Generic;
 
-namespace Datra.Unity.Editor.Utilities
+namespace Datra.Editor.Interfaces
 {
     /// <summary>
-    /// Non-generic interface for RepositoryChangeTracker to avoid reflection
+    /// Non-generic interface for repository change tracking.
+    /// Tracks entity-level and property-level changes for repositories.
     /// </summary>
     public interface IRepositoryChangeTracker
     {
@@ -15,7 +17,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Get baseline value for a given key (returns object)
         /// </summary>
-        object GetBaselineValue(object key);
+        object? GetBaselineValue(object key);
 
         /// <summary>
         /// Track a change for a given key and value
@@ -25,7 +27,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Track a property change for a given key, property name, and new value
         /// </summary>
-        void TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified);
+        void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isModified);
 
         /// <summary>
         /// Track an addition
@@ -65,7 +67,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Get baseline value for a specific property
         /// </summary>
-        object GetPropertyBaselineValue(object key, string propertyName);
+        object? GetPropertyBaselineValue(object key, string propertyName);
 
         /// <summary>
         /// Initialize baseline from repository data
