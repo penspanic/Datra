@@ -1,15 +1,35 @@
+using Datra.Attributes;
+using Datra.Localization;
 using Newtonsoft.Json;
 
 namespace Datra.SampleData.Models
 {
     /// <summary>
     /// Base class for quest objectives - demonstrates polymorphic JSON support
+    /// and NestedLocaleRef for hierarchical locale keys.
     /// </summary>
     [JsonObject]
     public abstract class QuestObjective
     {
         public string Id { get; set; }
-        public string Description { get; set; }
+
+        /// <summary>
+        /// Direct description text for backwards compatibility with existing JSON.
+        /// Use this when description is stored directly in the data file.
+        /// </summary>
+        [JsonProperty("Description")]
+        public string DescriptionText { get; set; }
+
+        /// <summary>
+        /// Nested locale reference for objective description.
+        /// The actual locale key is evaluated at runtime with indices:
+        /// e.g., "QuestData.quest_001.Objectives#0.Description"
+        /// Use this when description should come from localization system.
+        /// </summary>
+        [NestedLocale]
+        [JsonIgnore]
+        public NestedLocaleRef DescriptionLocale => NestedLocaleRef.Create("Objectives", "Description");
+
         public bool IsCompleted { get; set; }
     }
 

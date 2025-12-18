@@ -26,3 +26,18 @@ Message_Goodbye,Goodbye message shown on logout,Dialog,false
 Message_Loading,Loading message,Dialog,false
 Message_SaveComplete,Save complete notification,Dialog,false
 Message_Welcome,Welcome message shown on first login,Dialog,false
+QuestData.quest_main_001.name,Quest name for quest_main_001,Quest,true
+QuestData.quest_main_001.description,Quest description for quest_main_001,Quest,true
+QuestData.quest_main_001.Objectives#0.Description,First objective of quest_main_001 (NestedLocale),Quest,true
+QuestData.quest_main_001.Objectives#1.Description,Second objective of quest_main_001 (NestedLocale),Quest,true
+QuestData.quest_main_002.name,Quest name for quest_main_002,Quest,true
+QuestData.quest_main_002.description,Quest description for quest_main_002,Quest,true
+QuestData.quest_main_002.Objectives#0.Description,First objective of quest_main_002 (NestedLocale),Quest,true
+QuestData.quest_main_002.Objectives#1.Description,Second objective of quest_main_002 (NestedLocale),Quest,true
+QuestData.quest_side_001.name,Quest name for quest_side_001,Quest,true
+QuestData.quest_side_001.description,Quest description for quest_side_001,Quest,true
+QuestData.quest_side_001.Objectives#0.Description,First objective of quest_side_001 (NestedLocale),Quest,true
+QuestData.quest_side_001.Objectives#1.Description,Second objective of quest_side_001 (NestedLocale),Quest,true
+QuestData.quest_daily_001.name,Quest name for quest_daily_001,Quest,true
+QuestData.quest_daily_001.description,Quest description for quest_daily_001,Quest,true
+QuestData.quest_daily_001.Objectives#0.Description,First objective of quest_daily_001 (NestedLocale),Quest,true
