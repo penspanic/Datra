@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Newtonsoft.Json;
+using Datra.Serializers;
 
 namespace Datra.Unity.Editor.Utilities
 {
@@ -15,6 +16,14 @@ namespace Datra.Unity.Editor.Utilities
         where TKey : notnull
         where TValue : class
     {
+        // JSON settings for deep clone/comparison (supports polymorphic types)
+        private static readonly JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
+        {
+            TypeNameHandling = TypeNameHandling.Auto,
+            SerializationBinder = new PortableTypeBinder(),
+            NullValueHandling = NullValueHandling.Ignore
+        };
+
         // Baseline snapshot (taken at load time)
         private Dictionary<TKey, TValue> _baseline = new Dictionary<TKey, TValue>();
 
@@ -442,11 +451,11 @@ namespace Datra.Unity.Editor.Utilities
             if (value is string str)
                 return str as TValue;
 
-            // Use Newtonsoft.Json for deep clone (supports properties)
+            // Use Newtonsoft.Json for deep clone (supports properties and polymorphic types)
             try
             {
-                var json = JsonConvert.SerializeObject(value);
-                return JsonConvert.DeserializeObject<TValue>(json);
+                var json = JsonConvert.SerializeObject(value, _jsonSettings);
+                return JsonConvert.DeserializeObject<TValue>(json, _jsonSettings);
             }
             catch (Exception e)
             {
@@ -464,11 +473,11 @@ namespace Datra.Unity.Editor.Utilities
             if (a is string strA && b is string strB)
                 return strA == strB;
 
-            // Use Newtonsoft.Json for comparison (supports properties)
+            // Use Newtonsoft.Json for comparison (supports properties and polymorphic types)
             try
             {
-                var jsonA = JsonConvert.SerializeObject(a);
-                var jsonB = JsonConvert.SerializeObject(b);
+                var jsonA = JsonConvert.SerializeObject(a, _jsonSettings);
+                var jsonB = JsonConvert.SerializeObject(b, _jsonSettings);
                 bool areEqual = jsonA == jsonB;
 
                 return areEqual;
