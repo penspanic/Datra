@@ -27,7 +27,7 @@ namespace Datra.DataTypes
         /// <returns>A LocaleRef with the generated key</returns>
         public static LocaleRef CreateFixed(string typeName, string id, string propertyName)
         {
-            return new LocaleRef { Key = $"{typeName}.{id}.{propertyName.ToLower()}" };
+            return new LocaleRef { Key = $"{typeName}.{id}.{propertyName}" };
         }
 
         /// <summary>

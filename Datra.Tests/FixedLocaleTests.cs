@@ -122,7 +122,7 @@ namespace Datra.Tests
 
                 foreach (var item in data.Values.OrderBy(x => x.Id))
                 {
-                    lines.Add($"{item.Id},{item.Description},{item.Category},{item.IsFixedKey.ToString().ToLower()}");
+                    lines.Add($"{item.Id},{item.Description},{item.Category},{item.IsFixedKey.ToString()}");
                 }
 
                 return string.Join("\n", lines);
