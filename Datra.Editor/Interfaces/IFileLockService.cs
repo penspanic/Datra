@@ -60,13 +60,15 @@ namespace Datra.Editor.Interfaces
     /// </summary>
     public class LockInfo
     {
-        public string Path { get; }
-        public string UserId { get; }
-        public string? UserName { get; }
-        public DateTime AcquiredAt { get; }
-        public DateTime ExpiresAt { get; }
+        public string Path { get; set; } = string.Empty;
+        public string UserId { get; set; } = string.Empty;
+        public string? UserName { get; set; }
+        public DateTime AcquiredAt { get; set; }
+        public DateTime ExpiresAt { get; set; }
 
         public bool IsExpired => DateTime.UtcNow > ExpiresAt;
+
+        public LockInfo() { }
 
         public LockInfo(string path, string userId, string? userName, DateTime acquiredAt, DateTime expiresAt)
         {
