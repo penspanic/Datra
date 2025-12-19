@@ -18,15 +18,15 @@ namespace Datra.Unity.Editor.ViewModels
     {
         // Services
         private readonly IDataEditorService _dataService;
-        private readonly ILocaleEditorService _localization;
+        private readonly ILocaleEditorService? _localization;
 
         // State
-        private Type _selectedDataType;
+        private Type? _selectedDataType;
         private bool _isLocalizationSelected;
         private bool _isInitialized;
-        private string _projectName;
+        private string _projectName = "";
         private readonly List<TabViewModel> _openTabs = new List<TabViewModel>();
-        private TabViewModel _activeTab;
+        private TabViewModel? _activeTab;
 
         // Commands (simple delegate-based)
         public Func<Task<bool>> SaveCommand { get; }
@@ -36,7 +36,7 @@ namespace Datra.Unity.Editor.ViewModels
         public Action SelectLocalizationCommand { get; }
 
         // Properties
-        public Type SelectedDataType
+        public Type? SelectedDataType
         {
             get => _selectedDataType;
             private set => SetField(ref _selectedDataType, value);
@@ -77,15 +77,15 @@ namespace Datra.Unity.Editor.ViewModels
         }
 
         public IReadOnlyList<TabViewModel> OpenTabs => _openTabs;
-        public TabViewModel ActiveTab
+        public TabViewModel? ActiveTab
         {
             get => _activeTab;
             private set => SetField(ref _activeTab, value);
         }
 
-        public IReadOnlyList<DataTypeInfo> DataTypes => _dataService?.GetDataTypeInfos() ?? Array.Empty<DataTypeInfo>();
+        public IReadOnlyList<DataTypeInfo> DataTypes => _dataService.GetDataTypeInfos();
         public IDataEditorService DataService => _dataService;
-        public ILocaleEditorService Localization => _localization;
+        public ILocaleEditorService? Localization => _localization;
 
         // Events
         public event PropertyChangedEventHandler PropertyChanged;
@@ -261,6 +261,11 @@ namespace Datra.Unity.Editor.ViewModels
 
         private async Task<bool> SaveLocalizationAsync()
         {
+            if (_localization == null)
+            {
+                OnOperationFailed?.Invoke("Localization service not available.");
+                return false;
+            }
             var success = await _localization.SaveAsync();
             if (success)
             {
@@ -275,6 +280,11 @@ namespace Datra.Unity.Editor.ViewModels
 
         private async Task<bool> ForceSaveLocalizationAsync()
         {
+            if (_localization == null)
+            {
+                OnOperationFailed?.Invoke("Localization service not available.");
+                return false;
+            }
             var success = await _localization.SaveAsync(forceSave: true);
             if (success)
             {
