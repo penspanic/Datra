@@ -1,0 +1,7 @@
+{
+  "Name": "Data Processor",
+  "Description": "Processes game data files",
+  "Content": "function processData(input) { return transform(input); }",
+  "Version": 2,
+  "Tags": ["utility", "data", "processing"]
+}

@@ -1,0 +1,10 @@
+{
+  "Guid": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+  "DisplayName": "Hello World Script",
+  "Tags": ["sample", "basic"],
+  "Category": "Tutorial",
+  "Description": "Basic hello world example",
+  "Version": 1,
+  "CreatedAt": "2024-12-19T00:00:00Z",
+  "ModifiedAt": "2024-12-19T00:00:00Z"
+}

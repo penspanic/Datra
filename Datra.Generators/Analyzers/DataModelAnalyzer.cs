@@ -12,7 +12,8 @@ namespace Datra.Generators.Analyzers
         private readonly Compilation _compilation;
         private readonly INamedTypeSymbol _tableDataAttrSymbol;
         private readonly INamedTypeSymbol _singleDataAttrSymbol;
-        
+        private readonly INamedTypeSymbol _assetDataAttrSymbol;
+
         // Define a SymbolDisplayFormat that includes global:: prefix
         private static readonly SymbolDisplayFormat FullyQualifiedFormat = new SymbolDisplayFormat(
             globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
@@ -27,6 +28,7 @@ namespace Datra.Generators.Analyzers
             _compilation = compilation;
             _tableDataAttrSymbol = compilation.GetTypeByMetadataName("Datra.Attributes.TableDataAttribute");
             _singleDataAttrSymbol = compilation.GetTypeByMetadataName("Datra.Attributes.SingleDataAttribute");
+            _assetDataAttrSymbol = compilation.GetTypeByMetadataName("Datra.Attributes.AssetDataAttribute");
         }
 
         public bool IsInitialized => _tableDataAttrSymbol != null && _singleDataAttrSymbol != null;
@@ -54,7 +56,8 @@ namespace Datra.Generators.Analyzers
                     // Store the source file path for physical file emission
                     dataModel.SourceFilePath = classDeclaration.SyntaxTree.FilePath;
                     dataModels.Add(dataModel);
-                    GeneratorLogger.Log($"Found data model: {dataModel.TypeName} ({(dataModel.IsTableData ? "Table" : "Single")}), Source: {dataModel.SourceFilePath}");
+                    var dataType = dataModel.IsAssetData ? "Asset" : (dataModel.IsTableData ? "Table" : "Single");
+                    GeneratorLogger.Log($"Found data model: {dataModel.TypeName} ({dataType}), Source: {dataModel.SourceFilePath}");
                 }
             }
 
@@ -66,6 +69,7 @@ namespace Datra.Generators.Analyzers
             var attributes = classSymbol.GetAttributes();
             AttributeData dataAttribute = null;
             bool isTableData = false;
+            bool isAssetData = false;
 
             foreach (var attr in attributes)
             {
@@ -79,6 +83,12 @@ namespace Datra.Generators.Analyzers
                 {
                     dataAttribute = attr;
                     isTableData = false;
+                    break;
+                }
+                else if (_assetDataAttrSymbol != null && SymbolEqualityComparer.Default.Equals(attr.AttributeClass, _assetDataAttrSymbol))
+                {
+                    dataAttribute = attr;
+                    isAssetData = true;
                     break;
                 }
             }
@@ -142,11 +152,17 @@ namespace Datra.Generators.Analyzers
                 GeneratorLogger.Log($"Multi-file mode enabled for {classSymbol.Name}, Label: {label ?? "(none)"}, Pattern: {pattern}");
             }
 
+            if (isAssetData)
+            {
+                GeneratorLogger.Log($"Asset data mode enabled for {classSymbol.Name}, FolderPath: {filePath}, Pattern: {pattern}");
+            }
+
             var modelInfo = new DataModelInfo
             {
                 TypeName = classSymbol.ToDisplayString(FullyQualifiedFormat),
                 PropertyName = classSymbol.Name.Replace("Data", ""),
                 IsTableData = isTableData,
+                IsAssetData = isAssetData,
                 FilePath = filePath,
                 Format = formatValue,
                 Properties = GetProperties(classSymbol),

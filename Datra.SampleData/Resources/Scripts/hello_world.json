@@ -1,0 +1,7 @@
+{
+  "Name": "Hello World",
+  "Description": "A simple hello world script",
+  "Content": "print('Hello, World!')",
+  "Version": 1,
+  "Tags": ["beginner", "tutorial"]
+}

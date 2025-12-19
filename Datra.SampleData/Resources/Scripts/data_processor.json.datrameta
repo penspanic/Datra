@@ -1,0 +1,10 @@
+{
+  "Guid": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5",
+  "DisplayName": "Data Processor Script",
+  "Tags": ["utility", "core"],
+  "Category": "Utility",
+  "Description": "Core data processing functionality",
+  "Version": 1,
+  "CreatedAt": "2024-12-15T00:00:00Z",
+  "ModifiedAt": "2024-12-18T00:00:00Z"
+}

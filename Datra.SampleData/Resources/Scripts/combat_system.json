@@ -1,0 +1,7 @@
+{
+  "Name": "Combat System",
+  "Description": "Handles combat logic and damage calculation",
+  "Content": "class CombatSystem { calculateDamage(attacker, defender) { return attacker.strength - defender.defense; } }",
+  "Version": 3,
+  "Tags": ["combat", "gameplay", "core"]
+}

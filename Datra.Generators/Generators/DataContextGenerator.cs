@@ -40,6 +40,7 @@ namespace Datra.Generators.Generators
                 "System.Threading.Tasks",
                 "Datra",
                 "Datra.Configuration",
+                "Datra.DataTypes",
                 "Datra.Interfaces",
                 "Datra.Serializers",
                 "Datra.Repositories"
@@ -135,13 +136,17 @@ namespace Datra.Generators.Generators
         private void GenerateInitializeRepositories(CodeBuilder builder, List<DataModelInfo> dataModels)
         {
             builder.BeginMethod("protected override void InitializeRepositories()");
-            
+
             foreach (var model in dataModels)
             {
                 var simpleTypeName = CodeBuilder.GetSimpleTypeName(model.TypeName);
                 var isCsvFormat = CodeBuilder.GetDataFormat(model.Format) == "Csv";
-                
-                if (model.IsTableData)
+
+                if (model.IsAssetData)
+                {
+                    GenerateAssetRepository(builder, model, simpleTypeName);
+                }
+                else if (model.IsTableData)
                 {
                     GenerateTableRepository(builder, model, simpleTypeName, isCsvFormat);
                 }
@@ -150,7 +155,7 @@ namespace Datra.Generators.Generators
                     GenerateSingleRepository(builder, model, simpleTypeName);
                 }
             }
-            
+
             builder.EndMethod();
         }
 
@@ -205,6 +210,19 @@ namespace Datra.Generators.Generators
             builder.AppendLine($"    (obj, serializer) => {simpleTypeName}Serializer.SerializeSingle(obj, serializer)");
             builder.AppendLine(");");
             builder.AppendLine($"RegisterSingleRepository(\"{model.PropertyName}\", {model.PropertyName});");
+        }
+
+        private void GenerateAssetRepository(CodeBuilder builder, DataModelInfo model, string simpleTypeName)
+        {
+            builder.AppendLine($"{model.PropertyName} = new AssetRepository<{model.TypeName}>(");
+            builder.AppendLine($"    \"{model.FilePath}\",");
+            builder.AppendLine($"    \"{model.FilePattern}\",");
+            builder.AppendLine($"    RawDataProvider,");
+            builder.AppendLine($"    SerializerFactory,");
+            builder.AppendLine($"    (data, serializer) => {simpleTypeName}Serializer.DeserializeSingle(data, serializer),");
+            builder.AppendLine($"    (obj, serializer) => {simpleTypeName}Serializer.SerializeSingle(obj, serializer)");
+            builder.AppendLine(");");
+            builder.AppendLine($"RegisterAssetRepository(\"{model.PropertyName}\", {model.PropertyName});");
         }
 
         private void GenerateInitializeDataTypeInfos(CodeBuilder builder, List<DataModelInfo> dataModels)
@@ -279,7 +297,11 @@ namespace Datra.Generators.Generators
         {
             foreach (var model in dataModels)
             {
-                if (model.IsTableData)
+                if (model.IsAssetData)
+                {
+                    builder.AppendLine($"public IAssetRepository<{model.TypeName}> {model.PropertyName} {{ get; private set; }}");
+                }
+                else if (model.IsTableData)
                 {
                     builder.AppendLine($"public IDataRepository<{model.KeyType}, {model.TypeName}> {model.PropertyName} {{ get; private set; }}");
                 }

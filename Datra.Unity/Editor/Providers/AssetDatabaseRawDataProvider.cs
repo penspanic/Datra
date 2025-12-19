@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Datra.Interfaces;
@@ -116,6 +117,50 @@ namespace Datra.Unity.Editor.Providers
 
             // Combine with forward slash
             return basePath + "/" + path;
+        }
+
+        public Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPath, string pattern = "*.json")
+        {
+#if UNITY_EDITOR
+            var result = new Dictionary<string, string>();
+            var fullPath = CombinePath(_basePath, folderPath);
+
+            // Get absolute path for directory operations
+            var absolutePath = fullPath.StartsWith("Assets/")
+                ? Path.GetFullPath(fullPath)
+                : fullPath;
+
+            if (!Directory.Exists(absolutePath))
+            {
+                return Task.FromResult(result);
+            }
+
+            var files = Directory.GetFiles(absolutePath, pattern, SearchOption.TopDirectoryOnly);
+            foreach (var file in files)
+            {
+                // Convert to Unity asset path format
+                var relativePath = file.Replace("\\", "/");
+                if (relativePath.Contains("/Assets/"))
+                {
+                    var assetsIndex = relativePath.IndexOf("/Assets/");
+                    relativePath = relativePath.Substring(assetsIndex + 1);
+                }
+
+                var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(relativePath);
+                if (textAsset != null)
+                {
+                    result[file] = textAsset.text;
+                }
+                else if (File.Exists(file))
+                {
+                    result[file] = File.ReadAllText(file);
+                }
+            }
+
+            return Task.FromResult(result);
+#else
+            throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
+#endif
         }
     }
 }

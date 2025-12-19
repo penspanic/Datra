@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Datra.Attributes;
+using Datra.DataTypes;
 using Datra.Interfaces;
 using Datra.Serializers;
 using Datra.Repositories;
@@ -67,13 +68,23 @@ namespace Datra
         /// <summary>
         /// Register a single data repository
         /// </summary>
-        protected void RegisterSingleRepository<TData>(string propertyName, ISingleDataRepository<TData> repository) 
+        protected void RegisterSingleRepository<TData>(string propertyName, ISingleDataRepository<TData> repository)
             where TData : class
         {
             Repositories[propertyName] = repository;
             Repositories[typeof(TData).FullName] = repository;
         }
-        
+
+        /// <summary>
+        /// Register an asset repository
+        /// </summary>
+        protected void RegisterAssetRepository<TData>(string propertyName, IAssetRepository<TData> repository)
+            where TData : class
+        {
+            Repositories[propertyName] = repository;
+            Repositories[typeof(TData).FullName] = repository;
+        }
+
         public virtual async Task LoadAllAsync()
         {
             var tasks = new List<Task>();
@@ -126,10 +137,11 @@ namespace Datra
         {
             var type = property.PropertyType;
             if (!type.IsGenericType) return false;
-            
+
             var genericType = type.GetGenericTypeDefinition();
-            return genericType == typeof(IDataRepository<,>) || 
-                   genericType == typeof(ISingleDataRepository<>);
+            return genericType == typeof(IDataRepository<,>) ||
+                   genericType == typeof(ISingleDataRepository<>) ||
+                   genericType == typeof(IAssetRepository<>);
         }
         
         private async Task LoadRepositoryAsync(PropertyInfo property)

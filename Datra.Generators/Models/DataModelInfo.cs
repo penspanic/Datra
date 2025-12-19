@@ -35,6 +35,12 @@ namespace Datra.Generators.Models
         public string FilePattern { get; set; } = "*.json";
 
         /// <summary>
+        /// Asset data mode: file-based assets with .datrameta companion files.
+        /// ID comes from metadata (GUID), not from the object itself.
+        /// </summary>
+        public bool IsAssetData { get; set; }
+
+        /// <summary>
         /// Get properties that should be included in serialization.
         /// Excludes: FixedLocale (computed properties that cannot be serialized)
         /// </summary>
