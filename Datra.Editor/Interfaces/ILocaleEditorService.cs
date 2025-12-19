@@ -14,9 +14,9 @@ namespace Datra.Editor.Interfaces
     public interface ILocaleEditorService
     {
         /// <summary>
-        /// The underlying localization context
+        /// The underlying localization context (may be null for non-Datra implementations)
         /// </summary>
-        LocalizationContext Context { get; }
+        LocalizationContext? Context { get; }
 
         /// <summary>
         /// Whether localization is available in the current project

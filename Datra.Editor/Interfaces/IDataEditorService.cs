@@ -13,12 +13,12 @@ namespace Datra.Editor.Interfaces
     public interface IDataEditorService
     {
         /// <summary>
-        /// The underlying data context
+        /// The underlying data context (may be null for non-Datra implementations)
         /// </summary>
-        IDataContext DataContext { get; }
+        IDataContext? DataContext { get; }
 
         /// <summary>
-        /// All registered repositories by data type
+        /// All registered repositories by data type (may be empty for non-Datra implementations)
         /// </summary>
         IReadOnlyDictionary<Type, IDataRepository> Repositories { get; }
 
