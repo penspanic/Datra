@@ -39,6 +39,18 @@ namespace Datra.DataTypes
         }
 
         /// <summary>
+        /// Simple constructor with just ID and data.
+        /// Creates minimal metadata for runtime use (no file association).
+        /// </summary>
+        public Asset(AssetId id, T data)
+        {
+            Id = id;
+            Data = data ?? throw new ArgumentNullException(nameof(data));
+            Metadata = new AssetMetadata { Guid = id };
+            FilePath = string.Empty;
+        }
+
+        /// <summary>
         /// Creates an Asset with new metadata
         /// </summary>
         public static Asset<T> Create(T data, string filePath)
