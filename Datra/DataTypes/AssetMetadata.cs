@@ -53,6 +53,30 @@ namespace Datra.DataTypes
         public DateTime ModifiedAt { get; set; } = DateTime.UtcNow;
 
         /// <summary>
+        /// File content type / MIME type (optional).
+        /// Used for server/editor scenarios.
+        /// </summary>
+        public string? ContentType { get; set; }
+
+        /// <summary>
+        /// File size in bytes (optional).
+        /// Used for server/editor scenarios.
+        /// </summary>
+        public long Size { get; set; }
+
+        /// <summary>
+        /// User who created this asset (optional).
+        /// Used for server/editor scenarios.
+        /// </summary>
+        public string? CreatedBy { get; set; }
+
+        /// <summary>
+        /// User who last modified this asset (optional).
+        /// Used for server/editor scenarios.
+        /// </summary>
+        public string? ModifiedBy { get; set; }
+
+        /// <summary>
         /// Additional custom properties (optional).
         /// </summary>
         public Dictionary<string, object>? CustomProperties { get; set; }
