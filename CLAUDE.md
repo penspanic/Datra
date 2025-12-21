@@ -14,6 +14,12 @@ Datra/
 │   ├── Interfaces/             # ITableData, IDataRepository 등
 │   └── Plugins/                # Unity용 빌드된 DLL (Generators, Analyzers)
 │
+├── Datra.Editor/               # 공유 에디터 레이어 (Unity/Blazor 공통)
+│   ├── Interfaces/             # IFieldTypeHandler, IDataEditorService 등
+│   ├── Models/                 # FieldCreationContext, FieldLayoutMode
+│   ├── Services/               # FieldTypeRegistry
+│   └── Utilities/              # TypeDetectionHelper, PathHelper
+│
 ├── Datra.Generators/           # Source Generator (핵심!)
 │   ├── Analyzers/              # DataModelAnalyzer - 클래스 분석
 │   ├── Builders/               # CodeBuilder - 코드 생성 유틸리티
@@ -234,6 +240,74 @@ virtual, void, volatile, while
 
 프로퍼티 이름이 camelCase로 변환될 때 예약어면 `@` 접두사 추가됨.
 
+## Datra.Editor 공유 레이어
+
+Unity와 Blazor에서 공통으로 사용하는 에디터 로직을 제공합니다.
+
+### 핵심 컴포넌트
+
+| 컴포넌트 | 역할 |
+|----------|------|
+| `IFieldTypeHandler` | 필드 타입 핸들러 인터페이스 (Priority, CanHandle) |
+| `FieldCreationContext` | 필드 생성 컨텍스트 (Property, Value, LayoutMode 등) |
+| `FieldLayoutMode` | 레이아웃 모드 (Form, Table, Inline) |
+| `FieldTypeRegistry` | 핸들러 등록/검색 서비스 |
+| `TypeDetectionHelper` | 타입 감지 유틸리티 (IsDataRef, IsLocaleRef, IsNestedType 등) |
+| `PathHelper` | 경로 유틸리티 (IsAbsolutePath, CombinePath) |
+
+### FieldCreationContext 생성자
+
+```csharp
+// 1. Property 기반 (일반적인 경우)
+new FieldCreationContext(property, target, value, layoutMode, onValueChanged);
+
+// 2. Nested Member 기반 (중첩 타입 내부 필드)
+new FieldCreationContext(member, fieldType, parentValue, value, layoutMode, onValueChanged);
+
+// 3. Collection Element 기반 (배열/리스트 요소)
+new FieldCreationContext(elementType, value, index, layoutMode, onValueChanged);
+```
+
+### TypeDetectionHelper 주요 메서드
+
+```csharp
+TypeDetectionHelper.IsDataRefType(type)      // StringDataRef<T>, IntDataRef<T>
+TypeDetectionHelper.IsLocaleRefType(type)    // LocaleRef
+TypeDetectionHelper.IsNestedType(type)       // 중첩 struct/class
+TypeDetectionHelper.IsCollectionType(type)   // List<T>, T[]
+TypeDetectionHelper.IsNumericType(type)      // int, float, double 등
+TypeDetectionHelper.GetEditableMembers(type) // 편집 가능한 멤버 목록
+```
+
+### PathHelper (경로 유틸리티)
+
+```csharp
+// 절대 경로 감지 (Unix: /, Windows: C:\)
+PathHelper.IsAbsolutePath("/Users/test/file.txt")  // true
+PathHelper.IsAbsolutePath("C:\\folder\\file.txt")  // true
+PathHelper.IsAbsolutePath("relative/path.txt")     // false
+
+// 경로 결합 (절대 경로는 그대로 반환)
+PathHelper.CombinePath("base", "sub/file.txt")           // "base/sub/file.txt"
+PathHelper.CombinePath("base", "/absolute/path.txt")     // "/absolute/path.txt"
+```
+
+### 플랫폼별 구현
+
+```
+Datra.Editor (공유)
+├── IFieldTypeHandler          # 렌더링 제외한 공통 인터페이스
+└── FieldTypeRegistry          # 핸들러 등록/검색
+
+Datra.Unity (Unity 전용)
+├── IUnityFieldHandler         # + CreateField(→ VisualElement)
+└── Handlers/                  # Unity용 핸들러들
+
+Oratia.WebEditor (Blazor 전용)
+├── IBlazorFieldHandler        # + CreateField(→ RenderFragment)
+└── Handlers/                  # Blazor용 핸들러들
+```
+
 ## Unity Editor 아키텍처 (MVVM)
 
 ### 구조 개요
@@ -326,6 +400,9 @@ Assert.IsTrue(mockDataService.SaveWasCalled);
 
 ## 관련 이슈 히스토리
 
+- **1b04b04**: PathHelper 추가, AssetDatabaseRawDataProvider 경로 버그 수정
+- **c416485**: Datra.Editor 공유 레이어 및 유닛 테스트 추가
+- **dff677a**: AssetData 지원 (파일 기반 에셋, 안정적인 GUID)
 - **f608d9d**: multi-context 지원 추가 (ContextName 필수화)
 - **c419b4c**: Unity Editor nested type 지원
 - **6038cfb**: CSV nested struct/class 지원
