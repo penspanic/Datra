@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Datra.Editor.Utilities;
 using Datra.Interfaces;
 using UnityEngine;
 #if UNITY_EDITOR
@@ -23,7 +24,7 @@ namespace Datra.Unity.Editor.Providers
         public Task<string> LoadTextAsync(string path)
         {
 #if UNITY_EDITOR
-            path = CombinePath(_basePath, path);
+            path = PathHelper.CombinePath(_basePath, path);
             var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
             if (textAsset != null)
             {
@@ -45,8 +46,8 @@ namespace Datra.Unity.Editor.Providers
         public Task SaveTextAsync(string path, string content)
         {
 #if UNITY_EDITOR
-            // Ensure directory exists
-            path = CombinePath(_basePath, path);
+            // CombinePath handles absolute paths correctly (returns them as-is)
+            path = PathHelper.CombinePath(_basePath, path);
             var directory = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
@@ -70,7 +71,7 @@ namespace Datra.Unity.Editor.Providers
         {
 #if UNITY_EDITOR
             // Check if it exists as an asset
-            path = CombinePath(_basePath, path);
+            path = PathHelper.CombinePath(_basePath, path);
             var asset = AssetDatabase.LoadAssetAtPath<Object>(path);
             if (asset != null)
             {
@@ -87,7 +88,8 @@ namespace Datra.Unity.Editor.Providers
         public string ResolveFilePath(string path)
         {
 #if UNITY_EDITOR
-            path = CombinePath(_basePath, path);
+            // CombinePath handles absolute paths correctly (returns them as-is)
+            path = PathHelper.CombinePath(_basePath, path);
             // Convert to absolute path if it starts with Assets/
             if (path.StartsWith("Assets/"))
             {
@@ -99,31 +101,11 @@ namespace Datra.Unity.Editor.Providers
 #endif
         }
 
-        private string CombinePath(string basePath, string path)
-        {
-            if (string.IsNullOrEmpty(basePath))
-                return path;
-
-            if (string.IsNullOrEmpty(path))
-                return basePath;
-
-            // Remove trailing slash from basePath if present
-            if (basePath.EndsWith("/"))
-                basePath = basePath.Substring(0, basePath.Length - 1);
-
-            // Remove leading slash from path if present
-            if (path.StartsWith("/"))
-                path = path.Substring(1);
-
-            // Combine with forward slash
-            return basePath + "/" + path;
-        }
-
         public Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPath, string pattern = "*.json")
         {
 #if UNITY_EDITOR
             var result = new Dictionary<string, string>();
-            var fullPath = CombinePath(_basePath, folderPath);
+            var fullPath = PathHelper.CombinePath(_basePath, folderPath);
 
             // Get absolute path for directory operations
             var absolutePath = fullPath.StartsWith("Assets/")
