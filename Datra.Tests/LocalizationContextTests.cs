@@ -110,7 +110,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
         
         private class TestLocalizationKeyDataSerializer
         {
-            public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, object config)
+            public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, object? config)
             {
                 var result = new Dictionary<string, LocalizationKeyData>();
                 var lines = csvData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -132,8 +132,8 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
                         var data = new LocalizationKeyData
                         {
                             Id = values[idIndex],
-                            Description = descIndex >= 0 && values.Length > descIndex ? values[descIndex] : null,
-                            Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : null
+                            Description = descIndex >= 0 && values.Length > descIndex ? values[descIndex] : string.Empty,
+                            Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : string.Empty
                         };
                         result[data.Id] = data;
                     }
@@ -142,7 +142,7 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
                 return result;
             }
             
-            public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, object config)
+            public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, object? config)
             {
                 var lines = new List<string>();
                 lines.Add("Id,Description,Category");

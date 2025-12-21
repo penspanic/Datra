@@ -16,12 +16,12 @@ namespace Datra.Attributes
         /// <summary>
         /// Optional: Filter by required components for GameObjects
         /// </summary>
-        public string[] RequiredComponents { get; set; }
+        public string[] RequiredComponents { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// Optional: File extension filter (e.g., "prefab", "asset")
         /// </summary>
-        public string FileExtension { get; set; }
+        public string FileExtension { get; set; } = string.Empty;
 
         public AssetTypeAttribute(string type)
         {

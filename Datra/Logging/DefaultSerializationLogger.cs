@@ -10,14 +10,14 @@ namespace Datra.Logging
     {
         private readonly bool _enableVerboseLogging;
         private int _currentErrorCount;
-        private string _currentFileName;
+        private string? _currentFileName;
 
         public DefaultSerializationLogger(bool enableVerboseLogging = false)
         {
             _enableVerboseLogging = enableVerboseLogging;
         }
 
-        public void LogParsingError(SerializationErrorContext context, Exception exception = null)
+        public void LogParsingError(SerializationErrorContext context, Exception? exception = null)
         {
             _currentErrorCount++;
             var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
@@ -57,7 +57,7 @@ namespace Datra.Logging
             Console.ResetColor();
         }
 
-        public void LogWarning(string message, SerializationErrorContext context = null)
+        public void LogWarning(string message, SerializationErrorContext? context = null)
         {
             var timestamp = DateTime.Now.ToString("HH:mm:ss.fff");
 

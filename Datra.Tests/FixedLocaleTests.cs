@@ -75,13 +75,13 @@ namespace Datra.Tests
 
             public string GetSavedContent(string path)
             {
-                return _files.TryGetValue(path, out var content) ? content : null;
+                return _files.TryGetValue(path, out var content) ? content : string.Empty;
             }
         }
 
         private class TestLocalizationKeyDataSerializer
         {
-            public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, object config)
+            public static Dictionary<string, LocalizationKeyData> DeserializeCsv(string csvData, object? config)
             {
                 var result = new Dictionary<string, LocalizationKeyData>();
                 var lines = csvData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -104,8 +104,8 @@ namespace Datra.Tests
                         var data = new LocalizationKeyData
                         {
                             Id = values[idIndex],
-                            Description = descIndex >= 0 && values.Length > descIndex ? values[descIndex] : null,
-                            Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : null,
+                            Description = descIndex >= 0 && values.Length > descIndex ? values[descIndex] : string.Empty,
+                            Category = categoryIndex >= 0 && values.Length > categoryIndex ? values[categoryIndex] : string.Empty,
                             IsFixedKey = isFixedKeyIndex >= 0 && values.Length > isFixedKeyIndex && bool.TryParse(values[isFixedKeyIndex], out var isFixed) ? isFixed : false
                         };
                         result[data.Id] = data;
@@ -115,7 +115,7 @@ namespace Datra.Tests
                 return result;
             }
 
-            public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, object config)
+            public static string SerializeCsv(Dictionary<string, LocalizationKeyData> data, object? config)
             {
                 var lines = new List<string>();
                 lines.Add("Id,Description,Category,IsFixedKey");

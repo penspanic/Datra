@@ -29,7 +29,7 @@ namespace Datra.Attributes
         /// When specified, files are loaded by label instead of folder path.
         /// Only used when MultiFile = true.
         /// </summary>
-        public string Label { get; set; }
+        public string Label { get; set; } = string.Empty;
 
         /// <summary>
         /// File pattern for multi-file mode (e.g., "*.json").

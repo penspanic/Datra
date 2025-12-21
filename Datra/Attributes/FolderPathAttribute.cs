@@ -21,7 +21,7 @@ namespace Datra.Attributes
         /// <summary>
         /// Optional: Search pattern for file names (e.g., "*.prefab", "Player_*")
         /// </summary>
-        public string SearchPattern { get; set; }
+        public string SearchPattern { get; set; } = "*";
 
         public FolderPathAttribute(string path)
         {

@@ -21,7 +21,7 @@ namespace Datra.Tests
             public List<string> ValidationErrors { get; } = new List<string>();
             public int ErrorCount { get; private set; }
 
-            public void LogParsingError(SerializationErrorContext context, Exception exception = null)
+            public void LogParsingError(SerializationErrorContext context, Exception? exception = null)
             {
                 ErrorCount++;
                 ParsingErrors.Add($"{context.PropertyName}: {context.ActualValue}");
@@ -39,7 +39,7 @@ namespace Datra.Tests
                 ValidationErrors.Add(context.Message);
             }
 
-            public void LogWarning(string message, SerializationErrorContext context = null)
+            public void LogWarning(string message, SerializationErrorContext? context = null)
             {
             }
 

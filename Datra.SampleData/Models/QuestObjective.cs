@@ -11,12 +11,12 @@ namespace Datra.SampleData.Models
     [JsonObject]
     public abstract class QuestObjective
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// Description text from the data file (fallback/debug).
         /// </summary>
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         /// <summary>
         /// Nested locale reference for objective description.
@@ -35,7 +35,7 @@ namespace Datra.SampleData.Models
     /// </summary>
     public class KillObjective : QuestObjective
     {
-        public string TargetEnemyId { get; set; }
+        public string TargetEnemyId { get; set; } = string.Empty;
         public int RequiredCount { get; set; }
         public int CurrentCount { get; set; }
     }
@@ -55,8 +55,8 @@ namespace Datra.SampleData.Models
     /// </summary>
     public class TalkObjective : QuestObjective
     {
-        public string TargetNpcId { get; set; }
-        public string[] DialogueKeys { get; set; }
+        public string TargetNpcId { get; set; } = string.Empty;
+        public string[] DialogueKeys { get; set; } = System.Array.Empty<string>();
     }
 
     /// <summary>
@@ -64,7 +64,7 @@ namespace Datra.SampleData.Models
     /// </summary>
     public class LocationObjective : QuestObjective
     {
-        public string LocationId { get; set; }
+        public string LocationId { get; set; } = string.Empty;
         public float Radius { get; set; }
     }
 }

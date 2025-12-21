@@ -12,7 +12,7 @@ namespace Datra.Interfaces
         /// </summary>
         /// <param name="context">Context information about where the error occurred</param>
         /// <param name="exception">The exception that was thrown, if any</param>
-        void LogParsingError(SerializationErrorContext context, Exception exception = null);
+        void LogParsingError(SerializationErrorContext context, Exception? exception = null);
 
         /// <summary>
         /// Logs when a type conversion fails
@@ -31,7 +31,7 @@ namespace Datra.Interfaces
         /// </summary>
         /// <param name="message">Warning message</param>
         /// <param name="context">Optional context information</param>
-        void LogWarning(string message, SerializationErrorContext context = null);
+        void LogWarning(string message, SerializationErrorContext? context = null);
 
         /// <summary>
         /// Logs general information during serialization/deserialization
@@ -77,12 +77,12 @@ namespace Datra.Interfaces
         /// <summary>
         /// The file being processed when the error occurred
         /// </summary>
-        public string FileName { get; set; }
+        public string FileName { get; set; } = string.Empty;
 
         /// <summary>
         /// The data format (CSV, JSON, YAML)
         /// </summary>
-        public string Format { get; set; }
+        public string Format { get; set; } = string.Empty;
 
         /// <summary>
         /// Line number where the error occurred (1-based, if applicable)
@@ -92,27 +92,27 @@ namespace Datra.Interfaces
         /// <summary>
         /// Column name or property name where the error occurred
         /// </summary>
-        public string PropertyName { get; set; }
+        public string PropertyName { get; set; } = string.Empty;
 
         /// <summary>
         /// The actual value that caused the error
         /// </summary>
-        public string ActualValue { get; set; }
+        public string ActualValue { get; set; } = string.Empty;
 
         /// <summary>
         /// The expected type or format
         /// </summary>
-        public string ExpectedType { get; set; }
+        public string ExpectedType { get; set; } = string.Empty;
 
         /// <summary>
         /// Additional error message or description
         /// </summary>
-        public string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
 
         /// <summary>
         /// The ID of the record being processed (if applicable)
         /// </summary>
-        public string RecordId { get; set; }
+        public string RecordId { get; set; } = string.Empty;
 
         /// <summary>
         /// Creates a formatted error message from the context

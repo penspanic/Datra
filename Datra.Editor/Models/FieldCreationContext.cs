@@ -15,28 +15,28 @@ namespace Datra.Editor.Models
         public Type FieldType { get; }
 
         /// <summary>프로퍼티 정보 (프로퍼티 기반 필드인 경우)</summary>
-        public PropertyInfo Property { get; }
+        public PropertyInfo? Property { get; }
 
         /// <summary>멤버 정보 (중첩 멤버인 경우)</summary>
-        public MemberInfo Member { get; }
+        public MemberInfo? Member { get; }
 
         /// <summary>현재 값</summary>
-        public object Value { get; set; }
+        public object? Value { get; set; }
 
         /// <summary>대상 객체 (프로퍼티의 소유자)</summary>
-        public object Target { get; }
+        public object? Target { get; }
 
         /// <summary>부모 값 (중첩 멤버인 경우)</summary>
-        public object ParentValue { get; }
+        public object? ParentValue { get; }
 
         /// <summary>값 변경 콜백</summary>
-        public Action<object> OnValueChanged { get; }
+        public Action<object?>? OnValueChanged { get; }
 
         /// <summary>레이아웃 모드</summary>
         public FieldLayoutMode LayoutMode { get; }
 
         /// <summary>로케일 에디터 서비스</summary>
-        public ILocaleEditorService LocaleService { get; }
+        public ILocaleEditorService? LocaleService { get; }
 
         /// <summary>읽기 전용 여부</summary>
         public bool IsReadOnly { get; }
@@ -45,10 +45,10 @@ namespace Datra.Editor.Models
         public int? CollectionElementIndex { get; set; }
 
         /// <summary>컬렉션 요소 (배열/리스트 요소인 경우)</summary>
-        public object CollectionElement { get; set; }
+        public object? CollectionElement { get; set; }
 
         /// <summary>루트 데이터 객체</summary>
-        public object RootDataObject { get; set; }
+        public object? RootDataObject { get; set; }
 
         /// <summary>중첩 멤버인지 여부</summary>
         public bool IsNestedMember => Member != null && Property == null;
@@ -61,11 +61,11 @@ namespace Datra.Editor.Models
         /// </summary>
         public FieldCreationContext(
             PropertyInfo property,
-            object target,
-            object value,
+            object? target,
+            object? value,
             FieldLayoutMode layoutMode,
-            Action<object> onValueChanged,
-            ILocaleEditorService localeService = null,
+            Action<object?>? onValueChanged,
+            ILocaleEditorService? localeService = null,
             bool isReadOnly = false)
         {
             Property = property;
@@ -84,11 +84,11 @@ namespace Datra.Editor.Models
         public FieldCreationContext(
             MemberInfo member,
             Type fieldType,
-            object parentValue,
-            object value,
+            object? parentValue,
+            object? value,
             FieldLayoutMode layoutMode,
-            Action<object> onValueChanged,
-            ILocaleEditorService localeService = null,
+            Action<object?>? onValueChanged,
+            ILocaleEditorService? localeService = null,
             bool isReadOnly = false)
         {
             Member = member;
@@ -107,11 +107,11 @@ namespace Datra.Editor.Models
         /// </summary>
         public FieldCreationContext(
             Type elementType,
-            object value,
+            object? value,
             int elementIndex,
             FieldLayoutMode layoutMode,
-            Action<object> onValueChanged,
-            ILocaleEditorService localeService = null,
+            Action<object?>? onValueChanged,
+            ILocaleEditorService? localeService = null,
             bool isReadOnly = false)
         {
             FieldType = elementType;
@@ -127,7 +127,7 @@ namespace Datra.Editor.Models
         /// <summary>
         /// 컨텍스트 복제 (값만 변경)
         /// </summary>
-        public FieldCreationContext WithValue(object newValue)
+        public FieldCreationContext WithValue(object? newValue)
         {
             if (Property != null)
             {

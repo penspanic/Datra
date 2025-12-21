@@ -19,7 +19,7 @@ namespace Datra.Serializers
         /// Binds a type name to a Type during deserialization.
         /// Searches all loaded assemblies if the type is not in cache.
         /// </summary>
-        public Type BindToType(string assemblyName, string typeName)
+        public Type BindToType(string? assemblyName, string typeName)
         {
             // Use full type name as key (ignore assembly name for portability)
             var key = typeName;
@@ -33,7 +33,7 @@ namespace Datra.Serializers
             }
 
             // Try to find the type in all loaded assemblies
-            Type resolvedType = null;
+            Type? resolvedType = null;
 
             // First, try with the provided assembly name if it exists
             if (!string.IsNullOrEmpty(assemblyName))
@@ -95,14 +95,14 @@ namespace Datra.Serializers
                 }
             }
 
-            return resolvedType;
+            return resolvedType ?? throw new TypeLoadException($"Could not resolve type: {typeName}");
         }
 
         /// <summary>
         /// Gets the type name and assembly name for serialization.
         /// Only outputs the full type name (no assembly) for portability.
         /// </summary>
-        public void BindToName(Type serializedType, out string assemblyName, out string typeName)
+        public void BindToName(Type serializedType, out string? assemblyName, out string? typeName)
         {
             // Don't include assembly name for portability
             assemblyName = null;

@@ -15,13 +15,13 @@ namespace Datra.Logging
 
         private NullSerializationLogger() { }
 
-        public void LogParsingError(SerializationErrorContext context, Exception exception = null) { }
+        public void LogParsingError(SerializationErrorContext context, Exception? exception = null) { }
 
         public void LogTypeConversionError(SerializationErrorContext context) { }
 
         public void LogValidationError(SerializationErrorContext context) { }
 
-        public void LogWarning(string message, SerializationErrorContext context = null) { }
+        public void LogWarning(string message, SerializationErrorContext? context = null) { }
 
         public void LogInfo(string message) { }
 

@@ -220,7 +220,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// 특정 속성이 있는지 확인
         /// </summary>
-        public static bool HasAttribute<TAttribute>(MemberInfo member) where TAttribute : Attribute
+        public static bool HasAttribute<TAttribute>(MemberInfo? member) where TAttribute : Attribute
         {
             return member?.GetCustomAttribute<TAttribute>() != null;
         }
@@ -228,7 +228,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// 특정 속성 가져오기
         /// </summary>
-        public static TAttribute GetAttribute<TAttribute>(MemberInfo member) where TAttribute : Attribute
+        public static TAttribute? GetAttribute<TAttribute>(MemberInfo? member) where TAttribute : Attribute
         {
             return member?.GetCustomAttribute<TAttribute>();
         }
@@ -240,7 +240,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// 멤버의 타입 가져오기
         /// </summary>
-        public static Type GetMemberType(MemberInfo member)
+        public static Type? GetMemberType(MemberInfo? member)
         {
             return member switch
             {
@@ -253,7 +253,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// 멤버의 값 가져오기
         /// </summary>
-        public static object GetMemberValue(MemberInfo member, object target)
+        public static object? GetMemberValue(MemberInfo? member, object? target)
         {
             return member switch
             {
@@ -266,7 +266,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// 멤버의 값 설정하기
         /// </summary>
-        public static void SetMemberValue(MemberInfo member, object target, object value)
+        public static void SetMemberValue(MemberInfo? member, object? target, object? value)
         {
             switch (member)
             {

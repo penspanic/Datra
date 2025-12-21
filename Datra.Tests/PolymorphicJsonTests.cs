@@ -15,7 +15,7 @@ namespace Datra.Tests
     /// </summary>
     public class TestQuestData
     {
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public QuestType Type { get; set; }
         public int RequiredLevel { get; set; }
         public int RewardGold { get; set; }

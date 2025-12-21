@@ -10,7 +10,7 @@ namespace Datra.Editor.Utilities
         /// <summary>
         /// Checks if a path is absolute (starts with / on Unix or drive letter on Windows)
         /// </summary>
-        public static bool IsAbsolutePath(string path)
+        public static bool IsAbsolutePath(string? path)
         {
             if (string.IsNullOrEmpty(path))
                 return false;
@@ -30,7 +30,7 @@ namespace Datra.Editor.Utilities
         /// Combines a base path with a relative path using forward slashes.
         /// If the path is already absolute, returns it as-is.
         /// </summary>
-        public static string CombinePath(string basePath, string path)
+        public static string CombinePath(string? basePath, string? path)
         {
             if (string.IsNullOrEmpty(basePath))
                 return path ?? string.Empty;

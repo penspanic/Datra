@@ -15,7 +15,7 @@ namespace Datra.Helpers
         /// <param name="line">The CSV line to parse</param>
         /// <param name="delimiter">The delimiter character (default is comma)</param>
         /// <returns>Array of field values</returns>
-        public static string[] ParseCsvLine(string line, char delimiter = ',')
+        public static string[] ParseCsvLine(string? line, char delimiter = ',')
         {
             if (string.IsNullOrEmpty(line))
                 return new string[0];
@@ -103,7 +103,7 @@ namespace Datra.Helpers
         /// <param name="fields">The fields to join</param>
         /// <param name="delimiter">The delimiter character</param>
         /// <returns>Properly formatted CSV line</returns>
-        public static string JoinCsvFields(string[] fields, char delimiter = ',')
+        public static string JoinCsvFields(string[]? fields, char delimiter = ',')
         {
             if (fields == null || fields.Length == 0)
                 return string.Empty;

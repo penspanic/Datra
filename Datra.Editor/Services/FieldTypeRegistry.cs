@@ -65,7 +65,7 @@ namespace Datra.Editor.Services
         /// <param name="type">필드 타입</param>
         /// <param name="member">멤버 정보 (optional)</param>
         /// <returns>처리 가능한 핸들러 또는 null</returns>
-        public IFieldTypeHandler FindHandler(Type type, MemberInfo member = null)
+        public IFieldTypeHandler? FindHandler(Type type, MemberInfo? member = null)
         {
             EnsureSorted();
 
@@ -81,7 +81,7 @@ namespace Datra.Editor.Services
         /// <summary>
         /// 타입에 맞는 핸들러 찾기 (제네릭 버전)
         /// </summary>
-        public THandler FindHandler<THandler>(Type type, MemberInfo member = null)
+        public THandler? FindHandler<THandler>(Type type, MemberInfo? member = null)
             where THandler : class, IFieldTypeHandler
         {
             return FindHandler(type, member) as THandler;
@@ -90,7 +90,7 @@ namespace Datra.Editor.Services
         /// <summary>
         /// 타입을 처리할 수 있는지 확인
         /// </summary>
-        public bool CanHandle(Type type, MemberInfo member = null)
+        public bool CanHandle(Type type, MemberInfo? member = null)
         {
             return FindHandler(type, member) != null;
         }

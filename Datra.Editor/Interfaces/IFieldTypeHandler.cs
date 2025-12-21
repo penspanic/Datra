@@ -33,6 +33,6 @@ namespace Datra.Editor.Interfaces
         /// <param name="type">필드 타입</param>
         /// <param name="member">멤버 정보 (속성 체크용, optional)</param>
         /// <returns>처리 가능 여부</returns>
-        bool CanHandle(Type type, MemberInfo member = null);
+        bool CanHandle(Type type, MemberInfo? member = null);
     }
 }

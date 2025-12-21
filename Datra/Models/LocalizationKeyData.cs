@@ -12,17 +12,17 @@ namespace Datra.Models
         /// <summary>
         /// The unique localization key (e.g., "Button_Start", "Message_Welcome")
         /// </summary>
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
 
         /// <summary>
         /// Description of what this key is used for
         /// </summary>
-        public string Description { get; set; }
+        public string Description { get; set; } = string.Empty;
 
         /// <summary>
         /// Category for grouping keys (e.g., "UI", "Dialog", "System")
         /// </summary>
-        public string Category { get; set; }
+        public string Category { get; set; } = string.Empty;
 
         /// <summary>
         /// Indicates whether the locale key is fixed (non-editable).

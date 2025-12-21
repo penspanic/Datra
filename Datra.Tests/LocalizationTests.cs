@@ -100,7 +100,7 @@ namespace Datra.Tests
         {
             // Arrange & Act
             LocaleRef localeRef = "";
-            LocaleRef nullRef = null;
+            LocaleRef nullRef = (string)null!;
             
             // Assert
             Assert.False(localeRef.HasValue);
@@ -179,8 +179,8 @@ namespace Datra.Tests
             LocaleRef localeRef = "Button_Start";
             
             // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationContext)null));
-            Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationService)null));
+            Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationContext)null!));
+            Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationService)null!));
         }
     }
 }
