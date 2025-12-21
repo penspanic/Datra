@@ -255,6 +255,9 @@ namespace Datra.Editor.Utilities
         /// </summary>
         public static object? GetMemberValue(MemberInfo? member, object? target)
         {
+            if (target == null)
+                return null;
+
             return member switch
             {
                 PropertyInfo prop => prop.GetValue(target),

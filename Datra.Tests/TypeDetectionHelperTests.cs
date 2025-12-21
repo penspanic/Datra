@@ -258,6 +258,73 @@ namespace Datra.Tests
         }
 
         [Fact]
+        public void GetMemberType_WithNull_ReturnsNull()
+        {
+            Assert.Null(TypeDetectionHelper.GetMemberType(null));
+        }
+
+        [Fact]
+        public void GetMemberValue_WithNullMember_ReturnsNull()
+        {
+            var target = new TestNestedClass { Name = "Test" };
+            Assert.Null(TypeDetectionHelper.GetMemberValue(null, target));
+        }
+
+        [Fact]
+        public void GetMemberValue_WithNullTarget_ReturnsNull()
+        {
+            var prop = typeof(TestNestedClass).GetProperty(nameof(TestNestedClass.Name));
+            // PropertyInfo.GetValue(null) returns null for instance properties
+            Assert.Null(TypeDetectionHelper.GetMemberValue(prop, null));
+        }
+
+        [Fact]
+        public void GetMemberValue_WithValidPropertyAndTarget_ReturnsValue()
+        {
+            var target = new TestNestedClass { Name = "TestValue", Count = 42 };
+            var nameProp = typeof(TestNestedClass).GetProperty(nameof(TestNestedClass.Name));
+            var countProp = typeof(TestNestedClass).GetProperty(nameof(TestNestedClass.Count));
+
+            Assert.Equal("TestValue", TypeDetectionHelper.GetMemberValue(nameProp, target));
+            Assert.Equal(42, TypeDetectionHelper.GetMemberValue(countProp, target));
+        }
+
+        [Fact]
+        public void SetMemberValue_WithNullMember_DoesNotThrow()
+        {
+            var target = new TestNestedClass { Name = "Original" };
+            var exception = Record.Exception(() => TypeDetectionHelper.SetMemberValue(null, target, "NewValue"));
+            Assert.Null(exception);
+            Assert.Equal("Original", target.Name); // Value unchanged
+        }
+
+        [Fact]
+        public void SetMemberValue_WithValidPropertyAndTarget_SetsValue()
+        {
+            var target = new TestNestedClass { Name = "Original", Count = 0 };
+            var nameProp = typeof(TestNestedClass).GetProperty(nameof(TestNestedClass.Name));
+            var countProp = typeof(TestNestedClass).GetProperty(nameof(TestNestedClass.Count));
+
+            TypeDetectionHelper.SetMemberValue(nameProp, target, "NewValue");
+            TypeDetectionHelper.SetMemberValue(countProp, target, 99);
+
+            Assert.Equal("NewValue", target.Name);
+            Assert.Equal(99, target.Count);
+        }
+
+        [Fact]
+        public void HasAttribute_WithNullMember_ReturnsFalse()
+        {
+            Assert.False(TypeDetectionHelper.HasAttribute<ObsoleteAttribute>(null));
+        }
+
+        [Fact]
+        public void GetAttribute_WithNullMember_ReturnsNull()
+        {
+            Assert.Null(TypeDetectionHelper.GetAttribute<ObsoleteAttribute>(null));
+        }
+
+        [Fact]
         public void GetEditableMembers_ReturnsPublicMembersOnly()
         {
             var members = TypeDetectionHelper.GetEditableMembers(typeof(TestNestedClass));

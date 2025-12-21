@@ -172,9 +172,72 @@ namespace Datra.Tests
             Assert.False(registry.CanHandle(typeof(int)));
         }
 
+        [Fact]
+        public void CanHandle_WithNullMember_WorksCorrectly()
+        {
+            var registry = new FieldTypeRegistry();
+            registry.RegisterHandler(new TestHandler(10, typeof(string)));
+
+            // Should work with null member
+            Assert.True(registry.CanHandle(typeof(string), null));
+            Assert.False(registry.CanHandle(typeof(int), null));
+        }
+
         #endregion
 
-        #region Test Handler
+        #region MemberInfo Aware Handler Tests
+
+        [Fact]
+        public void FindHandler_WithMemberInfo_PassesMemberToHandler()
+        {
+            var registry = new FieldTypeRegistry();
+            var memberAwareHandler = new MemberAwareTestHandler(50, typeof(string));
+            var basicHandler = new TestHandler(10, typeof(string));
+
+            registry.RegisterHandler(basicHandler);
+            registry.RegisterHandler(memberAwareHandler);
+
+            var prop = typeof(TestClass).GetProperty(nameof(TestClass.RequiredProperty));
+
+            // Without member, higher priority handler wins
+            var foundNoMember = registry.FindHandler(typeof(string));
+            Assert.Same(memberAwareHandler, foundNoMember);
+
+            // With member, still uses priority order but passes member info
+            var foundWithMember = registry.FindHandler(typeof(string), prop);
+            Assert.Same(memberAwareHandler, foundWithMember);
+        }
+
+        [Fact]
+        public void FindHandler_MemberAwareHandler_RejectsBasedOnMember()
+        {
+            var registry = new FieldTypeRegistry();
+            // This handler only accepts properties with [Required] attribute
+            var requiredOnlyHandler = new RequiredAttributeHandler(100, typeof(string));
+            var fallbackHandler = new TestHandler(10, typeof(string));
+
+            registry.RegisterHandler(requiredOnlyHandler);
+            registry.RegisterHandler(fallbackHandler);
+
+            var requiredProp = typeof(TestClass).GetProperty(nameof(TestClass.RequiredProperty));
+            var normalProp = typeof(TestClass).GetProperty(nameof(TestClass.NormalProperty));
+
+            // Required property uses RequiredAttributeHandler
+            var foundRequired = registry.FindHandler(typeof(string), requiredProp);
+            Assert.IsType<RequiredAttributeHandler>(foundRequired);
+
+            // Normal property falls back to TestHandler
+            var foundNormal = registry.FindHandler(typeof(string), normalProp);
+            Assert.IsType<TestHandler>(foundNormal);
+
+            // Null member falls back to TestHandler
+            var foundNull = registry.FindHandler(typeof(string), null);
+            Assert.IsType<TestHandler>(foundNull);
+        }
+
+        #endregion
+
+        #region Test Handlers
 
         private class TestHandler : IFieldTypeHandler
         {
@@ -192,6 +255,62 @@ namespace Datra.Tests
             {
                 return type == _handledType;
             }
+        }
+
+        private class MemberAwareTestHandler : IFieldTypeHandler
+        {
+            private readonly Type _handledType;
+
+            public MemberAwareTestHandler(int priority, Type handledType)
+            {
+                Priority = priority;
+                _handledType = handledType;
+            }
+
+            public int Priority { get; }
+
+            public bool CanHandle(Type type, MemberInfo? member = null)
+            {
+                // Simply check type, member is available but not used for filtering
+                return type == _handledType;
+            }
+        }
+
+        private class RequiredAttributeHandler : IFieldTypeHandler
+        {
+            private readonly Type _handledType;
+
+            public RequiredAttributeHandler(int priority, Type handledType)
+            {
+                Priority = priority;
+                _handledType = handledType;
+            }
+
+            public int Priority { get; }
+
+            public bool CanHandle(Type type, MemberInfo? member = null)
+            {
+                if (type != _handledType)
+                    return false;
+
+                // Only handle if member has [Required] attribute
+                if (member == null)
+                    return false;
+
+                return member.GetCustomAttribute<System.ComponentModel.DataAnnotations.RequiredAttribute>() != null;
+            }
+        }
+
+        #endregion
+
+        #region Test Classes
+
+        private class TestClass
+        {
+            [System.ComponentModel.DataAnnotations.Required]
+            public string RequiredProperty { get; set; } = "";
+
+            public string NormalProperty { get; set; } = "";
         }
 
         #endregion
