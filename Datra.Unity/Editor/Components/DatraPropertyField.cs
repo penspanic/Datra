@@ -7,24 +7,16 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.DataTypes;
 using Datra.Localization;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Interfaces;
 using Datra.Unity.Editor.UI;
 using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
 using Datra.Unity.Editor.Components.FieldHandlers;
+using FieldCreationContext = Datra.Unity.Editor.Components.FieldHandlers.FieldCreationContext;
 
 namespace Datra.Unity.Editor.Components
 {
-    /// <summary>
-    /// Layout mode for DatraPropertyField
-    /// </summary>
-    public enum DatraFieldLayoutMode
-    {
-        Form,     // Full layout with label on top
-        Table,    // Compact layout for table cells
-        Inline    // Inline layout with label on left
-    }
-
     /// <summary>
     /// A custom property field component with change tracking and revert functionality
     /// </summary>
@@ -32,7 +24,7 @@ namespace Datra.Unity.Editor.Components
     {
         private PropertyInfo property;
         private object target;
-        private DatraFieldLayoutMode layoutMode;
+        private FieldLayoutMode layoutMode;
         private bool isModified = false;
 
         private VisualElement fieldContainer;
@@ -75,7 +67,7 @@ namespace Datra.Unity.Editor.Components
         public DatraPropertyField(
             object target,
             PropertyInfo property,
-            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            FieldLayoutMode layoutMode = FieldLayoutMode.Form,
             ILocaleProvider localeProvider = null,
             bool isPopupEditor = false)
         {
@@ -99,7 +91,7 @@ namespace Datra.Unity.Editor.Components
             fieldContainer = new VisualElement();
             fieldContainer.AddToClassList("property-field-container");
             
-            if (layoutMode == DatraFieldLayoutMode.Table)
+            if (layoutMode == FieldLayoutMode.Table)
             {
                 // Table layout: minimal, no label, inline indicators
                 this.style.flexGrow = 1; // Make the field fill the cell
@@ -145,7 +137,7 @@ namespace Datra.Unity.Editor.Components
                     var headerContainer = new VisualElement();
                     headerContainer.AddToClassList("property-field-header");
 
-                    if (layoutMode == DatraFieldLayoutMode.Inline)
+                    if (layoutMode == FieldLayoutMode.Inline)
                     {
                         headerContainer.style.flexDirection = FlexDirection.Row;
                         headerContainer.style.alignItems = Align.Center;
@@ -173,7 +165,7 @@ namespace Datra.Unity.Editor.Components
                 }
                 
                 // Input container (separate for form mode)
-                if (layoutMode == DatraFieldLayoutMode.Form)
+                if (layoutMode == FieldLayoutMode.Form)
                 {
                     var inputContainer = new VisualElement();
                     inputContainer.AddToClassList("property-field-input-container");
@@ -189,7 +181,7 @@ namespace Datra.Unity.Editor.Components
             
             // Find or create input container based on layout mode
             VisualElement inputContainer;
-            if (layoutMode == DatraFieldLayoutMode.Table)
+            if (layoutMode == FieldLayoutMode.Table)
             {
                 // In table mode, input goes directly in the field container
                 inputContainer = fieldContainer;
@@ -197,7 +189,7 @@ namespace Datra.Unity.Editor.Components
             else
             {
                 inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-input-container");
-                if (inputContainer == null && layoutMode == DatraFieldLayoutMode.Inline)
+                if (inputContainer == null && layoutMode == FieldLayoutMode.Inline)
                 {
                     // For inline mode, input goes in the header container
                     inputContainer = fieldContainer.Q<VisualElement>(className: "property-field-header");
@@ -208,7 +200,7 @@ namespace Datra.Unity.Editor.Components
             if (inputField != null)
             {
                 inputField.AddToClassList("property-field-input");
-                if (layoutMode == DatraFieldLayoutMode.Table)
+                if (layoutMode == FieldLayoutMode.Table)
                 {
                     inputField.style.flexGrow = 1;
                     inputField.style.minHeight = 20;
@@ -288,7 +280,7 @@ namespace Datra.Unity.Editor.Components
                     revertButton.style.display = DisplayStyle.Flex;
 
                 // In table mode, also add modified-cell class to parent table-cell
-                if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
+                if (layoutMode == FieldLayoutMode.Table && parent != null)
                 {
                     parent.AddToClassList("modified-cell");
                 }
@@ -303,7 +295,7 @@ namespace Datra.Unity.Editor.Components
                     revertButton.style.display = DisplayStyle.None;
 
                 // In table mode, also remove modified-cell class from parent table-cell
-                if (layoutMode == DatraFieldLayoutMode.Table && parent != null)
+                if (layoutMode == FieldLayoutMode.Table && parent != null)
                 {
                     parent.RemoveFromClassList("modified-cell");
                 }

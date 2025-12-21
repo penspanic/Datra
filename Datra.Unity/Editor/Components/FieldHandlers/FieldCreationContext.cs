@@ -1,11 +1,13 @@
 using System;
 using System.Reflection;
 using Datra.Unity.Editor.Interfaces;
+using Datra.Editor.Models;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Context containing all information needed to create a field
+    /// Unity-specific context containing all information needed to create a field.
+    /// Extends the base Datra.Editor.Models.FieldCreationContext with Unity-specific properties.
     /// </summary>
     public class FieldCreationContext
     {
@@ -40,9 +42,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         public object ParentValue { get; }
 
         /// <summary>
-        /// Layout mode for the field
+        /// Layout mode for the field (uses shared FieldLayoutMode from Datra.Editor)
         /// </summary>
-        public DatraFieldLayoutMode LayoutMode { get; }
+        public FieldLayoutMode LayoutMode { get; }
 
         /// <summary>
         /// Callback when value changes
@@ -66,7 +68,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             PropertyInfo property,
             object target,
             object value,
-            DatraFieldLayoutMode layoutMode,
+            FieldLayoutMode layoutMode,
             Action<object> onValueChanged,
             ILocaleProvider localeProvider = null,
             bool isPopupEditor = false)
@@ -89,7 +91,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             Type fieldType,
             object parentValue,
             object value,
-            DatraFieldLayoutMode layoutMode,
+            FieldLayoutMode layoutMode,
             Action<object> onValueChanged)
         {
             Member = member;
@@ -106,7 +108,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         public FieldCreationContext(
             Type elementType,
             object value,
-            DatraFieldLayoutMode layoutMode,
+            FieldLayoutMode layoutMode,
             Action<object> onValueChanged)
         {
             FieldType = elementType;

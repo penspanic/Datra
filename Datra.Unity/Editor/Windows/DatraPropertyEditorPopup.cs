@@ -3,6 +3,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Components;
 
 namespace Datra.Unity.Editor.Windows
@@ -73,7 +74,7 @@ namespace Datra.Unity.Editor.Windows
             root.Add(scrollView);
 
             // Create property field in Form mode with popup flag (no foldout wrapper)
-            propertyField = new DatraPropertyField(target, property, DatraFieldLayoutMode.Form, null, isPopupEditor: true);
+            propertyField = new DatraPropertyField(target, property, FieldLayoutMode.Form, null, isPopupEditor: true);
             propertyField.OnValueChanged += (propName, newValue) => {
                 onValueChanged?.Invoke();
             };

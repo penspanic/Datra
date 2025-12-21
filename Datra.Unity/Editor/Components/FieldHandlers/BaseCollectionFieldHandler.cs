@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Attributes;
+using Datra.Editor.Models;
 using Datra.Localization;
 using Datra.Unity.Editor.Windows;
 
@@ -65,7 +66,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             var container = new VisualElement();
             container.AddToClassList("collection-field-container");
 
-            if (context.LayoutMode == DatraFieldLayoutMode.Table)
+            if (context.LayoutMode == FieldLayoutMode.Table)
             {
                 return CreateCompactDisplay(container, collection, elementType, context);
             }
@@ -476,7 +477,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                         prop,
                         element,
                         propValue,
-                        DatraFieldLayoutMode.Form,
+                        FieldLayoutMode.Form,
                         newValue =>
                         {
                             // NestedLocaleRef is read-only, changes are tracked via LocalizationContext

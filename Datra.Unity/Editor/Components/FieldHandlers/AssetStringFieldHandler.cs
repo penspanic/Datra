@@ -2,6 +2,7 @@ using System;
 using System.Reflection;
 using UnityEngine.UIElements;
 using Datra.Attributes;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.UI;
 using Datra.Unity.Editor.Utilities;
 
@@ -48,7 +49,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 folderPath = AttributeFieldHandler.GetFolderPathAttribute(field);
             }
 
-            var isTableMode = context.LayoutMode == DatraFieldLayoutMode.Table;
+            var isTableMode = context.LayoutMode == FieldLayoutMode.Table;
 
             var assetField = new AssetFieldElement(
                 assetType,

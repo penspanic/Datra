@@ -8,11 +8,12 @@ using UnityEngine.UIElements;
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Registry for field type handlers. Manages handler registration and field creation dispatch.
+    /// Unity-specific field type registry. Manages Unity field type handlers and field creation dispatch.
+    /// Uses IUnityFieldHandler which extends the shared Datra.Editor.Interfaces.IFieldTypeHandler.
     /// </summary>
     public static class FieldTypeRegistry
     {
-        private static readonly List<IFieldTypeHandler> _handlers = new();
+        private static readonly List<IUnityFieldHandler> _handlers = new();
         private static bool _initialized = false;
 
         /// <summary>
@@ -51,7 +52,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         /// <summary>
         /// Register a custom field type handler
         /// </summary>
-        public static void RegisterHandler(IFieldTypeHandler handler)
+        public static void RegisterHandler(IUnityFieldHandler handler)
         {
             _handlers.Add(handler);
             // Keep sorted by priority (descending)

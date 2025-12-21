@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Datra.DataTypes;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
@@ -49,7 +50,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             container.AddToClassList("nested-type-field-container");
 
             // Table mode: compact display with edit button
-            if (context.LayoutMode == DatraFieldLayoutMode.Table)
+            if (context.LayoutMode == FieldLayoutMode.Table)
             {
                 return CreateCompactDisplay(container, nestedType, value, context);
             }
@@ -163,7 +164,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                     memberType,
                     currentValue,
                     memberValue,
-                    DatraFieldLayoutMode.Inline,
+                    FieldLayoutMode.Inline,
                     newValue =>
                     {
                         SetMemberValue(member, currentValue, newValue);

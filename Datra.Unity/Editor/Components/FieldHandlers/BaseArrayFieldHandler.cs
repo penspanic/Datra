@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine.UIElements;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
@@ -57,7 +58,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             var container = new VisualElement();
             container.AddToClassList("array-field-container");
 
-            if (context.LayoutMode == DatraFieldLayoutMode.Table)
+            if (context.LayoutMode == FieldLayoutMode.Table)
             {
                 return CreateCompactDisplay(container, array, elementType, context);
             }

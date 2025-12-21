@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine.UIElements;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Interfaces;
 
 namespace Datra.Unity.Editor.Components
@@ -12,12 +13,12 @@ namespace Datra.Unity.Editor.Components
     /// </summary>
     public static class DatraFieldFactory
     {
-        private static Dictionary<Type, Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField>> customFieldCreators = new();
+        private static Dictionary<Type, Func<object, PropertyInfo, FieldLayoutMode, DatraPropertyField>> customFieldCreators = new();
 
         /// <summary>
         /// Register a custom field creator for a specific type
         /// </summary>
-        public static void RegisterCustomField<T>(Func<object, PropertyInfo, DatraFieldLayoutMode, DatraPropertyField> creator)
+        public static void RegisterCustomField<T>(Func<object, PropertyInfo, FieldLayoutMode, DatraPropertyField> creator)
         {
             customFieldCreators[typeof(T)] = creator;
         }
@@ -28,7 +29,7 @@ namespace Datra.Unity.Editor.Components
         public static DatraPropertyField CreateField(
             object target,
             PropertyInfo property,
-            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            FieldLayoutMode layoutMode = FieldLayoutMode.Form,
             ILocaleProvider localeProvider = null)
         {
             // Check for custom field creators
@@ -46,7 +47,7 @@ namespace Datra.Unity.Editor.Components
         /// </summary>
         public static List<DatraPropertyField> CreateFieldsForObject(
             object target,
-            DatraFieldLayoutMode layoutMode = DatraFieldLayoutMode.Form,
+            FieldLayoutMode layoutMode = FieldLayoutMode.Form,
             bool skipId = true,
             ILocaleProvider localeProvider = null)
         {

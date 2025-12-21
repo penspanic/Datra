@@ -9,6 +9,7 @@ using Datra.DataTypes;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
+using Datra.Editor.Models;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
@@ -556,7 +557,7 @@ namespace Datra.Unity.Editor.Views
             else
             {
                 // Create editable field (pass this as ILocaleProvider for FixedLocale support)
-                var field = new DatraPropertyField(item, property, DatraFieldLayoutMode.Table, this);
+                var field = new DatraPropertyField(item, property, FieldLayoutMode.Table, this);
 
                 field.OnValueChanged += (propName, newValue) => {
                     var itemKey = GetKeyFromItem(item);

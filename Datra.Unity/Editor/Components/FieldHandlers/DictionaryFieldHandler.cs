@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
+using Datra.Editor.Models;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
@@ -36,7 +37,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             var container = new VisualElement();
             container.AddToClassList("dictionary-field-container");
 
-            if (context.LayoutMode == DatraFieldLayoutMode.Table)
+            if (context.LayoutMode == FieldLayoutMode.Table)
             {
                 return CreateCompactDisplay(container, dictionary, keyType, valueType, context);
             }

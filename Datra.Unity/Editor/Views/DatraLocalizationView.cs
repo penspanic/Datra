@@ -10,6 +10,7 @@ using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Models;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
+using Datra.Editor.Models;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -380,7 +381,7 @@ namespace Datra.Unity.Editor.Views
                 var field = new DatraPropertyField(
                     wrapper,
                     textProperty,
-                    DatraFieldLayoutMode.Table,
+                    FieldLayoutMode.Table,
                     this);
 
                 // OnValueChanged: Handle property changes with proper tracking
