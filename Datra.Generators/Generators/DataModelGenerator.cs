@@ -46,7 +46,10 @@ namespace Datra.Generators.Generators
             var codeBuilder = new CodeBuilder();
             var simpleTypeName = CodeBuilder.GetSimpleTypeName(model.TypeName);
             var namespaceName = CodeBuilder.GetNamespace(model.TypeName);
-            
+
+            // Disable nullable reference types to avoid CS8632 warnings in Unity
+            codeBuilder.AppendLine("#nullable disable");
+
             // Add using statements
             codeBuilder.AddUsings(new[]
             {

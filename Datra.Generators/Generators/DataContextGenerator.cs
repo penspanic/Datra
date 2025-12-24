@@ -31,7 +31,10 @@ namespace Datra.Generators.Generators
             }
             
             var builder = new CodeBuilder();
-            
+
+            // Disable nullable reference types to avoid CS8632 warnings in Unity
+            builder.AppendLine("#nullable disable");
+
             // Add using statements
             builder.AddUsings(new[]
             {
