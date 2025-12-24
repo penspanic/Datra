@@ -52,10 +52,11 @@ namespace Datra.Generators.Models
         /// <summary>
         /// Get properties that should be included in constructor parameters.
         /// Excludes: FixedLocale (computed properties that cannot be assigned)
+        /// Excludes: Ref (auto-generated getter-only property based on Id)
         /// </summary>
         public IEnumerable<PropertyInfo> GetConstructorProperties()
         {
-            return Properties.Where(p => !p.IsFixedLocale);
+            return Properties.Where(p => !p.IsFixedLocale && p.Name != "Ref");
         }
     }
 

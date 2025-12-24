@@ -190,14 +190,17 @@ namespace Datra.Generators
             var dataContextGenerator = new DataContextGenerator();
             var sourceCode = dataContextGenerator.GenerateDataContext(generatedNamespace, contextName, filteredModels,
                 localizationKeysPath, localizationDataPath, defaultLanguage, enableLocalization, enableDebugLogging);
-            context.AddSource($"{contextName}.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
-            GeneratorLogger.Log($"Generated {contextName}.g.cs");
 
-            // Emit physical file for DataContext if enabled
+            // Emit physical file for DataContext if enabled, otherwise add to compilation
             if (emitPhysicalFiles)
             {
                 EmitPhysicalFile(context, dataModels, $"{contextName}.g.cs", sourceCode, physicalFilesPath, isContext: true);
             }
+            else
+            {
+                context.AddSource($"{contextName}.g.cs", SourceText.From(sourceCode, Encoding.UTF8));
+            }
+            GeneratorLogger.Log($"Generated {contextName}.g.cs");
 
             // Generate DataModel files
             var dataModelGenerator = new DataModelGenerator(context);
@@ -205,21 +208,31 @@ namespace Datra.Generators
             {
                 var dataModelCode = dataModelGenerator.GenerateDataModelFile(model);
                 var fileName = $"{CodeBuilder.GetSimpleTypeName(model.TypeName)}.g.cs";
-                context.AddSource(fileName, SourceText.From(dataModelCode, Encoding.UTF8));
-                GeneratorLogger.Log($"Generated {fileName}");
 
-                // Emit physical file for DataModel if enabled
+                // Emit physical file for DataModel if enabled, otherwise add to compilation
                 if (emitPhysicalFiles)
                 {
                     EmitPhysicalFileForModel(model, fileName, dataModelCode, physicalFilesPath);
                 }
+                else
+                {
+                    context.AddSource(fileName, SourceText.From(dataModelCode, Encoding.UTF8));
+                }
+                GeneratorLogger.Log($"Generated {fileName}");
             }
-            
+
             // Generate LocalizationKeyDataSerializer only if localization is enabled
             if (enableLocalization)
             {
                 var localizationSerializerCode = LocalizationKeyDataSerializer.GenerateSerializer(generatedNamespace);
-                context.AddSource("LocalizationKeyDataSerializer.g.cs", SourceText.From(localizationSerializerCode, Encoding.UTF8));
+                if (emitPhysicalFiles)
+                {
+                    EmitPhysicalFile(context, dataModels, "LocalizationKeyDataSerializer.g.cs", localizationSerializerCode, physicalFilesPath, isContext: true);
+                }
+                else
+                {
+                    context.AddSource("LocalizationKeyDataSerializer.g.cs", SourceText.From(localizationSerializerCode, Encoding.UTF8));
+                }
                 GeneratorLogger.Log("Generated LocalizationKeyDataSerializer.g.cs");
             }
             

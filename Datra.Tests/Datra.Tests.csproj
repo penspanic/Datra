@@ -10,9 +10,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Datra.Generators\Datra.Generators.csproj" 
-                          OutputItemType="Analyzer" 
+        <!-- Reference as Analyzer for source generation -->
+        <ProjectReference Include="..\Datra.Generators\Datra.Generators.csproj"
+                          OutputItemType="Analyzer"
                           ReferenceOutputAssembly="false" />
+        <!-- Also reference as library for unit testing Generator internals -->
+        <ProjectReference Include="..\Datra.Generators\Datra.Generators.csproj" />
         <ProjectReference Include="..\Datra.Analyzers\Datra.Analyzers.csproj" 
                           OutputItemType="Analyzer" 
                           ReferenceOutputAssembly="false" />
