@@ -247,6 +247,19 @@ namespace Datra.Generators
                 if (string.IsNullOrEmpty(projectDir))
                 {
                     GeneratorLogger.LogWarning("Could not determine project directory for physical file emission");
+
+                    // Report diagnostic so it shows in Unity console
+                    var diagnostic = Diagnostic.Create(
+                        new DiagnosticDescriptor(
+                            "DATRA004",
+                            "Cannot determine project directory for physical file emission",
+                            "EmitPhysicalFiles is enabled but project directory could not be determined. The file '{0}' was not emitted. Set PhysicalFilesPath in DatraConfiguration to fix this. Example: [assembly: DatraConfiguration(\"MyData\", PhysicalFilesPath = \"Assets/Scripts/Data\")]",
+                            "Datra",
+                            DiagnosticSeverity.Error,
+                            isEnabledByDefault: true),
+                        Location.None,
+                        fileName);
+                    context.ReportDiagnostic(diagnostic);
                     return;
                 }
 
