@@ -19,7 +19,7 @@ namespace Datra.Localization
         public static LocaleRef EvaluateLocale<T>(this Asset<T> asset, NestedLocaleRef nested, params object[] context)
             where T : class, ILocaleEvaluator
         {
-            return asset.Data.EvaluateNestedLocale(asset.Id, nested, context);
+            return asset.Data.EvaluateNestedLocale(asset.LocaleRootId, nested, context);
         }
     }
 }

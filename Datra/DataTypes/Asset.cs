@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.IO;
 
 namespace Datra.DataTypes
 {
@@ -29,6 +30,26 @@ namespace Datra.DataTypes
         /// Original file path (relative to asset folder)
         /// </summary>
         public string FilePath { get; }
+
+        private string? _localeRootId;
+
+        /// <summary>
+        /// Root ID used for locale key generation.
+        /// Default: filename from FilePath (without extension), fallback to Id.
+        /// Can be set to override the default behavior.
+        /// </summary>
+        public string LocaleRootId
+        {
+            get => _localeRootId ?? GetDefaultLocaleRootId();
+            set => _localeRootId = value;
+        }
+
+        private string GetDefaultLocaleRootId()
+        {
+            if (!string.IsNullOrEmpty(FilePath))
+                return Path.GetFileNameWithoutExtension(FilePath);
+            return Id.ToString();
+        }
 
         public Asset(AssetId id, AssetMetadata metadata, T data, string filePath)
         {
