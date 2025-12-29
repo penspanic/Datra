@@ -73,7 +73,7 @@ namespace Datra.Unity.Editor
         [MenuItem("Window/Datra/Data Editor %#d")]
         public static void ShowWindow()
         {
-            var initializers = DatraBootstrapper.FindInitializers();
+            var initializers = DatraBootstrapper.FindInitializers(forceRefresh: true);
 
             if (initializers.Count == 0)
             {
