@@ -68,8 +68,9 @@ namespace Datra.Unity.Editor
             _dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
             _changeTrackers = changeTrackers ?? throw new ArgumentNullException(nameof(changeTrackers));
-            _localizationContext = localizationContext ?? throw new ArgumentNullException(nameof(localizationContext));
-            _localizationChangeTracker = localizationChangeTracker ?? throw new ArgumentNullException(nameof(localizationChangeTracker));
+            // Localization is optional (EnableLocalization = false in DatraConfiguration)
+            _localizationContext = localizationContext;
+            _localizationChangeTracker = localizationChangeTracker;
 
             // Subscribe to internal events
             SubscribeToInternalEvents();
