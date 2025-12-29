@@ -68,13 +68,49 @@ namespace Datra.Unity.Editor
         // Window State
         private string currentProjectName;
         private bool isInitialized = false;
-        
+        private DatraBootstrapper.InitializerInfo assignedInitializer;
+
         [MenuItem("Window/Datra/Data Editor %#d")]
         public static void ShowWindow()
         {
-            var window = GetWindow<DatraEditorWindow>();
-            window.titleContent = new GUIContent("Datra Editor", EditorGUIUtility.IconContent("d_ScriptableObject Icon").image);
+            var initializers = DatraBootstrapper.FindInitializers();
+
+            if (initializers.Count == 0)
+            {
+                EditorUtility.DisplayDialog("Datra Editor", "No DataContext initializers found.\nAdd a method with [DatraEditorInit] attribute.", "OK");
+                return;
+            }
+
+            if (initializers.Count == 1)
+            {
+                // Only one initializer - open directly
+                ShowWindowForInitializer(initializers[0]);
+            }
+            else
+            {
+                // Multiple initializers - show selection menu
+                var menu = new GenericMenu();
+                foreach (var initializer in initializers)
+                {
+                    var init = initializer; // Capture for closure
+                    menu.AddItem(new GUIContent(init.DisplayName), false, () => ShowWindowForInitializer(init));
+                }
+                menu.ShowAsContext();
+            }
+        }
+
+        /// <summary>
+        /// Open a new editor window for a specific initializer
+        /// </summary>
+        public static DatraEditorWindow ShowWindowForInitializer(DatraBootstrapper.InitializerInfo initializer)
+        {
+            // Create new instance (allows multiple windows)
+            var window = CreateInstance<DatraEditorWindow>();
+            window.assignedInitializer = initializer;
+            window.titleContent = new GUIContent($"Datra - {initializer.DisplayName}", EditorGUIUtility.IconContent("d_ScriptableObject Icon").image);
             window.minSize = new Vector2(1200, 600);
+            window.Show();
+            return window;
         }
         
         private void CreateGUI()
@@ -188,8 +224,16 @@ namespace Datra.Unity.Editor
 
             try
             {
-                // Execute bootstrapper to initialize data context
-                dataContext = DatraBootstrapper.AutoInitialize();
+                // Use assigned initializer if available, otherwise auto-initialize
+                if (assignedInitializer != null)
+                {
+                    dataContext = DatraBootstrapper.ExecuteInitializer(assignedInitializer);
+                }
+                else
+                {
+                    dataContext = DatraBootstrapper.AutoInitialize();
+                }
+
                 if (dataContext != null)
                 {
                     // First load data types to populate repositories and change trackers

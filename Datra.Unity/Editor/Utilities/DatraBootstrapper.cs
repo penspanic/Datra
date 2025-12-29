@@ -118,13 +118,13 @@ namespace Datra.Unity.Editor.Utilities
         public static IDataContext AutoInitialize()
         {
             var initializers = FindInitializers();
-            
+
             if (initializers.Count == 0)
             {
                 Debug.LogWarning("[Datra] No methods with [DatraEditorInit] attribute found");
                 return null;
             }
-            
+
             // Try initializers in priority order
             foreach (var initializer in initializers)
             {
@@ -134,8 +134,35 @@ namespace Datra.Unity.Editor.Utilities
                     return dataContext;
                 }
             }
-            
+
             return null;
+        }
+
+        /// <summary>
+        /// Initialize all available DataContexts from all initializers
+        /// </summary>
+        public static List<(InitializerInfo info, IDataContext context)> InitializeAll()
+        {
+            var results = new List<(InitializerInfo, IDataContext)>();
+            var initializers = FindInitializers();
+
+            foreach (var initializer in initializers)
+            {
+                try
+                {
+                    var context = ExecuteInitializer(initializer);
+                    if (context != null)
+                    {
+                        results.Add((initializer, context));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"[Datra] Failed to initialize {initializer.DisplayName}: {e.Message}");
+                }
+            }
+
+            return results;
         }
         
         /// <summary>

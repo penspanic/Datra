@@ -17,6 +17,9 @@ namespace Datra.Unity.Editor.Panels
         private VisualElement modifiedIndicator;
         private VisualElement languageContainer;
         private DropdownField languageDropdown;
+        private VisualElement contextContainer;
+        private DropdownField contextDropdown;
+        private List<string> contextNames = new List<string>();
 
         public event Action OnSaveClicked;
         public event Action OnSaveAllClicked;
@@ -25,6 +28,7 @@ namespace Datra.Unity.Editor.Panels
         public event Action OnReloadClicked;
         public event Action OnSettingsClicked;
         public event Action<LanguageCode> OnLanguageChanged;
+        public event Action<int> OnContextChanged;
         
         public DatraToolbarPanel()
         {
@@ -54,7 +58,28 @@ namespace Datra.Unity.Editor.Panels
             projectLabel = new Label();
             projectLabel.AddToClassList("project-label");
             leftSection.Add(projectLabel);
-            
+
+            // Context selector container (hidden by default, shown when multiple contexts available)
+            contextContainer = new VisualElement();
+            contextContainer.AddToClassList("toolbar-context-container");
+            contextContainer.style.flexDirection = FlexDirection.Row;
+            contextContainer.style.alignItems = Align.Center;
+            contextContainer.style.display = DisplayStyle.None;
+            contextContainer.style.marginLeft = 12;
+
+            var contextIcon = new Label("📦");
+            contextIcon.style.marginRight = 4;
+            contextIcon.style.fontSize = 14;
+            contextContainer.Add(contextIcon);
+
+            contextDropdown = new DropdownField();
+            contextDropdown.AddToClassList("toolbar-context-dropdown");
+            contextDropdown.style.minWidth = 150;
+            contextDropdown.RegisterValueChangedCallback(OnContextDropdownChanged);
+            contextContainer.Add(contextDropdown);
+
+            leftSection.Add(contextContainer);
+
             Add(leftSection);
             
             // Center section - Quick actions
@@ -260,6 +285,46 @@ namespace Datra.Unity.Editor.Panels
             if (languageDropdown.choices != null && languageDropdown.choices.Contains(isoCode))
             {
                 languageDropdown.SetValueWithoutNotify(isoCode);
+            }
+        }
+
+        /// <summary>
+        /// Set up the context selector with available DataContext names
+        /// </summary>
+        public void SetupContextSelector(List<string> names)
+        {
+            contextNames = names ?? new List<string>();
+
+            if (contextNames.Count <= 1)
+            {
+                contextContainer.style.display = DisplayStyle.None;
+                return;
+            }
+
+            contextDropdown.choices = contextNames;
+            contextDropdown.index = 0;
+            contextContainer.style.display = DisplayStyle.Flex;
+        }
+
+        private void OnContextDropdownChanged(ChangeEvent<string> evt)
+        {
+            if (string.IsNullOrEmpty(evt.newValue)) return;
+
+            var index = contextNames.IndexOf(evt.newValue);
+            if (index >= 0)
+            {
+                OnContextChanged?.Invoke(index);
+            }
+        }
+
+        /// <summary>
+        /// Update the current context selection without triggering the event
+        /// </summary>
+        public void SetCurrentContext(int index)
+        {
+            if (index >= 0 && index < contextNames.Count)
+            {
+                contextDropdown.SetValueWithoutNotify(contextNames[index]);
             }
         }
     }
