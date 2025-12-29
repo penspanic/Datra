@@ -169,5 +169,26 @@ namespace Datra.Generators.Builders
             }
             return format;
         }
+
+        /// <summary>
+        /// Determines if the data format is CSV, either explicitly specified or auto-detected from file extension.
+        /// </summary>
+        /// <param name="format">The format string (e.g., "Csv", "Json", "Auto")</param>
+        /// <param name="filePath">The file path to check extension for auto-detection</param>
+        /// <returns>True if the format is CSV</returns>
+        public static bool IsCsvFormat(string format, string filePath)
+        {
+            var resolvedFormat = GetDataFormat(format);
+            if (resolvedFormat == "Csv")
+                return true;
+
+            // Auto-detect from file extension when Format is "Auto"
+            if (resolvedFormat == "Auto" && !string.IsNullOrEmpty(filePath))
+            {
+                return filePath.EndsWith(".csv", System.StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
+        }
     }
 }

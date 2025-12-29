@@ -202,8 +202,8 @@ namespace Datra.Generators.Generators
         
         private void GenerateTableSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)
         {
-            var format = CodeBuilder.GetDataFormat(model.Format);
-            GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', format='{format}', KeyType='{model.KeyType}'");
+            var isCsvFormat = CodeBuilder.IsCsvFormat(model.Format, model.FilePath);
+            GeneratorLogger.Log($"GenerateTableSerializerMethods for {simpleTypeName}: model.Format='{model.Format}', isCsvFormat={isCsvFormat}, KeyType='{model.KeyType}'");
             
             // Validate KeyType
             if (string.IsNullOrEmpty(model.KeyType))
@@ -230,7 +230,7 @@ namespace Datra.Generators.Generators
             codeBuilder.EndMethod();
             
             // Generate CSV-specific methods without loader parameter
-            if (format == "Csv")
+            if (isCsvFormat)
             {
                 codeBuilder.AddBlankLine();
 

@@ -143,7 +143,7 @@ namespace Datra.Generators.Generators
             foreach (var model in dataModels)
             {
                 var simpleTypeName = CodeBuilder.GetSimpleTypeName(model.TypeName);
-                var isCsvFormat = CodeBuilder.GetDataFormat(model.Format) == "Csv";
+                var isCsvFormat = CodeBuilder.IsCsvFormat(model.Format, model.FilePath);
 
                 if (model.IsAssetData)
                 {
