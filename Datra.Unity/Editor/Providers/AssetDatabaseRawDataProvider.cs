@@ -131,11 +131,11 @@ namespace Datra.Unity.Editor.Providers
                 var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(relativePath);
                 if (textAsset != null)
                 {
-                    result[file] = textAsset.text;
+                    result[relativePath] = textAsset.text;
                 }
                 else if (File.Exists(file))
                 {
-                    result[file] = File.ReadAllText(file);
+                    result[relativePath] = File.ReadAllText(file);
                 }
             }
 
