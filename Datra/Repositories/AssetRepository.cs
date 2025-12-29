@@ -250,35 +250,50 @@ namespace Datra.Repositories
             _dataByPath.Clear();
             _modifiedAssets.Clear();
 
+            // Phase 1: Filter and deserialize data (synchronous, fast)
+            var dataEntries = new List<(string filePath, T data)>();
             foreach (var (filePath, content) in files)
             {
+                // Skip .meta files
+                if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 try
                 {
-                    // Skip .meta files
-                    if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    // Deserialize data
                     var data = _deserializeFunc(content, serializer);
-                    if (data == null)
-                        continue;
-
-                    // Load or create metadata
-                    var metadata = await LoadOrCreateMetadataAsync(filePath, metaSerializer);
-
-                    // Get relative path
-                    var relativePath = GetRelativePath(filePath);
-
-                    // Create asset
-                    var asset = new Asset<T>(metadata.Guid, metadata, data, relativePath);
-                    _dataById[metadata.Guid] = asset;
-                    _dataByPath[relativePath] = asset;
+                    if (data != null)
+                        dataEntries.Add((filePath, data));
                 }
                 catch (Exception ex)
                 {
                     throw new InvalidOperationException(
-                        $"Failed to load asset '{filePath}': {ex.Message}", ex);
+                        $"Failed to deserialize asset '{filePath}': {ex.Message}", ex);
                 }
+            }
+
+            // Phase 2: Load metadata in parallel (async, was the bottleneck)
+            var loadTasks = dataEntries.Select(async entry =>
+            {
+                try
+                {
+                    var metadata = await LoadOrCreateMetadataAsync(entry.filePath, metaSerializer);
+                    var relativePath = GetRelativePath(entry.filePath);
+                    return new Asset<T>(metadata.Guid, metadata, entry.data, relativePath);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to load metadata for asset '{entry.filePath}': {ex.Message}", ex);
+                }
+            }).ToList();
+
+            var assets = await Task.WhenAll(loadTasks);
+
+            // Phase 3: Add to dictionaries (synchronous)
+            foreach (var asset in assets)
+            {
+                _dataById[asset.Id] = asset;
+                _dataByPath[asset.FilePath] = asset;
             }
         }
 
