@@ -598,4 +598,143 @@ namespace Datra.Editor.Tests
     }
 
     #endregion
+
+    #region DataSource vs Repository Integration Tests
+
+    /// <summary>
+    /// These tests verify the critical contract that Views rely on:
+    /// DataSource.EnumerateItems() reflects current editing state,
+    /// while Repository.EnumerateItems() remains unchanged until Save.
+    /// </summary>
+    public class DataSourceRepositoryIntegrationTests
+    {
+        [Fact]
+        public void AfterDelete_DataSourceExcludesItem_RepositoryStillHasIt()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository<int, TestTableData>();
+            repo.SetData(new[]
+            {
+                new TestTableData { Id = 1, Name = "Keep" },
+                new TestTableData { Id = 2, Name = "ToDelete" }
+            });
+            var dataSource = new EditableKeyValueDataSource<int, TestTableData>(repo);
+
+            // Act
+            dataSource.Delete(2);
+
+            // Assert - DataSource should exclude deleted item
+            var dataSourceItems = dataSource.EnumerateItems().ToList();
+            Assert.Single(dataSourceItems);
+            Assert.Equal(1, dataSourceItems[0].Value.Id);
+
+            // Assert - Repository should still have both items (unchanged until Save)
+            var repoItems = repo.EnumerateItems().ToList();
+            Assert.Equal(2, repoItems.Count);
+        }
+
+        [Fact]
+        public void AfterAdd_DataSourceIncludesItem_RepositoryDoesNot()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository<int, TestTableData>();
+            repo.SetData(new[] { new TestTableData { Id = 1, Name = "Existing" } });
+            var dataSource = new EditableKeyValueDataSource<int, TestTableData>(repo);
+
+            // Act
+            dataSource.Add(2, new TestTableData { Id = 2, Name = "NewItem" });
+
+            // Assert - DataSource should include new item
+            var dataSourceItems = dataSource.EnumerateItems().ToList();
+            Assert.Equal(2, dataSourceItems.Count);
+
+            // Assert - Repository should still have only 1 item (unchanged until Save)
+            var repoItems = repo.EnumerateItems().ToList();
+            Assert.Single(repoItems);
+        }
+
+        [Fact]
+        public void AfterRevert_DataSourceMatchesRepository()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository<int, TestTableData>();
+            repo.SetData(new[]
+            {
+                new TestTableData { Id = 1, Name = "Item1" },
+                new TestTableData { Id = 2, Name = "Item2" }
+            });
+            var dataSource = new EditableKeyValueDataSource<int, TestTableData>(repo);
+
+            // Act - Make various changes then revert
+            dataSource.Delete(1);
+            dataSource.Add(3, new TestTableData { Id = 3, Name = "New" });
+            dataSource.TrackPropertyChange(2, "Name", "Modified", out _);
+
+            // Verify changes are reflected
+            Assert.Equal(2, dataSource.EnumerateItems().Count()); // 2 (deleted 1, added 3)
+
+            // Revert all changes
+            dataSource.Revert();
+
+            // Assert - DataSource should match repository again
+            var dataSourceItems = dataSource.EnumerateItems().ToList();
+            var repoItems = repo.EnumerateItems().ToList();
+            Assert.Equal(repoItems.Count, dataSourceItems.Count);
+        }
+
+        [Fact]
+        public async Task AfterSave_BothDataSourceAndRepositoryMatch()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository<int, TestTableData>();
+            repo.SetData(new[] { new TestTableData { Id = 1, Name = "Original" } });
+            var dataSource = new EditableKeyValueDataSource<int, TestTableData>(repo);
+
+            // Act - Add new item and save
+            dataSource.Add(2, new TestTableData { Id = 2, Name = "New" });
+            await dataSource.SaveAsync();
+
+            // Assert - Both should have 2 items now
+            var dataSourceCount = dataSource.EnumerateItems().Count();
+            var repoCount = repo.EnumerateItems().Count();
+            Assert.Equal(2, dataSourceCount);
+            Assert.Equal(2, repoCount);
+        }
+
+        [Fact]
+        public void ViewShouldUseDataSource_NotRepository_ForCurrentState()
+        {
+            // This test documents the contract that Views MUST follow:
+            // Use dataSource.EnumerateItems() for display, NOT repository.EnumerateItems()
+
+            // Arrange
+            var repo = new MockKeyValueRepository<int, TestTableData>();
+            repo.SetData(new[]
+            {
+                new TestTableData { Id = 1, Name = "Keep" },
+                new TestTableData { Id = 2, Name = "Delete" },
+                new TestTableData { Id = 3, Name = "Modify" }
+            });
+            var dataSource = new EditableKeyValueDataSource<int, TestTableData>(repo);
+
+            // Act - Simulate user editing
+            dataSource.Delete(2);
+            dataSource.Add(4, new TestTableData { Id = 4, Name = "New" });
+            dataSource.TrackPropertyChange(3, "Name", "Modified", out _);
+
+            // What View should show (from dataSource):
+            var viewItems = dataSource.EnumerateItems().ToList();
+            Assert.Equal(3, viewItems.Count); // 1, 3, 4 (2 is deleted)
+
+            // What View should NOT use (repository is unchanged):
+            var repoItems = repo.EnumerateItems().ToList();
+            Assert.Equal(3, repoItems.Count); // 1, 2, 3 (no changes)
+
+            // Verify specific items in view
+            var viewIds = viewItems.Select(kv => kv.Key).OrderBy(x => x).ToList();
+            Assert.Equal(new[] { 1, 3, 4 }, viewIds);
+        }
+    }
+
+    #endregion
 }

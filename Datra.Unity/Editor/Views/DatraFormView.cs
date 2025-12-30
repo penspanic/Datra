@@ -52,8 +52,11 @@ namespace Datra.Unity.Editor.Views
 
             if (repository == null || dataType == null) return;
 
-            // Use EnumerateItems() from IDataRepository - no reflection needed
-            var items = repository.EnumerateItems().ToList();
+            // Prefer dataSource (reflects current editing state with adds/deletes)
+            // Fallback to repository for read-only or legacy usage
+            var items = dataSource != null
+                ? dataSource.EnumerateItems().ToList()
+                : repository.EnumerateItems().ToList();
 
             if (items.Count == 0) return;
 

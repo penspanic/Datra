@@ -206,10 +206,18 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Loads all items from the repository using EnumerateItems() - no reflection needed
+        /// Loads all items from the dataSource (if available) or repository.
+        /// DataSource reflects current editing state (including adds/deletes).
         /// </summary>
         protected virtual List<object> LoadItemsFromRepository()
         {
+            // Prefer dataSource (reflects current editing state with adds/deletes)
+            if (dataSource != null)
+            {
+                return dataSource.EnumerateItems().ToList();
+            }
+
+            // Fallback to repository (for read-only or legacy usage)
             return repository.EnumerateItems().ToList();
         }
 
