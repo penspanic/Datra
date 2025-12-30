@@ -144,5 +144,42 @@ namespace Datra.Unity.Editor.Providers
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
 #endif
         }
+
+        public Task<bool> DeleteAsync(string path)
+        {
+#if UNITY_EDITOR
+            path = PathHelper.CombinePath(_basePath, path);
+
+            // Try to delete via AssetDatabase first (handles .meta files automatically)
+            if (AssetDatabase.DeleteAsset(path))
+            {
+                return Task.FromResult(true);
+            }
+
+            // Fallback to file system deletion if not in AssetDatabase
+            var absolutePath = path.StartsWith("Assets/")
+                ? Path.GetFullPath(path)
+                : path;
+
+            if (File.Exists(absolutePath))
+            {
+                File.Delete(absolutePath);
+
+                // Also delete .meta file if it exists
+                var metaPath = absolutePath + ".meta";
+                if (File.Exists(metaPath))
+                {
+                    File.Delete(metaPath);
+                }
+
+                AssetDatabase.Refresh();
+                return Task.FromResult(true);
+            }
+
+            return Task.FromResult(false);
+#else
+            throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
+#endif
+        }
     }
 }

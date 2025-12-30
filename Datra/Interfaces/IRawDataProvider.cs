@@ -40,5 +40,16 @@ namespace Datra.Interfaces
         {
             throw new NotSupportedException($"{GetType().Name} does not support multi-file loading. Use a provider that implements LoadMultipleTextAsync.");
         }
+
+        /// <summary>
+        /// Delete a file at the specified path.
+        /// Default implementation throws NotSupportedException - override in providers that support deletion.
+        /// </summary>
+        /// <param name="path">Path to the file to delete</param>
+        /// <returns>True if deleted successfully, false if file didn't exist</returns>
+        Task<bool> DeleteAsync(string path)
+        {
+            throw new NotSupportedException($"{GetType().Name} does not support file deletion. Use a provider that implements DeleteAsync.");
+        }
     }
 }

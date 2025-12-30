@@ -26,6 +26,7 @@ namespace Datra.Repositories
         private readonly Dictionary<AssetId, Asset<T>> _dataById = new();
         private readonly Dictionary<string, Asset<T>> _dataByPath = new();
         private readonly HashSet<AssetId> _modifiedAssets = new();
+        private readonly HashSet<string> _pendingFileDeletions = new();
 
         private readonly string _folderPath;
         private readonly string _filePattern;
@@ -155,6 +156,13 @@ namespace Datra.Repositories
             if (!_dataById.TryGetValue(id, out var asset))
                 return false;
 
+            // Track file for deletion on save (capture path before removing from dictionaries)
+            // Only track if file was loaded from disk (not a newly added asset)
+            if (!_modifiedAssets.Contains(id) || _rawDataProvider.Exists(Path.Combine(_folderPath, asset.FilePath)))
+            {
+                _pendingFileDeletions.Add(asset.FilePath);
+            }
+
             _dataById.Remove(id);
             _dataByPath.Remove(asset.FilePath);
             _modifiedAssets.Remove(id);
@@ -216,10 +224,33 @@ namespace Datra.Repositories
 
         public async Task SaveAsync()
         {
+            // Save modified assets
             foreach (var id in _modifiedAssets.ToList())
             {
                 await SaveAssetAsync(id);
             }
+
+            // Delete pending files
+            foreach (var filePath in _pendingFileDeletions.ToList())
+            {
+                await DeleteAssetFilesAsync(filePath);
+            }
+            _pendingFileDeletions.Clear();
+        }
+
+        /// <summary>
+        /// Deletes an asset's data file and its companion .datrameta file
+        /// </summary>
+        private async Task DeleteAssetFilesAsync(string relativeFilePath)
+        {
+            var dataPath = Path.Combine(_folderPath, relativeFilePath);
+            var metaPath = dataPath + MetaExtension;
+
+            // Delete data file
+            await _rawDataProvider.DeleteAsync(dataPath);
+
+            // Delete meta file
+            await _rawDataProvider.DeleteAsync(metaPath);
         }
 
         public AssetMetadata CreateMetaFile(string assetFilePath)
@@ -249,6 +280,7 @@ namespace Datra.Repositories
             _dataById.Clear();
             _dataByPath.Clear();
             _modifiedAssets.Clear();
+            _pendingFileDeletions.Clear();
 
             // Phase 1: Filter and deserialize data (synchronous, fast)
             var dataEntries = new List<(string filePath, T data)>();

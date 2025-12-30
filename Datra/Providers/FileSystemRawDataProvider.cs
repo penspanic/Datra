@@ -104,6 +104,24 @@ namespace Datra.Providers
             return result;
         }
 
+        /// <summary>
+        /// Delete a file at the specified path
+        /// </summary>
+        /// <param name="path">Relative path from base path</param>
+        /// <returns>True if deleted, false if file didn't exist</returns>
+        public Task<bool> DeleteAsync(string path)
+        {
+            var fullPath = GetFullPath(path);
+
+            if (!File.Exists(fullPath))
+            {
+                return Task.FromResult(false);
+            }
+
+            File.Delete(fullPath);
+            return Task.FromResult(true);
+        }
+
         private string GetFullPath(string path)
         {
             if (string.IsNullOrEmpty(_basePath))
