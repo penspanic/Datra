@@ -124,5 +124,11 @@ namespace Datra.Interfaces
         /// Create a new .datrameta file for an asset that doesn't have one
         /// </summary>
         AssetMetadata CreateMetaFile(string assetFilePath);
+
+        /// <summary>
+        /// Mark an asset as modified (for in-place property edits).
+        /// This ensures the asset will be saved when SaveAsync() is called.
+        /// </summary>
+        void MarkAsModified(AssetId id);
     }
 }

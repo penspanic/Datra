@@ -71,24 +71,30 @@ namespace Datra.Unity.Editor.Views
             UpdateModifiedState();
         }
 
-        private void DisplaySingleDataForm(object data)
+        private void DisplaySingleDataForm(object item)
         {
-            if (data == null) return;
+            if (item == null) return;
 
             formContainer = new VisualElement();
             formContainer.AddToClassList("single-data-form");
 
+            // Extract actual data from Asset<T> wrapper if needed
+            var actualData = ExtractActualData(item);
+
             // Create fields using the field factory
-            var fields = DatraFieldFactory.CreateFieldsForObject(data, FieldLayoutMode.Form, false, this);
+            var fields = DatraFieldFactory.CreateFieldsForObject(actualData, FieldLayoutMode.Form, false, this);
             foreach (var field in fields)
             {
                 field.OnValueChanged += (propName, value) => {
                     // Track in external change tracker
-                    var dataKey = GetKeyFromItem(data);
+                    var dataKey = GetKeyFromItem(item);
                     if (dataKey != null)
                     {
-                        changeTracker.TrackChange(dataKey, data);
+                        changeTracker.TrackChange(dataKey, item);
                     }
+
+                    // Mark asset as modified in the repository (for Asset data)
+                    MarkAssetModified(item);
 
                     UpdateModifiedState();
                 };
@@ -214,12 +220,15 @@ namespace Datra.Unity.Editor.Views
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => {
-                        // Track in external change tracker
-                        var itemKey = GetKeyFromItem(actualData);
+                        // Track in external change tracker (use original item for key)
+                        var itemKey = GetKeyFromItem(item);
                         if (itemKey != null)
                         {
-                            changeTracker.TrackChange(itemKey, actualData);
+                            changeTracker.TrackChange(itemKey, item);
                         }
+
+                        // Mark asset as modified in the repository (for Asset data)
+                        MarkAssetModified(item);
 
                         UpdateModifiedState();
                     };

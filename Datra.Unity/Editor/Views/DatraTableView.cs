@@ -550,6 +550,13 @@ namespace Datra.Unity.Editor.Views
             var parentValue = colInfo.Property.GetValue(actualData);
             changeTracker.TrackPropertyChange(itemKey, colInfo.Property.Name, parentValue, out bool isModified);
             UpdateModifiedState();
+
+            // Mark asset as modified in the repository (for Asset data)
+            if (isModified)
+            {
+                MarkAssetModified(originalItem);
+            }
+
             UpdateRowStateVisuals(originalItem);
         }
 
@@ -575,6 +582,12 @@ namespace Datra.Unity.Editor.Views
                     changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
                     field.SetModified(isModified);
                     UpdateModifiedState();
+
+                    // Mark asset as modified in the repository (for Asset data)
+                    if (isModified)
+                    {
+                        MarkAssetModified(originalItem);
+                    }
 
                     // Update row state without rebuilding (to avoid interrupting typing)
                     UpdateRowStateVisuals(originalItem);

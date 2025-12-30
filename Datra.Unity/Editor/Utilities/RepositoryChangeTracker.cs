@@ -40,6 +40,41 @@ namespace Datra.Unity.Editor.Utilities
             public object CurrentValue { get; set; }
         }
 
+        // Asset<T> type detection cache
+        private static readonly bool _isAssetType;
+        private static readonly Type _innerDataType;
+        private static readonly System.Reflection.PropertyInfo _dataProperty;
+
+        static RepositoryChangeTracker()
+        {
+            var type = typeof(TValue);
+            _isAssetType = type.IsGenericType &&
+                           type.GetGenericTypeDefinition() == typeof(Datra.DataTypes.Asset<>);
+
+            if (_isAssetType)
+            {
+                _innerDataType = type.GetGenericArguments()[0];
+                _dataProperty = type.GetProperty("Data");
+            }
+        }
+
+        /// <summary>
+        /// Gets the inner data object from an Asset wrapper, or the object itself if not an Asset
+        /// </summary>
+        private static object GetInnerData(object value)
+        {
+            if (!_isAssetType || value == null) return value;
+            return _dataProperty?.GetValue(value);
+        }
+
+        /// <summary>
+        /// Gets the type to use for property access (inner data type for Asset<T>, TValue otherwise)
+        /// </summary>
+        private static Type GetPropertyAccessType()
+        {
+            return _isAssetType ? _innerDataType : typeof(TValue);
+        }
+
         // Event for modified state changes
         public event Action<bool> OnModifiedStateChanged;
 
@@ -100,14 +135,19 @@ namespace Datra.Unity.Editor.Utilities
                 return;
             }
 
+            // For Asset<T>, compare properties of the inner Data object
+            var propertyAccessType = GetPropertyAccessType();
+            var baselineTargetObject = GetInnerData(baselineValue);
+            var newTargetObject = GetInnerData(newValue);
+
             // Compare all properties
-            var properties = type.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            var properties = propertyAccessType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                 .Where(p => p.CanRead && p.CanWrite);
 
             foreach (var prop in properties)
             {
-                var baselinePropValue = prop.GetValue(baselineValue);
-                var newPropValue = prop.GetValue(newValue);
+                var baselinePropValue = prop.GetValue(baselineTargetObject);
+                var newPropValue = prop.GetValue(newTargetObject);
 
                 TrackPropertyChange(key, prop.Name, newPropValue, out bool isModified);
             }
@@ -137,15 +177,18 @@ namespace Datra.Unity.Editor.Utilities
             }
             else
             {
-                // Get baseline property value using reflection
-                var propInfo = type.GetProperty(propertyName);
+                // For Asset<T>, access properties through the Data property
+                var propertyAccessType = GetPropertyAccessType();
+                var targetObject = GetInnerData(baselineEntity);
+
+                var propInfo = propertyAccessType.GetProperty(propertyName);
                 if (propInfo == null)
                 {
-                    Debug.LogWarning($"[TrackPropertyChange] Property '{propertyName}' not found on type {type.Name}");
+                    Debug.LogWarning($"[TrackPropertyChange] Property '{propertyName}' not found on type {propertyAccessType.Name}");
                     return;
                 }
 
-                baselineValue = propInfo.GetValue(baselineEntity);
+                baselineValue = propInfo.GetValue(targetObject);
             }
 
             // Compare values
@@ -177,10 +220,14 @@ namespace Datra.Unity.Editor.Utilities
             }
             else if (_current.TryGetValue(key, out var currentEntity))
             {
-                var propInfo = type.GetProperty(propertyName);
-                if (propInfo != null)
+                // For Asset<T>, access properties through the Data property
+                var propertyAccessType = GetPropertyAccessType();
+                var targetObject = GetInnerData(currentEntity);
+
+                var propInfo = propertyAccessType.GetProperty(propertyName);
+                if (propInfo != null && targetObject != null)
                 {
-                    propInfo.SetValue(currentEntity, newValue);
+                    propInfo.SetValue(targetObject, newValue);
                 }
             }
 
@@ -316,11 +363,15 @@ namespace Datra.Unity.Editor.Utilities
                 return baselineEntity;
             }
 
-            var propInfo = type.GetProperty(propertyName);
+            // For Asset<T>, access properties through the Data property
+            var propertyAccessType = GetPropertyAccessType();
+            var targetObject = GetInnerData(baselineEntity);
+
+            var propInfo = propertyAccessType.GetProperty(propertyName);
             if (propInfo == null)
                 return null;
 
-            return propInfo.GetValue(baselineEntity);
+            return propInfo.GetValue(targetObject);
         }
 
         public IEnumerable<TKey> GetAddedKeys() => _addedKeys;

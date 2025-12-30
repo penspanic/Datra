@@ -151,6 +151,14 @@ namespace Datra.Repositories
             _modifiedAssets.Add(id);
         }
 
+        public void MarkAsModified(AssetId id)
+        {
+            if (!_dataById.ContainsKey(id))
+                return;
+
+            _modifiedAssets.Add(id);
+        }
+
         public bool Remove(AssetId id)
         {
             if (!_dataById.TryGetValue(id, out var asset))

@@ -378,6 +378,22 @@ namespace Datra.Unity.Editor.Views
             return filePathProperty?.GetValue(item) as string;
         }
 
+        /// <summary>
+        /// Mark an asset as modified in the repository (for in-place property edits).
+        /// This ensures the asset will be saved when SaveAsync() is called.
+        /// </summary>
+        protected void MarkAssetModified(object item)
+        {
+            if (!IsEditableAssetRepository()) return;
+
+            var assetId = GetAssetId(item);
+            if (!assetId.HasValue) return;
+
+            // Call repository.MarkAsModified(assetId) via reflection
+            var markMethod = repository.GetType().GetMethod("MarkAsModified", new[] { typeof(AssetId) });
+            markMethod?.Invoke(repository, new object[] { assetId.Value });
+        }
+
         #endregion
 
         /// <summary>
