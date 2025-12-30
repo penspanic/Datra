@@ -1,12 +1,16 @@
 <Project>
   <PropertyGroup>
+    <!-- Default Configuration if not set -->
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+
     <!-- Force all projects to use centralized output paths -->
-    <BaseOutputPath>$(MSBuildThisFileDirectory)\Output\$(MSBuildProjectName)\bin\</BaseOutputPath>
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)\Output\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
-    <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
-    <IntermediateOutputPath>$(BaseIntermediateOutputPath)$(Configuration)\</IntermediateOutputPath>
-    
+    <BaseOutputPath>$(MSBuildThisFileDirectory)Output\$(MSBuildProjectName)\bin\</BaseOutputPath>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)Output\$(MSBuildProjectName)\obj\</BaseIntermediateOutputPath>
+
+    <!-- Let SDK handle OutputPath (adds Configuration and TargetFramework automatically) -->
+    <!-- Do NOT set OutputPath directly - causes issues with Rider -->
+
     <!-- Ensure NuGet packages are restored to a central location -->
-    <RestorePackagesPath>$(MSBuildThisFileDirectory)\Output\packages</RestorePackagesPath>
+    <RestorePackagesPath>$(MSBuildThisFileDirectory)Output\packages</RestorePackagesPath>
   </PropertyGroup>
 </Project>
