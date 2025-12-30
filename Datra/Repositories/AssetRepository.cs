@@ -380,7 +380,11 @@ namespace Datra.Repositories
 
         #region IDataRepository Common Methods
 
-        public IEnumerable<object> EnumerateItems() => GetAllData().Cast<object>();
+        /// <summary>
+        /// Enumerate all Asset wrappers (not raw data).
+        /// Returns Asset&lt;T&gt; objects so views can access both Id and Data.
+        /// </summary>
+        public IEnumerable<object> EnumerateItems() => _dataById.Values.Cast<object>();
 
         public int ItemCount => _dataById.Count;
 

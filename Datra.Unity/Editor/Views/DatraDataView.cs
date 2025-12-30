@@ -316,6 +316,70 @@ namespace Datra.Unity.Editor.Views
                 i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ITableData<>));
         }
 
+        #region Asset Helper Methods
+
+        /// <summary>
+        /// Check if the repository is an IAssetRepository
+        /// </summary>
+        protected bool IsAssetRepository()
+        {
+            if (repository == null) return false;
+            return repository.GetType().GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAssetRepository<>));
+        }
+
+        /// <summary>
+        /// Check if the repository is an IEditableAssetRepository
+        /// </summary>
+        protected bool IsEditableAssetRepository()
+        {
+            if (repository == null) return false;
+            return repository.GetType().GetInterfaces().Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEditableAssetRepository<>));
+        }
+
+        /// <summary>
+        /// Check if item is an Asset&lt;T&gt; wrapper
+        /// </summary>
+        protected bool IsAssetWrapper(object item)
+        {
+            if (item == null) return false;
+            var itemType = item.GetType();
+            return itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(Asset<>);
+        }
+
+        /// <summary>
+        /// Get AssetId from Asset&lt;T&gt; wrapper
+        /// </summary>
+        protected AssetId? GetAssetId(object item)
+        {
+            if (!IsAssetWrapper(item)) return null;
+            var idProperty = item.GetType().GetProperty("Id");
+            return idProperty?.GetValue(item) as AssetId?;
+        }
+
+        /// <summary>
+        /// Get Data from Asset&lt;T&gt; wrapper
+        /// </summary>
+        protected object GetAssetData(object item)
+        {
+            if (!IsAssetWrapper(item)) return item;
+            var dataProperty = item.GetType().GetProperty("Data");
+            return dataProperty?.GetValue(item);
+        }
+
+        /// <summary>
+        /// Get FilePath from Asset&lt;T&gt; wrapper
+        /// </summary>
+        protected string GetAssetFilePath(object item)
+        {
+            if (!IsAssetWrapper(item)) return null;
+            var filePathProperty = item.GetType().GetProperty("FilePath");
+            return filePathProperty?.GetValue(item) as string;
+        }
+
+        #endregion
+
         /// <summary>
         /// Get filtered properties for a type, excluding properties with DatraIgnoreAttribute
         /// </summary>
@@ -325,10 +389,16 @@ namespace Datra.Unity.Editor.Views
                 .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
                 .ToList();
         }
-        
+
         protected object GetKeyFromItem(object item)
         {
             if (item == null) return null;
+
+            // Handle Asset<T> wrapper - return AssetId
+            if (IsAssetWrapper(item))
+            {
+                return GetAssetId(item);
+            }
 
             var itemType = item.GetType();
             if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
@@ -353,76 +423,47 @@ namespace Datra.Unity.Editor.Views
 
             return item;
         }
-        
+
+        /// <summary>
+        /// Extract actual data from wrapper types (KeyValuePair or Asset&lt;T&gt;)
+        /// </summary>
         protected object ExtractActualData(object item)
         {
             if (item == null) return null;
-            
+
+            // Handle Asset<T> wrapper - return inner Data
+            if (IsAssetWrapper(item))
+            {
+                return GetAssetData(item);
+            }
+
             var itemType = item.GetType();
             if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
             {
                 var valueProperty = itemType.GetProperty("Value");
                 return valueProperty?.GetValue(item);
             }
-            
+
             return item;
         }
         
         protected void AddNewItem()
         {
             if (repository == null || dataType == null || isReadOnly) return;
-            
+
             InvokeOnAddNewItem();
-            
+
             try
             {
-                // Get the ID property type
-                var idProperty = dataType.GetProperty("Id");
-                if (idProperty == null)
+                // Handle Asset data differently
+                if (IsEditableAssetRepository())
                 {
-                    EditorUtility.DisplayDialog("Error", "Cannot find ID property on type", "OK");
+                    AddNewAssetItem();
                     return;
                 }
-                
-                // Prompt for ID based on type
-                if (idProperty.PropertyType == typeof(int))
-                {
-                    DatraInputDialog.Show("New Item ID", 
-                        "Enter ID for the new item (integer):", 
-                        "1",
-                        (input) => {
-                            if (int.TryParse(input, out int intId))
-                            {
-                                ProcessNewItemWithId(intId);
-                            }
-                            else
-                            {
-                                EditorUtility.DisplayDialog("Invalid ID", 
-                                    "Please enter a valid integer ID", "OK");
-                            }
-                        });
-                }
-                else if (idProperty.PropertyType == typeof(string))
-                {
-                    DatraInputDialog.Show("New Item ID", 
-                        "Enter ID for the new item:", 
-                        "NewItem",
-                        (input) => {
-                            if (!string.IsNullOrWhiteSpace(input))
-                            {
-                                ProcessNewItemWithId(input);
-                            }
-                            else
-                            {
-                                EditorUtility.DisplayDialog("Invalid ID", "ID cannot be empty", "OK");
-                            }
-                        });
-                }
-                else
-                {
-                    EditorUtility.DisplayDialog("Error", 
-                        $"Unsupported ID type: {idProperty.PropertyType}", "OK");
-                }
+
+                // Handle Table data
+                AddNewTableItem();
             }
             catch (Exception e)
             {
@@ -430,8 +471,147 @@ namespace Datra.Unity.Editor.Views
                 Debug.LogError($"Failed to create new item: {e}");
             }
         }
+
+        /// <summary>
+        /// Add new item to table data repository
+        /// </summary>
+        private void AddNewTableItem()
+        {
+            // Get the ID property type
+            var idProperty = dataType.GetProperty("Id");
+            if (idProperty == null)
+            {
+                EditorUtility.DisplayDialog("Error", "Cannot find ID property on type", "OK");
+                return;
+            }
+
+            // Prompt for ID based on type
+            if (idProperty.PropertyType == typeof(int))
+            {
+                DatraInputDialog.Show("New Item ID",
+                    "Enter ID for the new item (integer):",
+                    "1",
+                    (input) => {
+                        if (int.TryParse(input, out int intId))
+                        {
+                            ProcessNewTableItemWithId(intId);
+                        }
+                        else
+                        {
+                            EditorUtility.DisplayDialog("Invalid ID",
+                                "Please enter a valid integer ID", "OK");
+                        }
+                    });
+            }
+            else if (idProperty.PropertyType == typeof(string))
+            {
+                DatraInputDialog.Show("New Item ID",
+                    "Enter ID for the new item:",
+                    "NewItem",
+                    (input) => {
+                        if (!string.IsNullOrWhiteSpace(input))
+                        {
+                            ProcessNewTableItemWithId(input);
+                        }
+                        else
+                        {
+                            EditorUtility.DisplayDialog("Invalid ID", "ID cannot be empty", "OK");
+                        }
+                    });
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("Error",
+                    $"Unsupported ID type: {idProperty.PropertyType}", "OK");
+            }
+        }
+
+        /// <summary>
+        /// Add new item to asset repository
+        /// </summary>
+        private void AddNewAssetItem()
+        {
+            // Prompt for file name (used as both file path and initial identifier)
+            DatraInputDialog.Show("New Asset",
+                "Enter file name for the new asset (without extension):",
+                "NewAsset",
+                (input) => {
+                    if (string.IsNullOrWhiteSpace(input))
+                    {
+                        EditorUtility.DisplayDialog("Invalid Name", "File name cannot be empty", "OK");
+                        return;
+                    }
+
+                    ProcessNewAssetItem(input);
+                });
+        }
+
+        /// <summary>
+        /// Process new asset item creation
+        /// </summary>
+        private void ProcessNewAssetItem(string fileName)
+        {
+            try
+            {
+                // Create new data instance
+                var newData = Activator.CreateInstance(dataType);
+
+                // Set Name property if exists
+                var nameProperty = dataType.GetProperty("Name");
+                if (nameProperty != null && nameProperty.CanWrite && nameProperty.PropertyType == typeof(string))
+                {
+                    nameProperty.SetValue(newData, fileName);
+                }
+
+                // Set Id property if exists and is string type
+                var idProperty = dataType.GetProperty("Id");
+                if (idProperty != null && idProperty.CanWrite && idProperty.PropertyType == typeof(string))
+                {
+                    idProperty.SetValue(newData, fileName);
+                }
+
+                // Determine file path
+                string filePath = $"{fileName}.json";
+
+                // Find the Add method: Add(T data, string filePath)
+                var addMethod = repository.GetType().GetMethod("Add", new[] { dataType, typeof(string) });
+                if (addMethod != null)
+                {
+                    var asset = addMethod.Invoke(repository, new[] { newData, filePath });
+
+                    // Track addition
+                    if (asset != null)
+                    {
+                        var assetId = GetAssetId(asset);
+                        if (assetId.HasValue)
+                        {
+                            changeTracker?.TrackAdd(assetId.Value, asset);
+                        }
+                    }
+
+                    RefreshContent();
+                    MarkAsModified();
+                    UpdateStatus($"New asset '{fileName}' created");
+                }
+                else
+                {
+                    EditorUtility.DisplayDialog("Error", "Repository does not support asset creation", "OK");
+                }
+            }
+            catch (TargetInvocationException tie)
+            {
+                var innerEx = tie.InnerException ?? tie;
+                EditorUtility.DisplayDialog("Error", $"Failed to create asset: {innerEx.Message}", "OK");
+                Debug.LogError($"Failed to create asset: {innerEx}");
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to create asset: {e.Message}", "OK");
+                Debug.LogError($"Failed to create asset: {e}");
+            }
+        }
         
-        protected void ProcessNewItemWithId(object newId)
+        protected void ProcessNewTableItemWithId(object newId)
         {
             try
             {
@@ -509,46 +689,145 @@ namespace Datra.Unity.Editor.Views
         protected void DeleteItem(object item)
         {
             if (isReadOnly) return;
-            
-            if (EditorUtility.DisplayDialog("Delete Item", 
-                "Are you sure you want to delete this item?", 
+
+            // Get display name for confirmation dialog
+            string itemName = GetItemDisplayName(item);
+
+            if (EditorUtility.DisplayDialog("Delete Item",
+                $"Are you sure you want to delete '{itemName}'?",
                 "Delete", "Cancel"))
             {
                 try
                 {
-                    // Extract actual data from KeyValuePair if needed
-                    object keyToRemove = GetKeyFromItem(item);
-
-                    // Track deletion in change tracker
-                    if (keyToRemove != null)
-                        changeTracker.TrackDelete(keyToRemove);
-
-                    // Mark item as deleted before actually deleting
-                    OnItemMarkedForDeletion(item);
-                    
-                    // Find the Remove method on the repository
-                    var removeMethod = repository.GetType().GetMethod("Remove");
-                    if (removeMethod != null && keyToRemove != null)
+                    // Handle Asset deletion
+                    if (IsAssetWrapper(item))
                     {
-                        var result = removeMethod.Invoke(repository, new[] { keyToRemove });
+                        DeleteAssetItem(item);
+                        return;
+                    }
 
-                        // Refresh the display
-                        RefreshContent();
-                        MarkAsModified();
-                        UpdateStatus($"Item deleted");
-                        
-                        InvokeOnItemDeleted(item);
-                    }
-                    else
-                    {
-                        UpdateStatus("Remove method not found on repository");
-                    }
+                    // Handle Table/Single data deletion
+                    DeleteTableItem(item);
                 }
                 catch (Exception e)
                 {
                     EditorUtility.DisplayDialog("Error", $"Failed to delete item: {e.Message}", "OK");
                     Debug.LogError($"Failed to delete item: {e}");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Get display name for an item (for confirmation dialogs)
+        /// </summary>
+        private string GetItemDisplayName(object item)
+        {
+            if (item == null) return "item";
+
+            // For Asset wrapper, get Name from metadata or Data
+            if (IsAssetWrapper(item))
+            {
+                var data = GetAssetData(item);
+                if (data != null)
+                {
+                    var nameProperty = data.GetType().GetProperty("Name");
+                    if (nameProperty != null)
+                    {
+                        var name = nameProperty.GetValue(data) as string;
+                        if (!string.IsNullOrEmpty(name)) return name;
+                    }
+                    var idProperty = data.GetType().GetProperty("Id");
+                    if (idProperty != null)
+                    {
+                        return idProperty.GetValue(data)?.ToString() ?? "item";
+                    }
+                }
+                return GetAssetFilePath(item) ?? "item";
+            }
+
+            // For table data, try to get Id
+            var actualData = ExtractActualData(item);
+            if (actualData != null)
+            {
+                var idProp = actualData.GetType().GetProperty("Id");
+                if (idProp != null)
+                {
+                    return idProp.GetValue(actualData)?.ToString() ?? "item";
+                }
+            }
+
+            return "item";
+        }
+
+        /// <summary>
+        /// Delete an asset item from IEditableAssetRepository
+        /// </summary>
+        private void DeleteAssetItem(object assetWrapper)
+        {
+            var assetId = GetAssetId(assetWrapper);
+            if (!assetId.HasValue)
+            {
+                UpdateStatus("Cannot determine asset ID");
+                return;
+            }
+
+            // Track deletion
+            changeTracker?.TrackDelete(assetId.Value);
+
+            // Mark item as deleted
+            OnItemMarkedForDeletion(assetWrapper);
+
+            // Find Remove(AssetId) method
+            var removeMethod = repository.GetType().GetMethod("Remove", new[] { typeof(AssetId) });
+            if (removeMethod != null)
+            {
+                var result = removeMethod.Invoke(repository, new object[] { assetId.Value });
+
+                RefreshContent();
+                MarkAsModified();
+                UpdateStatus("Asset deleted");
+
+                InvokeOnItemDeleted(assetWrapper);
+            }
+            else
+            {
+                UpdateStatus("Remove method not found on repository");
+            }
+        }
+
+        /// <summary>
+        /// Delete a table data item from IKeyValueDataRepository
+        /// </summary>
+        private void DeleteTableItem(object item)
+        {
+            object keyToRemove = GetKeyFromItem(item);
+            if (keyToRemove == null)
+            {
+                UpdateStatus("Cannot determine item key");
+                return;
+            }
+
+            // Track deletion
+            changeTracker?.TrackDelete(keyToRemove);
+
+            // Mark item as deleted
+            OnItemMarkedForDeletion(item);
+
+            // Find the Remove method on the repository
+            var removeMethod = repository.GetType().GetMethod("Remove");
+            if (removeMethod != null)
+            {
+                var result = removeMethod.Invoke(repository, new[] { keyToRemove });
+
+                RefreshContent();
+                MarkAsModified();
+                UpdateStatus("Item deleted");
+
+                InvokeOnItemDeleted(item);
+            }
+            else
+            {
+                UpdateStatus("Remove method not found on repository");
             }
         }
         
