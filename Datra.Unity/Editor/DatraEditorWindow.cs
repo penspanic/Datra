@@ -364,130 +364,6 @@ namespace Datra.Unity.Editor
             viewModel.OnActiveTabChanged += OnViewModelActiveTabChanged;
         }
 
-        private void CreateChangeTrackerForRepository(Type dataType, object repository)
-        {
-            try
-            {
-                // Get repository type
-                var repoType = repository.GetType();
-
-                // Check for ISingleDataRepository<TData>
-                var singleRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ISingleDataRepository<>));
-
-                if (singleRepoInterface != null)
-                {
-                    var valueType = singleRepoInterface.GetGenericArguments()[0];
-                    var keyType = typeof(string);
-
-                    // Create RepositoryChangeTracker<string, TValue>
-                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
-                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
-
-                    if (tracker != null)
-                    {
-                        // Use interface to get data
-                        var singleRepo = repository as dynamic;
-                        var data = singleRepo.Get();
-
-                        // Create a dictionary with single item using "single" as key
-                        var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
-                        var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
-
-                        if (dict != null && data != null)
-                        {
-                            dict.Add("single", data);
-                            tracker.InitializeBaseline(dict);
-                        }
-
-                        // Store tracker
-                        changeTrackers[dataType] = tracker;
-                    }
-                    return;
-                }
-
-                // Check for IKeyValueDataRepository<TKey, TValue>
-                var keyValueRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IKeyValueDataRepository<,>));
-
-                if (keyValueRepoInterface != null)
-                {
-                    var genericArgs = keyValueRepoInterface.GetGenericArguments();
-                    var keyType = genericArgs[0];
-                    var valueType = genericArgs[1];
-
-                    // Create RepositoryChangeTracker<TKey, TValue>
-                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, valueType);
-                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
-
-                    if (tracker != null)
-                    {
-                        // Use interface to get data
-                        var keyValueRepo = repository as dynamic;
-                        var data = keyValueRepo.GetAll();
-
-                        // Initialize baseline
-                        tracker.InitializeBaseline(data);
-
-                        // Store tracker
-                        changeTrackers[dataType] = tracker;
-                    }
-                    return;
-                }
-
-                // Check for IAssetRepository<T>
-                var assetRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IAssetRepository<>));
-
-                if (assetRepoInterface != null)
-                {
-                    var assetDataType = assetRepoInterface.GetGenericArguments()[0];
-
-                    // IAssetRepository<T> implements IReadOnlyDictionary<AssetId, Asset<T>>
-                    var keyType = typeof(Datra.DataTypes.AssetId);
-                    var assetType = typeof(Datra.DataTypes.Asset<>).MakeGenericType(assetDataType);
-
-                    // Create RepositoryChangeTracker<AssetId, Asset<T>>
-                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, assetType);
-                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
-
-                    if (tracker != null)
-                    {
-                        // IAssetRepository<T> implements IReadOnlyDictionary<AssetId, Asset<T>>
-                        // Cast to non-generic IReadOnlyDictionary and convert to the correct type
-                        var assetRepo = repository as System.Collections.IEnumerable;
-
-                        // Build dictionary manually using reflection
-                        var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, assetType);
-                        var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
-
-                        if (dict != null && assetRepo != null)
-                        {
-                            foreach (var item in assetRepo)
-                            {
-                                // item is KeyValuePair<AssetId, Asset<T>>
-                                var kvpType = item.GetType();
-                                var key = kvpType.GetProperty("Key")?.GetValue(item);
-                                var value = kvpType.GetProperty("Value")?.GetValue(item);
-                                if (key != null && value != null)
-                                {
-                                    dict.Add(key, value);
-                                }
-                            }
-                            tracker.InitializeBaseline(dict);
-                        }
-
-                        // Store tracker
-                        changeTrackers[dataType] = tracker;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"Failed to create change tracker for {dataType.Name}: {e.Message}");
-            }
-        }
-
         private void CreateEditableDataSourceForRepository(Type dataType, object repository)
         {
             try
@@ -634,10 +510,7 @@ namespace Datra.Unity.Editor
                         repositories[dataTypeInfo.DataType] = repository;
                         dataTypeInfoMap[dataTypeInfo.DataType] = dataTypeInfo;
 
-                        // Create RepositoryChangeTracker for this data type (legacy)
-                        CreateChangeTrackerForRepository(dataTypeInfo.DataType, repository);
-
-                        // Create EditableDataSource for this data type (new architecture)
+                        // Create EditableDataSource for this data type
                         CreateEditableDataSourceForRepository(dataTypeInfo.DataType, repository);
                     }
                 }

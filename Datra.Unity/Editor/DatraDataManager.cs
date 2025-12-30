@@ -392,98 +392,16 @@ namespace Datra.Unity.Editor
         }
 
         /// <summary>
-        /// Update change tracker baseline after successful save
+        /// Update change tracker baseline after successful save (only for localization)
         /// </summary>
         private void UpdateChangeTrackerBaseline(Type dataType, IDataRepository repository)
         {
-            if (!_changeTrackers.TryGetValue(dataType, out var tracker))
-                return;
-
-            try
+            // Only localization uses changeTrackers now, data types use EditableDataSource
+            if (dataType == typeof(LocalizationContext) &&
+                _changeTrackers.TryGetValue(dataType, out var tracker) &&
+                tracker is LocalizationChangeTracker locTracker)
             {
-                // Check if it's LocalizationContext
-                if (dataType == typeof(LocalizationContext) && tracker is LocalizationChangeTracker locTracker)
-                {
-                    locTracker.UpdateBaseline();
-                    return;
-                }
-
-                // Check if it's IKeyValueDataRepository<TKey, TData>
-                var keyValueRepoInterface = repository.GetType().GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType &&
-                                       i.GetGenericTypeDefinition().Name == "IKeyValueDataRepository`2");
-
-                if (keyValueRepoInterface != null)
-                {
-                    // Use interface to get data
-                    var keyValueRepo = repository as dynamic;
-                    var currentData = keyValueRepo.GetAll();
-
-                    // Call UpdateBaseline on the tracker
-                    tracker.UpdateBaseline(currentData);
-                    return;
-                }
-
-                // Check if it's ISingleDataRepository<TData>
-                var singleRepoInterface = repository.GetType().GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType &&
-                                       i.GetGenericTypeDefinition().Name == "ISingleDataRepository`1");
-
-                if (singleRepoInterface != null)
-                {
-                    var valueType = singleRepoInterface.GetGenericArguments()[0];
-
-                    // Use interface to get data
-                    var singleRepo = repository as dynamic;
-                    var data = singleRepo.Get();
-
-                    // Create a dictionary with single item using "single" as key
-                    var dictType = typeof(Dictionary<,>).MakeGenericType(typeof(string), valueType);
-                    var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
-
-                    if (dict != null && data != null)
-                    {
-                        dict.Add("single", data);
-                        tracker.UpdateBaseline(dict);
-                    }
-                    return;
-                }
-
-                // Check if it's IAssetRepository<TData>
-                var assetRepoInterface = repository.GetType().GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType &&
-                                       i.GetGenericTypeDefinition().Name == "IAssetRepository`1");
-
-                if (assetRepoInterface != null)
-                {
-                    var assetDataType = assetRepoInterface.GetGenericArguments()[0];
-                    var keyType = typeof(Datra.DataTypes.AssetId);
-                    var assetType = typeof(Datra.DataTypes.Asset<>).MakeGenericType(assetDataType);
-
-                    // Build dictionary from repository (IReadOnlyDictionary<AssetId, Asset<T>>)
-                    var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, assetType);
-                    var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
-
-                    if (dict != null && repository is System.Collections.IEnumerable assetRepo)
-                    {
-                        foreach (var item in assetRepo)
-                        {
-                            // item is KeyValuePair<AssetId, Asset<T>>
-                            var kvpType = item.GetType();
-                            var key = kvpType.GetProperty("Key")?.GetValue(item);
-                            var value = kvpType.GetProperty("Value")?.GetValue(item);
-                            if (key != null && value != null)
-                            {
-                                dict.Add(key, value);
-                            }
-                        }
-                        tracker.UpdateBaseline(dict);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"Failed to update change tracker baseline for {dataType.Name}: {ex.Message}");
+                locTracker.UpdateBaseline();
             }
         }
 
