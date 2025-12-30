@@ -1,5 +1,6 @@
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Datra.Interfaces;
 using Datra.Serializers;
@@ -83,5 +84,13 @@ namespace Datra.Repositories
             var rawData = _serializeFunc(_data, serializer);
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
+
+        public IEnumerable<object> EnumerateItems()
+        {
+            if (_data != null)
+                yield return _data;
+        }
+
+        public int ItemCount => _data != null ? 1 : 0;
     }
 }

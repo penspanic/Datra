@@ -235,9 +235,10 @@ namespace Datra.Unity.Editor.Panels
         {
             var rootItems = new List<TreeViewItemData<DataTypeItem>>();
 
-            // Group data types by category
-            var singleDataInfos = dataTypeInfos.Where(info => info.IsSingleData).ToList();
-            var tableDataInfos = dataTypeInfos.Where(info => !info.IsSingleData).ToList();
+            // Group data types by RepositoryKind
+            var singleDataInfos = dataTypeInfos.Where(info => info.RepositoryKind == RepositoryKind.Single).ToList();
+            var tableDataInfos = dataTypeInfos.Where(info => info.RepositoryKind == RepositoryKind.Table).ToList();
+            var assetDataInfos = dataTypeInfos.Where(info => info.RepositoryKind == RepositoryKind.Asset).ToList();
 
             // Create Single Data category
             if (singleDataInfos.Any())
@@ -258,6 +259,17 @@ namespace Datra.Unity.Editor.Panels
                     "table-data",
                     "Table Data",
                     tableDataInfos);
+                rootItems.Add(category);
+            }
+
+            // Create Asset Data category
+            if (assetDataInfos.Any())
+            {
+                var category = CreateDataTypeCategory(
+                    "AssetData",
+                    "asset-data",
+                    "Asset Data",
+                    assetDataInfos);
                 rootItems.Add(category);
             }
 

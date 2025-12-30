@@ -377,5 +377,13 @@ namespace Datra.Repositories
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         #endregion
+
+        #region IDataRepository Common Methods
+
+        public IEnumerable<object> EnumerateItems() => GetAllData().Cast<object>();
+
+        public int ItemCount => _dataById.Count;
+
+        #endregion
     }
 }

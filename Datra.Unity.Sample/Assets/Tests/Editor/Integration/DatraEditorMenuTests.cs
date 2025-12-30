@@ -110,8 +110,7 @@ namespace Datra.Unity.Tests.Integration
             // Log data types for debugging
             foreach (var dt in dataTypes)
             {
-                var kind = dt.IsSingleData ? "Single" : "KeyValue/Asset";
-                UnityEngine.Debug.Log($"Data type: {dt.DataType.Name} ({kind})");
+                UnityEngine.Debug.Log($"Data type: {dt.DataType.Name} ({dt.RepositoryKind})");
             }
         }
 

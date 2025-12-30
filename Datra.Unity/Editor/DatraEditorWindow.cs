@@ -64,6 +64,15 @@ namespace Datra.Unity.Editor
 
         // Public accessor for ViewModel (enables testing and external access)
         public DatraEditorViewModel ViewModel => viewModel;
+
+        /// <summary>
+        /// Selects a data type and updates the inspector view.
+        /// This is the public API for programmatic selection (used for testing).
+        /// </summary>
+        public void SelectDataType(Type dataType)
+        {
+            OnDataTypeSelected(dataType);
+        }
         
         // Window State
         private string currentProjectName;

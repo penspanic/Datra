@@ -231,18 +231,23 @@ namespace Datra.Generators.Generators
         private void GenerateInitializeDataTypeInfos(CodeBuilder builder, List<DataModelInfo> dataModels)
         {
             builder.BeginMethod("protected override void InitializeDataTypeInfos()");
-            
+
             foreach (var model in dataModels)
             {
+                // Determine RepositoryKind
+                string repositoryKind = model.IsAssetData ? "RepositoryKind.Asset"
+                                      : model.IsTableData ? "RepositoryKind.Table"
+                                      : "RepositoryKind.Single";
+
                 builder.AppendLine($"RegisterDataTypeInfo(new DataTypeInfo(");
                 builder.AppendLine($"    typeName: \"{model.TypeName}\",");
                 builder.AppendLine($"    dataType: typeof({model.TypeName}),");
                 builder.AppendLine($"    filePath: \"{model.FilePath}\",");
                 builder.AppendLine($"    propertyName: \"{model.PropertyName}\",");
-                builder.AppendLine($"    isSingleData: {(model.IsTableData ? "false" : "true")}");
+                builder.AppendLine($"    repositoryKind: {repositoryKind}");
                 builder.AppendLine("));");
             }
-            
+
             builder.EndMethod();
         }
 

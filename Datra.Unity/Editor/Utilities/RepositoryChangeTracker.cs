@@ -329,60 +329,93 @@ namespace Datra.Unity.Editor.Utilities
         public bool HasModifications =>
             _propertyChanges.Count > 0 || _addedKeys.Count > 0 || _deletedKeys.Count > 0;
 
-        // IRepositoryChangeTracker implementation (non-generic wrappers)
+        // IRepositoryChangeTracker implementation (non-generic wrappers with safe casting)
+        private bool TryConvertKey(object key, out TKey typedKey)
+        {
+            if (key is TKey k)
+            {
+                typedKey = k;
+                return true;
+            }
+            typedKey = default;
+            return false;
+        }
+
         object IRepositoryChangeTracker.GetBaselineValue(object key)
         {
-            return GetBaselineValue((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                return GetBaselineValue(typedKey);
+            return null;
         }
 
         void IRepositoryChangeTracker.TrackChange(object key, object value)
         {
-            TrackChange((TKey)key, (TValue)value);
+            if (TryConvertKey(key, out var typedKey) && value is TValue typedValue)
+                TrackChange(typedKey, typedValue);
         }
 
         void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified)
         {
-            TrackPropertyChange((TKey)key, propertyName, newValue, out isModified);
+            if (TryConvertKey(key, out var typedKey))
+            {
+                TrackPropertyChange(typedKey, propertyName, newValue, out isModified);
+                return;
+            }
+            isModified = false;
         }
 
         void IRepositoryChangeTracker.TrackAdd(object key, object value)
         {
-            TrackAdd((TKey)key, (TValue)value);
+            if (TryConvertKey(key, out var typedKey) && value is TValue typedValue)
+                TrackAdd(typedKey, typedValue);
         }
 
         void IRepositoryChangeTracker.TrackDelete(object key)
         {
-            TrackDelete((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                TrackDelete(typedKey);
         }
 
         bool IRepositoryChangeTracker.IsModified(object key)
         {
-            return IsModified((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                return IsModified(typedKey);
+            return false;
         }
 
         bool IRepositoryChangeTracker.IsPropertyModified(object key, string propertyName)
         {
-            return IsPropertyModified((TKey)key, propertyName);
+            if (TryConvertKey(key, out var typedKey))
+                return IsPropertyModified(typedKey, propertyName);
+            return false;
         }
 
         bool IRepositoryChangeTracker.IsAdded(object key)
         {
-            return IsAdded((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                return IsAdded(typedKey);
+            return false;
         }
 
         bool IRepositoryChangeTracker.IsDeleted(object key)
         {
-            return IsDeleted((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                return IsDeleted(typedKey);
+            return false;
         }
 
         IEnumerable<string> IRepositoryChangeTracker.GetModifiedProperties(object key)
         {
-            return GetModifiedProperties((TKey)key);
+            if (TryConvertKey(key, out var typedKey))
+                return GetModifiedProperties(typedKey);
+            return Enumerable.Empty<string>();
         }
 
         object IRepositoryChangeTracker.GetPropertyBaselineValue(object key, string propertyName)
         {
-            return GetPropertyBaselineValue((TKey)key, propertyName);
+            if (TryConvertKey(key, out var typedKey))
+                return GetPropertyBaselineValue(typedKey, propertyName);
+            return null;
         }
 
         void IRepositoryChangeTracker.InitializeBaseline(object repositoryData)

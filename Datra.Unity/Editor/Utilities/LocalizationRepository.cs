@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Datra.Interfaces;
 using Datra.Localization;
@@ -58,6 +60,31 @@ namespace Datra.Unity.Editor.Utilities
             var currentLanguageCode = _localizationContext.CurrentLanguageCode;
             var fileName = currentLanguageCode.GetFileName();
             return System.IO.Path.Combine(_localizationDataPath, fileName);
+        }
+
+        /// <summary>
+        /// Enumerate all localization key data items
+        /// </summary>
+        public IEnumerable<object> EnumerateItems()
+        {
+            var keyRepo = _localizationContext.KeyRepository;
+            if (keyRepo != null)
+            {
+                return keyRepo.GetAll().Values.Cast<object>();
+            }
+            return Enumerable.Empty<object>();
+        }
+
+        /// <summary>
+        /// Number of localization keys
+        /// </summary>
+        public int ItemCount
+        {
+            get
+            {
+                var keyRepo = _localizationContext.KeyRepository;
+                return keyRepo?.Count ?? 0;
+            }
         }
     }
 }

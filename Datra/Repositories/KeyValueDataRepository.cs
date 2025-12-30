@@ -219,5 +219,9 @@ namespace Datra.Repositories
 
         public IEnumerable<TKey> Keys => _data.Keys;
         public IEnumerable<TData> Values => _data.Values;
+
+        public IEnumerable<object> EnumerateItems() => _data.Values.Cast<object>();
+
+        public int ItemCount => _data.Count;
     }
 }

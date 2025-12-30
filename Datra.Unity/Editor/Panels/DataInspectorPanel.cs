@@ -142,16 +142,41 @@ namespace Datra.Unity.Editor.Panels
                 breadcrumbContainer.Clear();
                 return;
             }
-            
+
             // Update title
             titleLabel.text = currentType.Name;
-            
-            // Update subtitle with additional info
-            var isTableData = IsTableData(currentType);
-            subtitleLabel.text = isTableData ? "Table Data" : "Single Data";
-            
+
+            // Update subtitle based on RepositoryKind from DataTypeInfo
+            var repositoryKind = GetRepositoryKind();
+            subtitleLabel.text = repositoryKind switch
+            {
+                RepositoryKind.Single => "Single Data",
+                RepositoryKind.Table => "Table Data",
+                RepositoryKind.Asset => "Asset Data",
+                _ => "Data"
+            };
+
             // Update breadcrumb
             UpdateBreadcrumb();
+        }
+
+        private RepositoryKind GetRepositoryKind()
+        {
+            // Get from DataTypeInfo if available
+            if (currentDataContext != null && currentType != null)
+            {
+                var dataTypeInfos = currentDataContext.GetDataTypeInfos();
+                var info = dataTypeInfos.FirstOrDefault(i => i.DataType == currentType);
+                if (info != null)
+                {
+                    return info.RepositoryKind;
+                }
+            }
+
+            // Fallback: check interface
+            if (IsTableData(currentType))
+                return RepositoryKind.Table;
+            return RepositoryKind.Single;
         }
         
         private void UpdateBreadcrumb()

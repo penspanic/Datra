@@ -429,7 +429,7 @@ namespace Datra.Unity.Tests
                 dataType: typeof(string),
                 filePath: "strings.csv",
                 propertyName: "Strings",
-                isSingleData: false
+                repositoryKind: RepositoryKind.Table
             ));
 
             var viewModel = new DatraEditorViewModel(mockDataService);

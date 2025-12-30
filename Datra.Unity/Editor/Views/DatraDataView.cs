@@ -492,24 +492,17 @@ namespace Datra.Unity.Editor.Views
         protected bool IsIdDuplicate(object id)
         {
             if (repository == null || id == null) return false;
-            
-            var getAllMethod = repository.GetType().GetMethod("GetAll");
-            if (getAllMethod != null)
+
+            // Use EnumerateItems() - no reflection needed
+            foreach (var item in repository.EnumerateItems())
             {
-                var items = getAllMethod.Invoke(repository, null) as System.Collections.IEnumerable;
-                if (items != null)
+                var key = GetKeyFromItem(item);
+                if (key != null && key.Equals(id))
                 {
-                    foreach (var item in items)
-                    {
-                        var key = GetKeyFromItem(item);
-                        if (key != null && key.Equals(id))
-                        {
-                            return true;
-                        }
-                    }
+                    return true;
                 }
             }
-            
+
             return false;
         }
         

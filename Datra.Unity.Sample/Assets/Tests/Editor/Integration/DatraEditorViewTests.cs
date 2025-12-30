@@ -28,9 +28,7 @@ namespace Datra.Unity.Tests.Integration
 
         private bool IsTableRepository(DataTypeInfo dataTypeInfo, IDataRepository repository)
         {
-            if (dataTypeInfo.IsSingleData) return false;
-            if (IsAssetRepository(repository)) return false;
-            return true;
+            return dataTypeInfo.RepositoryKind == RepositoryKind.Table;
         }
 
         #endregion
@@ -45,7 +43,7 @@ namespace Datra.Unity.Tests.Integration
 
             // Find a Single Data type
             var singleDataType = window.ViewModel.DataTypes
-                .FirstOrDefault(dt => dt.IsSingleData);
+                .FirstOrDefault(dt => dt.RepositoryKind == RepositoryKind.Single);
 
             if (singleDataType == null)
             {
@@ -54,7 +52,7 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Act - Select the data type via ViewModel
-            window.ViewModel.SelectDataType(singleDataType.DataType);
+            window.SelectDataType(singleDataType.DataType);
             yield return WaitForSeconds(0.5f);
 
             // Assert - Should show form view (or at least have content)
@@ -80,7 +78,7 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Act
-            window.ViewModel.SelectDataType(gameConfigType.DataType);
+            window.SelectDataType(gameConfigType.DataType);
             yield return WaitForSeconds(1f);
 
             // Assert - Check for form fields in the UI
@@ -114,8 +112,7 @@ namespace Datra.Unity.Tests.Integration
 
             // Find a Table Data type
             var tableDataType = window.ViewModel.DataTypes
-                .Where(dt => !dt.IsSingleData && window.Repositories.ContainsKey(dt.DataType))
-                .FirstOrDefault(dt => IsTableRepository(dt, window.Repositories[dt.DataType]));
+                .FirstOrDefault(dt => dt.RepositoryKind == RepositoryKind.Table);
 
             if (tableDataType == null)
             {
@@ -124,7 +121,7 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Act
-            window.ViewModel.SelectDataType(tableDataType.DataType);
+            window.SelectDataType(tableDataType.DataType);
             yield return WaitForSeconds(0.5f);
 
             // Assert
@@ -141,8 +138,7 @@ namespace Datra.Unity.Tests.Integration
             yield return OpenWindowAndWaitForLoad();
 
             var itemDataType = window.ViewModel.DataTypes
-                .Where(dt => !dt.IsSingleData && window.Repositories.ContainsKey(dt.DataType))
-                .Where(dt => IsTableRepository(dt, window.Repositories[dt.DataType]))
+                .Where(dt => dt.RepositoryKind == RepositoryKind.Table)
                 .FirstOrDefault(dt =>
                     dt.DataType.Name == "ItemData" || dt.DataType.Name == "CharacterData");
 
@@ -163,20 +159,40 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Act
-            window.ViewModel.SelectDataType(itemDataType.DataType);
+            window.SelectDataType(itemDataType.DataType);
             yield return WaitForSeconds(1f);
+
+            // Debug - dump UI hierarchy
+            Debug.Log($"=== DEBUG: Checking UI after selecting {itemDataType.DataType.Name} ===");
+            Debug.Log($"SelectedDataType: {window.ViewModel.SelectedDataType?.Name}");
+
+            // Check if repository has data
+            var repoForDebug = window.Repositories[itemDataType.DataType];
+            Debug.Log($"Repository type: {repoForDebug?.GetType().Name}");
+            var getAllDebug = repoForDebug?.GetType().GetMethod("GetAll");
+            Debug.Log($"GetAll method found: {getAllDebug != null}");
+            if (getAllDebug != null)
+            {
+                var dataDebug = getAllDebug.Invoke(repoForDebug, null) as System.Collections.IEnumerable;
+                int countDebug = 0;
+                if (dataDebug != null) foreach (var _ in dataDebug) countDebug++;
+                Debug.Log($"Repository GetAll returned {countDebug} items");
+            }
 
             // Assert - Check for table content
             bool hasContent = false;
 
             // Check 1: ListView with itemsSource (virtualized table)
             var listView = QueryUI<ListView>();
+            Debug.Log($"ListView found: {listView != null}");
             if (listView != null)
             {
+                Debug.Log($"ListView.itemsSource: {listView.itemsSource != null}");
                 if (listView.itemsSource != null)
                 {
                     int itemCount = 0;
                     foreach (var _ in listView.itemsSource) itemCount++;
+                    Debug.Log($"ListView itemsSource count: {itemCount}");
                     if (itemCount > 0)
                     {
                         hasContent = true;
@@ -186,37 +202,49 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Check 2: Visible table rows (if rendered)
-            if (!hasContent)
+            var tableRows = QueryAllUI<VisualElement>("table-row");
+            Debug.Log($"table-row count: {tableRows.Count}");
+            if (tableRows.Count > 0)
             {
-                var tableRows = QueryAllUI<VisualElement>("table-row");
-                if (tableRows.Count > 0)
-                {
-                    hasContent = true;
-                    Debug.Log($"Found {tableRows.Count} visible table-row elements");
-                }
+                hasContent = true;
             }
 
             // Check 3: Form view table items
-            if (!hasContent)
+            var tableItems = QueryAllUI<VisualElement>("table-item");
+            Debug.Log($"table-item count: {tableItems.Count}");
+            if (tableItems.Count > 0)
             {
-                var tableItems = QueryAllUI<VisualElement>("table-item");
-                if (tableItems.Count > 0)
-                {
-                    hasContent = true;
-                    Debug.Log($"Found {tableItems.Count} table-item elements (form view)");
-                }
+                hasContent = true;
             }
 
             // Check 4: Any input fields (indicates data is being displayed)
-            if (!hasContent)
+            var textFields = QueryAllUI<TextField>();
+            Debug.Log($"TextField count: {textFields.Count}");
+            if (textFields.Count > 3)
             {
-                var textFields = QueryAllUI<TextField>();
-                if (textFields.Count > 3) // More than just search field
+                hasContent = true;
+            }
+
+            // Check 5: All VisualElements with common view classes
+            var formView = QueryUI<VisualElement>(className: "datra-form-view");
+            var tableView = QueryUI<VisualElement>(className: "datra-table-view");
+            Debug.Log($"datra-form-view found: {formView != null}");
+            Debug.Log($"datra-table-view found: {tableView != null}");
+
+            // Check 6: Dump all class names in content area
+            var allElements = window.rootVisualElement.Query<VisualElement>().ToList();
+            var classNames = new System.Collections.Generic.HashSet<string>();
+            foreach (var el in allElements)
+            {
+                foreach (var cls in el.GetClasses())
                 {
-                    hasContent = true;
-                    Debug.Log($"Found {textFields.Count} TextFields");
+                    if (cls.Contains("table") || cls.Contains("form") || cls.Contains("data") || cls.Contains("view"))
+                    {
+                        classNames.Add(cls);
+                    }
                 }
             }
+            Debug.Log($"Relevant class names: {string.Join(", ", classNames)}");
 
             Assert.IsTrue(hasContent,
                 $"Table should display data. Expected ~{expectedCount} items but found no content.");
@@ -246,7 +274,7 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Act
-            window.ViewModel.SelectDataType(assetDataType.DataType);
+            window.SelectDataType(assetDataType.DataType);
             yield return WaitForSeconds(0.5f);
 
             // Assert
@@ -280,7 +308,7 @@ namespace Datra.Unity.Tests.Integration
             Assert.Greater(expectedCount, 0, "Repository should have items for this test");
 
             // Act - Select ScriptAssetData
-            window.ViewModel.SelectDataType(scriptAssetType.DataType);
+            window.SelectDataType(scriptAssetType.DataType);
             yield return WaitForSeconds(1f);
 
             // Assert - Content should be displayed
@@ -389,8 +417,7 @@ namespace Datra.Unity.Tests.Integration
             yield return OpenWindowAndWaitForLoad();
 
             var tableDataType = window.ViewModel.DataTypes
-                .Where(dt => !dt.IsSingleData && window.Repositories.ContainsKey(dt.DataType))
-                .FirstOrDefault(dt => IsTableRepository(dt, window.Repositories[dt.DataType]));
+                .FirstOrDefault(dt => dt.RepositoryKind == RepositoryKind.Table);
 
             if (tableDataType == null)
             {
@@ -399,7 +426,7 @@ namespace Datra.Unity.Tests.Integration
             }
 
             // Select data type
-            window.ViewModel.SelectDataType(tableDataType.DataType);
+            window.SelectDataType(tableDataType.DataType);
             yield return WaitForSeconds(0.5f);
 
             // Find view toggle buttons
@@ -446,7 +473,7 @@ namespace Datra.Unity.Tests.Integration
             // Act - Try to select a type that doesn't exist in repositories
             try
             {
-                window.ViewModel.SelectDataType(typeof(string));
+                window.SelectDataType(typeof(string));
             }
             catch (System.Exception ex)
             {

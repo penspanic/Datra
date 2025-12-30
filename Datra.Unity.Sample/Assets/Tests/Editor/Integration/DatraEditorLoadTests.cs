@@ -32,9 +32,7 @@ namespace Datra.Unity.Tests.Integration
         /// </summary>
         private bool IsTableRepository(DataTypeInfo dataTypeInfo, IDataRepository repository)
         {
-            if (dataTypeInfo.IsSingleData) return false;
-            if (IsAssetRepository(repository)) return false;
-            return true;
+            return dataTypeInfo.RepositoryKind == RepositoryKind.Table;
         }
 
         #endregion
@@ -63,7 +61,7 @@ namespace Datra.Unity.Tests.Integration
 
             // Assert - Check for Single Data types from SampleData
             var singleDataTypes = window.ViewModel.DataTypes
-                .Where(dt => dt.IsSingleData)
+                .Where(dt => dt.RepositoryKind == RepositoryKind.Single)
                 .ToList();
 
             Assert.Greater(singleDataTypes.Count, 0, "Should have at least one Single Data type");
@@ -84,10 +82,9 @@ namespace Datra.Unity.Tests.Integration
             yield return OpenWindowAndWaitForLoad();
             yield return WaitForSeconds(0.5f);
 
-            // Assert - Check for Table Data types (not single, not asset)
+            // Assert - Check for Table Data types
             var tableDataTypes = window.ViewModel.DataTypes
-                .Where(dt => !dt.IsSingleData && window.Repositories.ContainsKey(dt.DataType))
-                .Where(dt => IsTableRepository(dt, window.Repositories[dt.DataType]))
+                .Where(dt => dt.RepositoryKind == RepositoryKind.Table)
                 .ToList();
 
             Assert.Greater(tableDataTypes.Count, 0, "Should have at least one Table Data type");
@@ -161,8 +158,7 @@ namespace Datra.Unity.Tests.Integration
             yield return OpenWindowAndWaitForLoad();
 
             var tableType = window.ViewModel.DataTypes
-                .Where(dt => !dt.IsSingleData && window.Repositories.ContainsKey(dt.DataType))
-                .Where(dt => IsTableRepository(dt, window.Repositories[dt.DataType]))
+                .Where(dt => dt.RepositoryKind == RepositoryKind.Table)
                 .FirstOrDefault(dt =>
                     dt.DataType.Name == "ItemData" || dt.DataType.Name == "CharacterData");
 
@@ -251,8 +247,7 @@ namespace Datra.Unity.Tests.Integration
                 var repo = window.Repositories[dataTypeInfo.DataType];
                 Assert.IsNotNull(repo, $"Repository for {dataTypeInfo.DataType.Name} should not be null");
 
-                var repoKind = dataTypeInfo.IsSingleData ? "Single" :
-                    IsAssetRepository(repo) ? "Asset" : "Table";
+                var repoKind = dataTypeInfo.RepositoryKind.ToString();
                 Debug.Log($"Repository accessible: {dataTypeInfo.DataType.Name} ({repoKind})");
             }
         }

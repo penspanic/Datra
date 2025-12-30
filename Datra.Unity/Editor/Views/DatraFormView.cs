@@ -52,75 +52,70 @@ namespace Datra.Unity.Editor.Views
 
             if (repository == null || dataType == null) return;
 
-            if (IsTableData(dataType))
+            // Use EnumerateItems() from IDataRepository - no reflection needed
+            var items = repository.EnumerateItems().ToList();
+
+            if (items.Count == 0) return;
+
+            // Check if single data (only 1 item and not ITableData)
+            if (items.Count == 1 && !IsTableData(dataType))
             {
-                DisplayTableDataAsForm();
+                DisplaySingleDataForm(items[0]);
             }
             else
             {
-                DisplaySingleDataForm();
+                DisplayTableDataAsForm(items);
             }
 
             // Update modification state after refresh (to show orange dot if there are modifications)
             UpdateModifiedState();
         }
-        
-        private void DisplaySingleDataForm()
+
+        private void DisplaySingleDataForm(object data)
         {
-            var getMethod = repository.GetType().GetMethod("Get");
-            var data = getMethod?.Invoke(repository, null);
-            
-            if (data != null)
+            if (data == null) return;
+
+            formContainer = new VisualElement();
+            formContainer.AddToClassList("single-data-form");
+
+            // Create fields using the field factory
+            var fields = DatraFieldFactory.CreateFieldsForObject(data, FieldLayoutMode.Form, false, this);
+            foreach (var field in fields)
             {
-                formContainer = new VisualElement();
-                formContainer.AddToClassList("single-data-form");
+                field.OnValueChanged += (propName, value) => {
+                    // Track in external change tracker
+                    var dataKey = GetKeyFromItem(data);
+                    if (dataKey != null)
+                    {
+                        changeTracker.TrackChange(dataKey, data);
+                    }
 
-                // Create fields using the field factory
-                var fields = DatraFieldFactory.CreateFieldsForObject(data, FieldLayoutMode.Form, false, this);
-                foreach (var field in fields)
-                {
-                    field.OnValueChanged += (propName, value) => {
-                        // Track in external change tracker
-                        var dataKey = GetKeyFromItem(data);
-                        if (dataKey != null)
-                        {
-                            changeTracker.TrackChange(dataKey, data);
-                        }
-
-                        UpdateModifiedState();
-                    };
-                    formContainer.Add(field);
-                    activeFields.Add(field);
-                }
-
-                scrollContent.Add(formContainer);
+                    UpdateModifiedState();
+                };
+                formContainer.Add(field);
+                activeFields.Add(field);
             }
+
+            scrollContent.Add(formContainer);
         }
-        
-        private void DisplayTableDataAsForm()
+
+        private void DisplayTableDataAsForm(List<object> items)
         {
             // Add toolbar for table data
             var toolbar = CreateTableToolbar();
             scrollContent.Add(toolbar);
-            
-            // Get all items from repository
-            var getAllMethod = repository.GetType().GetMethod("GetAll");
-            var items = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
-            
-            if (items != null)
+
+            itemsContainer = new VisualElement();
+            itemsContainer.AddToClassList("table-items-container");
+
+            int index = 0;
+            foreach (var item in items)
             {
-                itemsContainer = new VisualElement();
-                itemsContainer.AddToClassList("table-items-container");
-                
-                int index = 0;
-                foreach (var item in items)
-                {
-                    var itemElement = CreateTableItemElement(item, index++);
-                    itemsContainer.Add(itemElement);
-                }
-                
-                scrollContent.Add(itemsContainer);
+                var itemElement = CreateTableItemElement(item, index++);
+                itemsContainer.Add(itemElement);
             }
+
+            scrollContent.Add(itemsContainer);
         }
         
         private VisualElement CreateTableToolbar()

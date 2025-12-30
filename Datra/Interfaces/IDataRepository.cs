@@ -8,6 +8,17 @@ namespace Datra.Interfaces
         Task LoadAsync();
         Task SaveAsync();
         string GetLoadedFilePath();
+
+        /// <summary>
+        /// Enumerate all items for editor display.
+        /// Single: yields 1 item, Table: yields all values, Asset: yields all data.
+        /// </summary>
+        IEnumerable<object> EnumerateItems();
+
+        /// <summary>
+        /// Number of items (1 for single, N for table/asset)
+        /// </summary>
+        int ItemCount { get; }
     }
 
     /// <summary>

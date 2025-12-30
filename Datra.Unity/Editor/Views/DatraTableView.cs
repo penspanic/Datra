@@ -400,16 +400,23 @@ namespace Datra.Unity.Editor.Views
             var itemKey = GetKeyFromItem(item);
             if (itemKey != null && changeTracker != null)
             {
-                var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
-                foreach (var propName in modifiedProps)
+                try
                 {
-                    // Find cell for this property and mark as modified
-                    var cellForProp = row.Q($"cell-{propName}");
-                    if (cellForProp != null)
+                    var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                    foreach (var propName in modifiedProps)
                     {
-                        var field = cellForProp.Q<DatraPropertyField>();
-                        field?.SetModified(true);
+                        // Find cell for this property and mark as modified
+                        var cellForProp = row.Q($"cell-{propName}");
+                        if (cellForProp != null)
+                        {
+                            var field = cellForProp.Q<DatraPropertyField>();
+                            field?.SetModified(true);
+                        }
                     }
+                }
+                catch (System.InvalidCastException)
+                {
+                    // Key type mismatch (e.g., Asset data)
                 }
             }
         }

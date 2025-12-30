@@ -206,38 +206,11 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Loads all items from the repository
+        /// Loads all items from the repository using EnumerateItems() - no reflection needed
         /// </summary>
         protected virtual List<object> LoadItemsFromRepository()
         {
-            var items = new List<object>();
-
-            if (IsTableData(dataType))
-            {
-                var getAllMethod = repository.GetType().GetMethod("GetAll");
-                var data = getAllMethod?.Invoke(repository, null) as System.Collections.IEnumerable;
-
-                if (data != null)
-                {
-                    foreach (var item in data)
-                    {
-                        var actualData = ExtractActualData(item);
-                        items.Add(actualData);
-                    }
-                }
-            }
-            else
-            {
-                // Single data
-                var getMethod = repository.GetType().GetMethod("Get");
-                var singleData = getMethod?.Invoke(repository, null);
-                if (singleData != null)
-                {
-                    items.Add(singleData);
-                }
-            }
-
-            return items;
+            return repository.EnumerateItems().ToList();
         }
 
         /// <summary>
@@ -341,12 +314,20 @@ namespace Datra.Unity.Editor.Views
             // Default: check if item has any modifications via change tracker
             if (changeTracker != null && item != null)
             {
-                var itemKey = GetKeyFromItem(item);
-                if (itemKey != null)
+                try
                 {
-                    var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
-                    bool isModified = modifiedProps.Any();
-                    return (isModified, false);
+                    var itemKey = GetKeyFromItem(item);
+                    if (itemKey != null)
+                    {
+                        var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                        bool isModified = modifiedProps.Any();
+                        return (isModified, false);
+                    }
+                }
+                catch (System.InvalidCastException)
+                {
+                    // Key type mismatch (e.g., Asset data with different key type)
+                    // Return unmodified state
                 }
             }
             return (false, false);
