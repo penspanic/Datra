@@ -447,6 +447,54 @@ namespace Datra.Unity.Editor.Utilities
             if (value is string str)
                 return str as TValue;
 
+            // Special handling for Asset<T> - clone only Data, reuse Id/Metadata/FilePath
+            var valueType = typeof(TValue);
+            if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(Datra.DataTypes.Asset<>))
+            {
+                try
+                {
+                    var dataProperty = valueType.GetProperty("Data");
+                    var idProperty = valueType.GetProperty("Id");
+                    var metadataProperty = valueType.GetProperty("Metadata");
+                    var filePathProperty = valueType.GetProperty("FilePath");
+
+                    if (dataProperty != null && idProperty != null && metadataProperty != null && filePathProperty != null)
+                    {
+                        var data = dataProperty.GetValue(value);
+                        var id = idProperty.GetValue(value);
+                        var metadata = metadataProperty.GetValue(value);
+                        var filePath = filePathProperty.GetValue(value);
+
+                        // Clone only the Data
+                        object clonedData = data;
+                        if (data != null)
+                        {
+                            var dataJson = JsonConvert.SerializeObject(data, _jsonSettings);
+                            clonedData = JsonConvert.DeserializeObject(dataJson, data.GetType(), _jsonSettings);
+                        }
+
+                        // Create new Asset<T> with cloned Data
+                        var constructor = valueType.GetConstructor(new[]
+                        {
+                            typeof(Datra.DataTypes.AssetId),
+                            typeof(Datra.DataTypes.AssetMetadata),
+                            valueType.GetGenericArguments()[0],
+                            typeof(string)
+                        });
+
+                        if (constructor != null)
+                        {
+                            return (TValue)constructor.Invoke(new[] { id, metadata, clonedData, filePath });
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogWarning($"Could not deep clone Asset<T>: {e.Message}, using reference copy");
+                    return value;
+                }
+            }
+
             // Use Newtonsoft.Json for deep clone (supports properties and polymorphic types)
             try
             {
