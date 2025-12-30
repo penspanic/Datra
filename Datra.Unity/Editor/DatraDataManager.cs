@@ -423,6 +423,39 @@ namespace Datra.Unity.Editor
                         dict.Add("single", data);
                         tracker.UpdateBaseline(dict);
                     }
+                    return;
+                }
+
+                // Check if it's IAssetRepository<TData>
+                var assetRepoInterface = repository.GetType().GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType &&
+                                       i.GetGenericTypeDefinition().Name == "IAssetRepository`1");
+
+                if (assetRepoInterface != null)
+                {
+                    var assetDataType = assetRepoInterface.GetGenericArguments()[0];
+                    var keyType = typeof(Datra.DataTypes.AssetId);
+                    var assetType = typeof(Datra.DataTypes.Asset<>).MakeGenericType(assetDataType);
+
+                    // Build dictionary from repository (IReadOnlyDictionary<AssetId, Asset<T>>)
+                    var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, assetType);
+                    var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
+
+                    if (dict != null && repository is System.Collections.IEnumerable assetRepo)
+                    {
+                        foreach (var item in assetRepo)
+                        {
+                            // item is KeyValuePair<AssetId, Asset<T>>
+                            var kvpType = item.GetType();
+                            var key = kvpType.GetProperty("Key")?.GetValue(item);
+                            var value = kvpType.GetProperty("Value")?.GetValue(item);
+                            if (key != null && value != null)
+                            {
+                                dict.Add(key, value);
+                            }
+                        }
+                        tracker.UpdateBaseline(dict);
+                    }
                 }
             }
             catch (Exception ex)
