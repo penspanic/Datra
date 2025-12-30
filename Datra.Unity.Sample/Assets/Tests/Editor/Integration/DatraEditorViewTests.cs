@@ -166,27 +166,62 @@ namespace Datra.Unity.Tests.Integration
             window.ViewModel.SelectDataType(itemDataType.DataType);
             yield return WaitForSeconds(1f);
 
-            // Assert - Check for table rows
-            var tableRows = QueryAllUI<VisualElement>("table-row");
-            if (tableRows.Count == 0)
+            // Assert - Check for table content
+            bool hasContent = false;
+
+            // Check 1: ListView with itemsSource (virtualized table)
+            var listView = QueryUI<ListView>();
+            if (listView != null)
             {
-                tableRows = QueryAllUI<VisualElement>("table-item");
-            }
-            if (tableRows.Count == 0)
-            {
-                var listView = QueryUI<ListView>();
-                if (listView != null)
+                if (listView.itemsSource != null)
                 {
-                    Debug.Log($"Found ListView for table data");
-                    Assert.Pass("Table data is using ListView (virtualized)");
-                    yield break;
+                    int itemCount = 0;
+                    foreach (var _ in listView.itemsSource) itemCount++;
+                    if (itemCount > 0)
+                    {
+                        hasContent = true;
+                        Debug.Log($"Found ListView with {itemCount} items in itemsSource");
+                    }
                 }
             }
 
-            Assert.Greater(tableRows.Count, 0,
-                $"Table should display rows. Expected ~{expectedCount} items");
+            // Check 2: Visible table rows (if rendered)
+            if (!hasContent)
+            {
+                var tableRows = QueryAllUI<VisualElement>("table-row");
+                if (tableRows.Count > 0)
+                {
+                    hasContent = true;
+                    Debug.Log($"Found {tableRows.Count} visible table-row elements");
+                }
+            }
 
-            Debug.Log($"{itemDataType.DataType.Name} displays {tableRows.Count} rows (expected: {expectedCount})");
+            // Check 3: Form view table items
+            if (!hasContent)
+            {
+                var tableItems = QueryAllUI<VisualElement>("table-item");
+                if (tableItems.Count > 0)
+                {
+                    hasContent = true;
+                    Debug.Log($"Found {tableItems.Count} table-item elements (form view)");
+                }
+            }
+
+            // Check 4: Any input fields (indicates data is being displayed)
+            if (!hasContent)
+            {
+                var textFields = QueryAllUI<TextField>();
+                if (textFields.Count > 3) // More than just search field
+                {
+                    hasContent = true;
+                    Debug.Log($"Found {textFields.Count} TextFields");
+                }
+            }
+
+            Assert.IsTrue(hasContent,
+                $"Table should display data. Expected ~{expectedCount} items but found no content.");
+
+            Debug.Log($"{itemDataType.DataType.Name} data display verified (expected: {expectedCount})");
         }
 
         #endregion
