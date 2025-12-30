@@ -356,6 +356,10 @@ namespace Datra.Unity.Editor.Views
         {
             int cellIndex = 0;
 
+            // Extract actual data from Asset<T> wrapper if needed
+            // Keep original item for DeleteItem and GetKeyFromItem calls
+            var actualData = ExtractActualData(item);
+
             // Bind actions cell (delete button)
             if (ShowActionsColumn)
             {
@@ -367,7 +371,7 @@ namespace Datra.Unity.Editor.Views
                     deleteButton.clicked += () => {
                         if (!isReadOnly)
                         {
-                            DeleteItem(item);
+                            DeleteItem(item); // Use original item (with AssetId)
                         }
                     };
                 }
@@ -381,7 +385,7 @@ namespace Datra.Unity.Editor.Views
                 if (idProperty != null)
                 {
                     var idCell = row[cellIndex];
-                    BindEditableCell(idCell, item, idProperty);
+                    BindEditableCell(idCell, actualData, idProperty, item);
                 }
                 cellIndex++;
             }
@@ -392,7 +396,7 @@ namespace Datra.Unity.Editor.Views
                 if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
                 var cell = row[cellIndex];
-                BindEditableCellForColumnInfo(cell, item, colInfo);
+                BindEditableCellForColumnInfo(cell, actualData, colInfo, item);
                 cellIndex++;
             }
 
@@ -421,26 +425,26 @@ namespace Datra.Unity.Editor.Views
             }
         }
 
-        private void BindEditableCellForColumnInfo(VisualElement cell, object item, ColumnInfo colInfo)
+        private void BindEditableCellForColumnInfo(VisualElement cell, object actualData, ColumnInfo colInfo, object originalItem)
         {
             cell.Clear();
 
             if (colInfo.IsNestedColumn)
             {
                 // Nested column - create direct field for the nested member
-                BindNestedMemberCell(cell, item, colInfo);
+                BindNestedMemberCell(cell, actualData, colInfo, originalItem);
             }
             else
             {
                 // Regular column - use existing method
-                BindEditableCell(cell, item, colInfo.Property);
+                BindEditableCell(cell, actualData, colInfo.Property, originalItem);
             }
         }
 
-        private void BindNestedMemberCell(VisualElement cell, object item, ColumnInfo colInfo)
+        private void BindNestedMemberCell(VisualElement cell, object actualData, ColumnInfo colInfo, object originalItem)
         {
             var valueType = colInfo.GetValueType();
-            var value = colInfo.GetValue(item);
+            var value = colInfo.GetValue(actualData);
 
             if (isReadOnly)
             {
@@ -464,8 +468,8 @@ namespace Datra.Unity.Editor.Views
 
                     field = new AssetFieldElement(assetType, folderPath, value as string ?? "", (newValue) =>
                     {
-                        colInfo.SetValue(item, newValue);
-                        TrackNestedPropertyChange(item, colInfo, newValue);
+                        colInfo.SetValue(actualData, newValue);
+                        TrackNestedPropertyChange(actualData, originalItem, colInfo, newValue);
                     }, true);
                 }
                 else
@@ -474,8 +478,8 @@ namespace Datra.Unity.Editor.Views
                     textField.value = value as string ?? "";
                     textField.RegisterValueChangedCallback(evt =>
                     {
-                        colInfo.SetValue(item, evt.newValue);
-                        TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                        colInfo.SetValue(actualData, evt.newValue);
+                        TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
                     });
                     field = textField;
                 }
@@ -486,8 +490,8 @@ namespace Datra.Unity.Editor.Views
                 intField.value = value != null ? Convert.ToInt32(value) : 0;
                 intField.RegisterValueChangedCallback(evt =>
                 {
-                    colInfo.SetValue(item, evt.newValue);
-                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                    colInfo.SetValue(actualData, evt.newValue);
+                    TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
                 });
                 field = intField;
             }
@@ -497,8 +501,8 @@ namespace Datra.Unity.Editor.Views
                 floatField.value = value != null ? Convert.ToSingle(value) : 0f;
                 floatField.RegisterValueChangedCallback(evt =>
                 {
-                    colInfo.SetValue(item, evt.newValue);
-                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                    colInfo.SetValue(actualData, evt.newValue);
+                    TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
                 });
                 field = floatField;
             }
@@ -508,8 +512,8 @@ namespace Datra.Unity.Editor.Views
                 toggle.value = value != null && Convert.ToBoolean(value);
                 toggle.RegisterValueChangedCallback(evt =>
                 {
-                    colInfo.SetValue(item, evt.newValue);
-                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                    colInfo.SetValue(actualData, evt.newValue);
+                    TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
                 });
                 field = toggle;
             }
@@ -518,8 +522,8 @@ namespace Datra.Unity.Editor.Views
                 var enumField = new EnumField((Enum)(value ?? Enum.GetValues(valueType).GetValue(0)));
                 enumField.RegisterValueChangedCallback(evt =>
                 {
-                    colInfo.SetValue(item, evt.newValue);
-                    TrackNestedPropertyChange(item, colInfo, evt.newValue);
+                    colInfo.SetValue(actualData, evt.newValue);
+                    TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
                 });
                 field = enumField;
             }
@@ -539,24 +543,24 @@ namespace Datra.Unity.Editor.Views
             }
         }
 
-        private void TrackNestedPropertyChange(object item, ColumnInfo colInfo, object newValue)
+        private void TrackNestedPropertyChange(object actualData, object originalItem, ColumnInfo colInfo, object newValue)
         {
-            var itemKey = GetKeyFromItem(item);
+            var itemKey = GetKeyFromItem(originalItem);
             // Track at the parent property level for change tracking
-            var parentValue = colInfo.Property.GetValue(item);
+            var parentValue = colInfo.Property.GetValue(actualData);
             changeTracker.TrackPropertyChange(itemKey, colInfo.Property.Name, parentValue, out bool isModified);
             UpdateModifiedState();
-            UpdateRowStateVisuals(item);
+            UpdateRowStateVisuals(originalItem);
         }
 
-        private void BindEditableCell(VisualElement cell, object item, PropertyInfo property)
+        private void BindEditableCell(VisualElement cell, object actualData, PropertyInfo property, object originalItem)
         {
             cell.Clear();
 
             if (isReadOnly || !DatraPropertyField.CanHandle(property, this))
             {
                 // Read-only display
-                var value = property.GetValue(item);
+                var value = property.GetValue(actualData);
                 var displayValue = GetDisplayValue(property.PropertyType, value);
                 var label = new Label(displayValue);
                 cell.Add(label);
@@ -564,24 +568,24 @@ namespace Datra.Unity.Editor.Views
             else
             {
                 // Create editable field (pass this as ILocaleProvider for FixedLocale support)
-                var field = new DatraPropertyField(item, property, FieldLayoutMode.Table, this);
+                var field = new DatraPropertyField(actualData, property, FieldLayoutMode.Table, this);
 
                 field.OnValueChanged += (propName, newValue) => {
-                    var itemKey = GetKeyFromItem(item);
+                    var itemKey = GetKeyFromItem(originalItem);
                     changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
                     field.SetModified(isModified);
                     UpdateModifiedState();
 
                     // Update row state without rebuilding (to avoid interrupting typing)
-                    UpdateRowStateVisuals(item);
+                    UpdateRowStateVisuals(originalItem);
                 };
 
                 field.OnRevertRequested += (propName) => {
-                    var itemKey = GetKeyFromItem(item);
+                    var itemKey = GetKeyFromItem(originalItem);
                     if (itemKey == null) return;
 
                     var baselineValue = changeTracker.GetPropertyBaselineValue(itemKey, propName);
-                    property.SetValue(item, baselineValue);
+                    property.SetValue(actualData, baselineValue);
                     UpdateFieldValue(field, property.PropertyType, baselineValue);
                     changeTracker.TrackPropertyChange(itemKey, propName, baselineValue, out bool isModified);
                     field.SetModified(isModified);
@@ -596,10 +600,13 @@ namespace Datra.Unity.Editor.Views
         {
             if (string.IsNullOrEmpty(searchTerm)) return true;
 
+            // Extract actual data from Asset wrapper if needed
+            var actualData = ExtractActualData(item);
+
             // Search through expanded columns (including nested type fields)
             foreach (var colInfo in expandedColumns)
             {
-                var value = colInfo.GetValue(item)?.ToString() ?? "";
+                var value = colInfo.GetValue(actualData)?.ToString() ?? "";
                 if (value.IndexOf(searchTerm, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     return true;
