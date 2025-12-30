@@ -366,6 +366,113 @@ namespace Datra.Tests
             // Assert
             Assert.Null(result);
         }
+
+        [Fact]
+        public async Task AssetRepository_ImplementsIReadOnlyDictionary()
+        {
+            // Arrange
+            var dataFolder = Path.Combine(_testDirectory, "assets_dict");
+            Directory.CreateDirectory(dataFolder);
+
+            File.WriteAllText(Path.Combine(dataFolder, "item1.json"),
+                "{\"Name\":\"Item1\",\"Value\":100}");
+            File.WriteAllText(Path.Combine(dataFolder, "item1.json.datrameta"),
+                "{\"Guid\":\"11111111111111111111111111111111\"}");
+
+            File.WriteAllText(Path.Combine(dataFolder, "item2.json"),
+                "{\"Name\":\"Item2\",\"Value\":200}");
+            File.WriteAllText(Path.Combine(dataFolder, "item2.json.datrameta"),
+                "{\"Guid\":\"22222222222222222222222222222222\"}");
+
+            var repository = new AssetRepository<TestAssetData>(
+                "assets_dict",
+                "*.json",
+                _provider,
+                _serializerFactory,
+                (data, serializer) => serializer.DeserializeSingle<TestAssetData>(data)
+            );
+
+            // Act
+            await repository.LoadAsync();
+
+            // Assert - Verify IReadOnlyDictionary interface
+            IReadOnlyDictionary<AssetId, Asset<TestAssetData>> dict = repository;
+
+            Assert.Equal(2, dict.Count);
+            Assert.Equal(2, dict.Keys.Count());
+            Assert.Equal(2, dict.Values.Count());
+
+            var guid1 = new AssetId(Guid.Parse("11111111111111111111111111111111"));
+            Assert.True(dict.ContainsKey(guid1));
+            Assert.True(dict.TryGetValue(guid1, out var asset1));
+            Assert.Equal("Item1", asset1.Data.Name);
+
+            // Enumeration
+            var enumerated = dict.ToList();
+            Assert.Equal(2, enumerated.Count);
+        }
+
+        [Fact]
+        public async Task AssetRepository_CanBeUsedWithLinq()
+        {
+            // Arrange
+            var dataFolder = Path.Combine(_testDirectory, "assets_linq");
+            Directory.CreateDirectory(dataFolder);
+
+            File.WriteAllText(Path.Combine(dataFolder, "high.json"),
+                "{\"Name\":\"High\",\"Value\":500}");
+            File.WriteAllText(Path.Combine(dataFolder, "high.json.datrameta"),
+                "{\"Guid\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1\"}");
+
+            File.WriteAllText(Path.Combine(dataFolder, "low.json"),
+                "{\"Name\":\"Low\",\"Value\":50}");
+            File.WriteAllText(Path.Combine(dataFolder, "low.json.datrameta"),
+                "{\"Guid\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2\"}");
+
+            var repository = new AssetRepository<TestAssetData>(
+                "assets_linq",
+                "*.json",
+                _provider,
+                _serializerFactory,
+                (data, serializer) => serializer.DeserializeSingle<TestAssetData>(data)
+            );
+
+            // Act
+            await repository.LoadAsync();
+
+            // Assert - LINQ queries work
+            var highValueAssets = repository
+                .Where(kvp => kvp.Value.Data.Value > 100)
+                .Select(kvp => kvp.Value)
+                .ToList();
+
+            Assert.Single(highValueAssets);
+            Assert.Equal("High", highValueAssets[0].Data.Name);
+
+            var allValues = repository.Values.Select(a => a.Data.Value).Sum();
+            Assert.Equal(550, allValues);
+        }
+
+        [Fact]
+        public void AssetRepository_EmptyRepository_ImplementsIReadOnlyDictionary()
+        {
+            // Arrange
+            var repository = new AssetRepository<TestAssetData>(
+                "empty_dict",
+                "*.json",
+                _provider,
+                _serializerFactory,
+                (data, serializer) => serializer.DeserializeSingle<TestAssetData>(data)
+            );
+
+            // Act & Assert - Empty repository should still implement IReadOnlyDictionary correctly
+            IReadOnlyDictionary<AssetId, Asset<TestAssetData>> dict = repository;
+
+            Assert.Equal(0, dict.Count);
+            Assert.Empty(dict.Keys);
+            Assert.Empty(dict.Values);
+            Assert.False(dict.ContainsKey(new AssetId(Guid.NewGuid())));
+        }
     }
 
     // Test data class for asset tests (no ITableData - ID comes from metadata)

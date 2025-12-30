@@ -418,6 +418,54 @@ namespace Datra.Unity.Editor
                         // Store tracker
                         changeTrackers[dataType] = tracker;
                     }
+                    return;
+                }
+
+                // Check for IAssetRepository<T>
+                var assetRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IAssetRepository<>));
+
+                if (assetRepoInterface != null)
+                {
+                    var assetDataType = assetRepoInterface.GetGenericArguments()[0];
+
+                    // IAssetRepository<T> implements IReadOnlyDictionary<AssetId, Asset<T>>
+                    var keyType = typeof(Datra.DataTypes.AssetId);
+                    var assetType = typeof(Datra.DataTypes.Asset<>).MakeGenericType(assetDataType);
+
+                    // Create RepositoryChangeTracker<AssetId, Asset<T>>
+                    var trackerType = typeof(Datra.Unity.Editor.Utilities.RepositoryChangeTracker<,>).MakeGenericType(keyType, assetType);
+                    var tracker = Activator.CreateInstance(trackerType) as IRepositoryChangeTracker;
+
+                    if (tracker != null)
+                    {
+                        // IAssetRepository<T> implements IReadOnlyDictionary<AssetId, Asset<T>>
+                        // Cast to non-generic IReadOnlyDictionary and convert to the correct type
+                        var assetRepo = repository as System.Collections.IEnumerable;
+
+                        // Build dictionary manually using reflection
+                        var dictType = typeof(Dictionary<,>).MakeGenericType(keyType, assetType);
+                        var dict = Activator.CreateInstance(dictType) as System.Collections.IDictionary;
+
+                        if (dict != null && assetRepo != null)
+                        {
+                            foreach (var item in assetRepo)
+                            {
+                                // item is KeyValuePair<AssetId, Asset<T>>
+                                var kvpType = item.GetType();
+                                var key = kvpType.GetProperty("Key")?.GetValue(item);
+                                var value = kvpType.GetProperty("Value")?.GetValue(item);
+                                if (key != null && value != null)
+                                {
+                                    dict.Add(key, value);
+                                }
+                            }
+                            tracker.InitializeBaseline(dict);
+                        }
+
+                        // Store tracker
+                        changeTrackers[dataType] = tracker;
+                    }
                 }
             }
             catch (Exception e)

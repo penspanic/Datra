@@ -188,7 +188,7 @@ namespace Datra.Unity.Editor.Views
         /// <summary>
         /// Virtual method to check if there are actual modifications in derived classes
         /// </summary>
-        protected virtual bool HasActualModifications() => changeTracker.HasModifications;
+        protected virtual bool HasActualModifications() => changeTracker?.HasModifications ?? false;
 
         /// <summary>
         /// Updates the modified state based on actual modification check
