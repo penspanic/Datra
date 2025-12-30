@@ -59,6 +59,8 @@ namespace Datra.Unity.Editor.Views
 
         protected void InvokeOnItemDeleted(object item) => OnItemDeleted?.Invoke(item);
         protected void InvokeOnAddNewItem() => OnAddNewItem?.Invoke();
+        protected void InvokeOnDataModified(Type type, bool isModified) => OnDataModified?.Invoke(type, isModified);
+        protected void InvokeOnSaveRequested(Type type, IDataRepository repo) => OnSaveRequested?.Invoke(type, repo);
         
         // Properties
         public Type DataType => dataType;

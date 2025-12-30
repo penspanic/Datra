@@ -74,10 +74,11 @@ namespace Datra.Unity.Editor.Panels
                 localizationView.SetChangeTracker(changeTracker);
             }
 
-            // Set data (repository, dataContext, changeTracker) - required for base DatraDataView functionality
+            // Set data (repository, dataContext, dataSource) - required for base DatraDataView functionality
+            // Note: Localization doesn't use EditableDataSource yet, pass null
             if (repository != null && dataContext != null)
             {
-                localizationView.SetData(typeof(LocalizationContext), repository, dataContext, changeTracker);
+                localizationView.SetData(typeof(LocalizationContext), repository, dataContext, null);
             }
 
             localizationView.SetLocalizationContext(context);

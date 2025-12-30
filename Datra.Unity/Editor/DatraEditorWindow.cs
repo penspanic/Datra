@@ -412,7 +412,7 @@ namespace Datra.Unity.Editor
 
                 // Check for IEditableAssetRepository<T>
                 var editableAssetRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Editor.Interfaces.IEditableAssetRepository<>));
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IEditableAssetRepository<>));
 
                 if (editableAssetRepoInterface != null)
                 {

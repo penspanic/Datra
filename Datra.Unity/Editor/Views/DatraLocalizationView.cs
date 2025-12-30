@@ -128,14 +128,15 @@ namespace Datra.Unity.Editor.Views
             Type type,
             IDataRepository repo,
             IDataContext context,
-            IRepositoryChangeTracker tracker,
+            IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
             Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             dataType = type;
             repository = repo;
             dataContext = context;
-            changeTracker = tracker;
+            // Localization doesn't use EditableDataSource yet - uses LocalizationChangeTracker directly
+            dataSource = source;
             localizationContext = localizationCtx;
             localizationChangeTracker = localizationTracker;
 

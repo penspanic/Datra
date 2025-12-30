@@ -20,7 +20,7 @@ namespace Datra.Unity.Editor.Windows
         private Type dataType;
         private IDataRepository repository;
         private IDataContext dataContext;
-        private IRepositoryChangeTracker changeTracker;
+        private IEditableDataSource dataSource;
         private string windowTitle;
 
         private VisualElement contentContainer;
@@ -29,19 +29,19 @@ namespace Datra.Unity.Editor.Windows
 
         private DatraViewModeController.ViewMode? initialViewMode;
         private bool hasModifications = false;
-        
-        public static DatraDataWindow CreateWindow(Type dataType, IDataRepository repository, IDataContext dataContext, IRepositoryChangeTracker changeTracker, string title = null)
+
+        public static DatraDataWindow CreateWindow(Type dataType, IDataRepository repository, IDataContext dataContext, IEditableDataSource dataSource, string title = null)
         {
             var window = CreateInstance<DatraDataWindow>();
             window.dataType = dataType;
             window.repository = repository;
             window.dataContext = dataContext;
-            window.changeTracker = changeTracker;
+            window.dataSource = dataSource;
             window.windowTitle = title ?? dataType.Name;
-            
+
             window.titleContent = new GUIContent(window.windowTitle, EditorGUIUtility.IconContent("d_ScriptableObject Icon").image);
             window.minSize = new Vector2(600, 400);
-            
+
             window.Show();
             return window;
         }
@@ -86,7 +86,7 @@ namespace Datra.Unity.Editor.Windows
             viewModeController.OnViewModeChanged += OnViewModeChanged;
             viewModeController.OnSaveRequested += HandleSaveRequest;
             viewModeController.OnDataModified += HandleDataModified;
-            viewModeController.SetData(dataType, repository, dataContext, changeTracker);
+            viewModeController.SetData(dataType, repository, dataContext, dataSource);
             
             // Create toolbar
             var toolbar = CreateToolbar();
@@ -194,15 +194,16 @@ namespace Datra.Unity.Editor.Windows
             }
         }
         
-        public void SetData(Type type, IDataRepository repo, IDataContext context)
+        public void SetData(Type type, IDataRepository repo, IDataContext context, IEditableDataSource source = null)
         {
             dataType = type;
             repository = repo;
             dataContext = context;
-            
+            dataSource = source;
+
             if (viewModeController != null)
             {
-                viewModeController.SetData(type, repo, context, changeTracker);
+                viewModeController.SetData(type, repo, context, dataSource);
             }
         }
         
@@ -309,7 +310,7 @@ namespace Datra.Unity.Editor.Windows
                 await dataContext.LoadAllAsync();
                 hasModifications = false;
                 titleContent.text = windowTitle;
-                viewModeController.SetData(dataType, repository, dataContext, changeTracker);
+                viewModeController.SetData(dataType, repository, dataContext, dataSource);
                 EditorUtility.DisplayDialog("Success", "Data reloaded successfully!", "OK");
             }
             catch (Exception e)

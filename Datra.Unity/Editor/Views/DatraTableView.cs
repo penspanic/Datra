@@ -181,7 +181,7 @@ namespace Datra.Unity.Editor.Views
             {
                 hasUnsavedChanges = isModified;
                 UpdateFooter();
-                OnDataModified?.Invoke(dataType, isModified);
+                InvokeOnDataModified(dataType, isModified);
 
                 if (!isModified)
                 {
