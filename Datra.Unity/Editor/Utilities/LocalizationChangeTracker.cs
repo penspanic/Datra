@@ -1,3 +1,4 @@
+#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,18 +12,17 @@ namespace Datra.Unity.Editor.Utilities
     /// Editor-only change tracker for LocalizationContext.
     /// Tracks changes per language without modifying runtime code.
     /// </summary>
-    public class LocalizationChangeTracker : IRepositoryChangeTracker, INotifyModifiedStateChanged
+    public class LocalizationChangeTracker : INotifyModifiedStateChanged
     {
         private readonly LocalizationContext _context;
-        private readonly Dictionary<LanguageCode, RepositoryChangeTracker<string, string>> _languageTrackers;
+        private readonly Dictionary<LanguageCode, LanguageTextTracker> _languageTrackers;
 
-        // Event for modified state changes
-        public event Action<bool> OnModifiedStateChanged;
+        public event Action<bool>? OnModifiedStateChanged;
 
         public LocalizationChangeTracker(LocalizationContext context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
-            _languageTrackers = new Dictionary<LanguageCode, RepositoryChangeTracker<string, string>>();
+            _languageTrackers = new Dictionary<LanguageCode, LanguageTextTracker>();
         }
 
         /// <summary>
@@ -47,12 +47,10 @@ namespace Datra.Unity.Editor.Utilities
 
         /// <summary>
         /// Initialize tracker for a language (call after LoadLanguageAsync)
-        /// IMPORTANT: Only call this when loading a language for the first time.
-        /// This will clear any existing tracking data for the language.
         /// </summary>
         public void InitializeLanguage(LanguageCode languageCode)
         {
-            var tracker = new RepositoryChangeTracker<string, string>();
+            var tracker = new LanguageTextTracker();
 
             // Build dictionary from context
             var keys = _context.GetAllKeys();
@@ -60,7 +58,6 @@ namespace Datra.Unity.Editor.Utilities
             foreach (var key in keys)
             {
                 var text = _context.GetText(key);
-                // Store actual text, even if it's a [Missing: key] message
                 data[key] = text ?? string.Empty;
             }
 
@@ -69,7 +66,7 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Track text change for current language (call after SetText)
+        /// Track text change for current language
         /// </summary>
         public void TrackTextChange(string key, string newValue)
         {
@@ -77,7 +74,7 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Track text change for specific language (call after SetText)
+        /// Track text change for specific language
         /// </summary>
         public void TrackTextChange(string key, string newValue, LanguageCode languageCode)
         {
@@ -92,38 +89,27 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Track key addition (call after AddKeyAsync)
+        /// Track key addition
         /// </summary>
         public void TrackKeyAdd(string key)
         {
             bool hadChanges = HasModifications();
 
-            // Track in all loaded languages
-            foreach (var kvp in _languageTrackers)
+            foreach (var tracker in _languageTrackers.Values)
             {
-                var languageCode = kvp.Key;
-                var tracker = kvp.Value;
-
-                // Get text for this language
-                var currentLang = _context.CurrentLanguageCode;
-                // TODO: Would need to switch languages to get proper text
-                // For now, just track as empty
-                var text = string.Empty;
-
-                tracker.TrackAdd(key, text);
+                tracker.TrackAdd(key, string.Empty);
             }
 
             CheckAndNotifyModifiedStateChange(hadChanges);
         }
 
         /// <summary>
-        /// Track key deletion (call after removing a key)
+        /// Track key deletion
         /// </summary>
         public void TrackKeyDelete(string key)
         {
             bool hadChanges = HasModifications();
 
-            // Track in all loaded languages
             foreach (var tracker in _languageTrackers.Values)
             {
                 tracker.TrackDelete(key);
@@ -214,9 +200,42 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
+        /// Check if a property is modified. For localization, we only track "Text" property.
+        /// </summary>
+        public bool IsPropertyModified(string key, string propertyName)
+        {
+            if (propertyName != "Text") return false;
+            return IsModified(key);
+        }
+
+        /// <summary>
+        /// Track property change. For localization, we only track "Text" property.
+        /// </summary>
+        public void TrackPropertyChange(string key, string propertyName, object? newValue, out bool isModified)
+        {
+            isModified = false;
+            if (propertyName != "Text") return;
+
+            var newText = newValue as string ?? string.Empty;
+            TrackTextChange(key, newText);
+
+            // Check if it's still modified after tracking
+            isModified = IsModified(key);
+        }
+
+        /// <summary>
+        /// Get property baseline value. For localization, returns baseline text for "Text" property.
+        /// </summary>
+        public object? GetPropertyBaselineValue(string key, string propertyName)
+        {
+            if (propertyName != "Text") return null;
+            return GetBaselineText(key);
+        }
+
+        /// <summary>
         /// Get baseline text for a key in current language
         /// </summary>
-        public string GetBaselineText(string key)
+        public string? GetBaselineText(string key)
         {
             return GetBaselineText(_context.CurrentLanguageCode, key);
         }
@@ -224,7 +243,7 @@ namespace Datra.Unity.Editor.Utilities
         /// <summary>
         /// Get baseline text for a key in specific language
         /// </summary>
-        public string GetBaselineText(LanguageCode languageCode, string key)
+        public string? GetBaselineText(LanguageCode languageCode, string key)
         {
             if (_languageTrackers.TryGetValue(languageCode, out var tracker))
                 return tracker.GetBaselineValue(key);
@@ -271,7 +290,6 @@ namespace Datra.Unity.Editor.Utilities
                 if (baselineValue != null)
                 {
                     _context.SetText(key, baselineValue);
-                    // Re-track to update tracker state
                     tracker.TrackChange(key, baselineValue);
                 }
             }
@@ -294,7 +312,7 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Synchronize tracker with context (useful for detecting external changes)
+        /// Synchronize tracker with context
         /// </summary>
         public void SyncWithContext()
         {
@@ -315,182 +333,126 @@ namespace Datra.Unity.Editor.Utilities
                     data[key] = _context.GetText(key) ?? string.Empty;
                 }
 
-                tracker.SyncWithRepository(data);
+                tracker.SyncWithData(data);
             }
         }
 
-        #region IRepositoryChangeTracker Implementation
-
         /// <summary>
-        /// Get whether current language has modifications (IRepositoryChangeTracker)
+        /// Simple key-value change tracker for localization text.
+        /// Internal class - not exposed outside LocalizationChangeTracker.
         /// </summary>
-        bool IRepositoryChangeTracker.HasModifications => HasModifications();
-
-        /// <summary>
-        /// Get baseline value for a key (IRepositoryChangeTracker)
-        /// </summary>
-        object IRepositoryChangeTracker.GetBaselineValue(object key)
+        private class LanguageTextTracker
         {
-            if (key is string keyStr)
-                return GetBaselineText(keyStr);
-            return null;
-        }
+            private readonly Dictionary<string, string> _baseline = new();
+            private readonly Dictionary<string, string> _current = new();
+            private readonly HashSet<string> _addedKeys = new();
+            private readonly HashSet<string> _deletedKeys = new();
 
-        /// <summary>
-        /// Track a change (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.TrackChange(object key, object value)
-        {
-            if (key is string keyStr && value is string valueStr)
-                TrackTextChange(keyStr, valueStr);
-        }
+            public bool HasModifications =>
+                _addedKeys.Count > 0 ||
+                _deletedKeys.Count > 0 ||
+                _current.Any(kvp => !_baseline.TryGetValue(kvp.Key, out var baseVal) || baseVal != kvp.Value);
 
-        /// <summary>
-        /// Track property change (IRepositoryChangeTracker)
-        /// For localization, we track the "Text" property
-        /// </summary>
-        void IRepositoryChangeTracker.TrackPropertyChange(object key, string propertyName, object newValue, out bool isModified)
-        {
-            if (key is string keyStr && propertyName == "Text" && newValue is string valueStr)
+            public void InitializeBaseline(IReadOnlyDictionary<string, string> data)
             {
-                var languageCode = _context.CurrentLanguageCode;
-                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                _baseline.Clear();
+                _current.Clear();
+                _addedKeys.Clear();
+                _deletedKeys.Clear();
+
+                foreach (var kvp in data)
                 {
-                    tracker.TrackChange(keyStr, valueStr ?? string.Empty);
-                    isModified = tracker.IsModified(keyStr);
+                    _baseline[kvp.Key] = kvp.Value;
+                    _current[kvp.Key] = kvp.Value;
+                }
+            }
+
+            public void TrackChange(string key, string newValue)
+            {
+                if (!_baseline.ContainsKey(key))
+                {
+                    TrackAdd(key, newValue);
                     return;
                 }
+
+                _current[key] = newValue;
             }
-            isModified = false;
-        }
 
-        /// <summary>
-        /// Track addition (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.TrackAdd(object key, object value)
-        {
-            if (key is string keyStr)
-                TrackKeyAdd(keyStr);
-        }
-
-        /// <summary>
-        /// Track deletion (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.TrackDelete(object key)
-        {
-            if (key is string keyStr)
-                TrackKeyDelete(keyStr);
-        }
-
-        /// <summary>
-        /// Check if key is modified (IRepositoryChangeTracker)
-        /// </summary>
-        bool IRepositoryChangeTracker.IsModified(object key)
-        {
-            if (key is string keyStr)
-                return IsModified(keyStr);
-            return false;
-        }
-
-        /// <summary>
-        /// Check if property is modified (IRepositoryChangeTracker)
-        /// For localization, we check the "Text" property
-        /// </summary>
-        bool IRepositoryChangeTracker.IsPropertyModified(object key, string propertyName)
-        {
-            if (key is string keyStr && propertyName == "Text")
+            public void TrackAdd(string key, string value)
             {
-                var languageCode = _context.CurrentLanguageCode;
-                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                _current[key] = value;
+
+                if (!_baseline.ContainsKey(key))
                 {
-                    return tracker.IsModified(keyStr);
+                    _addedKeys.Add(key);
+                    _deletedKeys.Remove(key);
                 }
             }
-            return false;
-        }
 
-        /// <summary>
-        /// Check if key is added (IRepositoryChangeTracker)
-        /// </summary>
-        bool IRepositoryChangeTracker.IsAdded(object key)
-        {
-            if (key is string keyStr)
-                return GetAddedKeys().Contains(keyStr);
-            return false;
-        }
-
-        /// <summary>
-        /// Check if key is deleted (IRepositoryChangeTracker)
-        /// </summary>
-        bool IRepositoryChangeTracker.IsDeleted(object key)
-        {
-            if (key is string keyStr)
-                return GetDeletedKeys().Contains(keyStr);
-            return false;
-        }
-
-        /// <summary>
-        /// Get modified properties (IRepositoryChangeTracker)
-        /// For localization, returns "Text" if modified
-        /// </summary>
-        IEnumerable<string> IRepositoryChangeTracker.GetModifiedProperties(object key)
-        {
-            if (key is string keyStr)
+            public void TrackDelete(string key)
             {
-                var languageCode = _context.CurrentLanguageCode;
-                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
+                _current.Remove(key);
+
+                if (_addedKeys.Contains(key))
                 {
-                    if (tracker.IsModified(keyStr))
+                    _addedKeys.Remove(key);
+                }
+                else if (_baseline.ContainsKey(key))
+                {
+                    _deletedKeys.Add(key);
+                }
+            }
+
+            public bool IsModified(string key)
+            {
+                if (_addedKeys.Contains(key) || _deletedKeys.Contains(key))
+                    return true;
+
+                if (_baseline.TryGetValue(key, out var baseVal) && _current.TryGetValue(key, out var currVal))
+                    return baseVal != currVal;
+
+                return false;
+            }
+
+            public IEnumerable<string> GetModifiedKeys()
+            {
+                return _current
+                    .Where(kvp => _baseline.TryGetValue(kvp.Key, out var baseVal) && baseVal != kvp.Value)
+                    .Select(kvp => kvp.Key);
+            }
+
+            public IEnumerable<string> GetAddedKeys() => _addedKeys;
+            public IEnumerable<string> GetDeletedKeys() => _deletedKeys;
+
+            public string? GetBaselineValue(string key)
+            {
+                return _baseline.TryGetValue(key, out var value) ? value : null;
+            }
+
+            public Dictionary<string, string> GetBaselineData()
+            {
+                return new Dictionary<string, string>(_baseline);
+            }
+
+            public void SyncWithData(IReadOnlyDictionary<string, string> data)
+            {
+                foreach (var kvp in data)
+                {
+                    TrackChange(kvp.Key, kvp.Value);
+                }
+
+                // Detect deletions
+                var dataKeys = new HashSet<string>(data.Keys);
+                var currentKeys = _current.Keys.ToList();
+
+                foreach (var key in currentKeys)
+                {
+                    if (!dataKeys.Contains(key))
                     {
-                        return new[] { "Text" };
+                        TrackDelete(key);
                     }
                 }
             }
-            return Enumerable.Empty<string>();
         }
-
-        /// <summary>
-        /// Get property baseline value (IRepositoryChangeTracker)
-        /// For localization, returns baseline text value
-        /// </summary>
-        object IRepositoryChangeTracker.GetPropertyBaselineValue(object key, string propertyName)
-        {
-            if (key is string keyStr && propertyName == "Text")
-            {
-                var languageCode = _context.CurrentLanguageCode;
-                if (_languageTrackers.TryGetValue(languageCode, out var tracker))
-                {
-                    return tracker.GetBaselineValue(keyStr);
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Initialize baseline (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.InitializeBaseline(object repositoryData)
-        {
-            // Not used for localization - use InitializeLanguage instead
-        }
-
-        /// <summary>
-        /// Update baseline (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.UpdateBaseline(object repositoryData)
-        {
-            // Update baseline for current language
-            UpdateBaseline();
-        }
-
-        /// <summary>
-        /// Revert all changes (IRepositoryChangeTracker)
-        /// </summary>
-        void IRepositoryChangeTracker.RevertAll()
-        {
-            RevertAll();
-        }
-
-        #endregion
     }
 }

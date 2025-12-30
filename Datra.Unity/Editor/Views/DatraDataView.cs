@@ -25,12 +25,8 @@ namespace Datra.Unity.Editor.Views
         protected object dataContext;
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
-        // Editable data source (replaces changeTracker - provides data + change tracking)
+        // Editable data source (provides data + change tracking)
         protected IEditableDataSource dataSource;
-
-        // Legacy: External change tracker (deprecated, use dataSource instead)
-        [Obsolete("Use dataSource instead")]
-        protected IRepositoryChangeTracker changeTracker;
 
         // Localization support (for FixedLocale properties)
         protected Datra.Services.LocalizationContext localizationContext;

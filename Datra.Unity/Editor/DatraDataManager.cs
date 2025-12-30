@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using Datra.Editor.Interfaces;
-using Datra.Editor.DataSources;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
@@ -15,7 +14,7 @@ namespace Datra.Unity.Editor
 {
     /// <summary>
     /// Central data manager for Datra Editor.
-    /// Manages repositories, change trackers, provides unified event system, and handles save/reload operations.
+    /// Manages repositories, data sources, provides unified event system, and handles save/reload operations.
     /// </summary>
     public class DatraDataManager
     {
@@ -23,7 +22,6 @@ namespace Datra.Unity.Editor
         private readonly IDataContext _dataContext;
         private readonly LocalizationContext _localizationContext;
         private readonly Dictionary<Type, IDataRepository> _repositories;
-        private readonly Dictionary<Type, IRepositoryChangeTracker> _changeTrackers;
         private readonly Dictionary<Type, IEditableDataSource> _dataSources;
         private readonly LocalizationChangeTracker _localizationChangeTracker;
 
@@ -58,20 +56,17 @@ namespace Datra.Unity.Editor
         public LocalizationContext LocalizationContext => _localizationContext;
         public LocalizationChangeTracker LocalizationChangeTracker => _localizationChangeTracker;
         public IReadOnlyDictionary<Type, IDataRepository> Repositories => _repositories;
-        public IReadOnlyDictionary<Type, IRepositoryChangeTracker> ChangeTrackers => _changeTrackers;
         public IReadOnlyDictionary<Type, IEditableDataSource> DataSources => _dataSources;
 
         public DatraDataManager(
             IDataContext dataContext,
             Dictionary<Type, IDataRepository> repositories,
-            Dictionary<Type, IRepositoryChangeTracker> changeTrackers,
             Dictionary<Type, IEditableDataSource> dataSources,
             LocalizationContext localizationContext,
             LocalizationChangeTracker localizationChangeTracker)
         {
             _dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
-            _changeTrackers = changeTrackers ?? throw new ArgumentNullException(nameof(changeTrackers));
             _dataSources = dataSources ?? new Dictionary<Type, IEditableDataSource>();
             // Localization is optional (EnableLocalization = false in DatraConfiguration)
             _localizationContext = localizationContext;
@@ -125,22 +120,7 @@ namespace Datra.Unity.Editor
                 );
             }
 
-            // Subscribe to ChangeTracker events (legacy)
-            foreach (var kvp in _changeTrackers)
-            {
-                var dataType = kvp.Key;
-                var tracker = kvp.Value;
-
-                if (tracker is INotifyModifiedStateChanged notifyTracker)
-                {
-                    notifyTracker.OnModifiedStateChanged += (hasChanges) =>
-                    {
-                        OnModifiedStateChanged?.Invoke(dataType, hasChanges);
-                    };
-                }
-            }
-
-            // Subscribe to DataSource events (new architecture)
+            // Subscribe to DataSource events
             foreach (var kvp in _dataSources)
             {
                 var dataType = kvp.Key;
@@ -169,12 +149,6 @@ namespace Datra.Unity.Editor
             return repository;
         }
 
-        public IRepositoryChangeTracker GetChangeTracker(Type type)
-        {
-            _changeTrackers.TryGetValue(type, out var tracker);
-            return tracker;
-        }
-
         public IEditableDataSource GetDataSource(Type type)
         {
             _dataSources.TryGetValue(type, out var dataSource);
@@ -187,8 +161,13 @@ namespace Datra.Unity.Editor
             if (dataType == typeof(LocalizationContext))
                 return HasUnsavedLocalizationChanges();
 
-            var tracker = GetChangeTracker(dataType);
-            return tracker?.HasModifications ?? false;
+            // Check dataSource for modifications
+            if (_dataSources.TryGetValue(dataType, out var dataSource))
+            {
+                return dataSource.HasModifications;
+            }
+
+            return false;
         }
 
         public bool HasUnsavedLocalizationChanges()
@@ -199,14 +178,9 @@ namespace Datra.Unity.Editor
         // Notification API - Views call these when data changes
         public void NotifyPropertyChanged(Type dataType, object itemKey, string propName, object value)
         {
-            // Update ChangeTracker
-            var tracker = GetChangeTracker(dataType);
-            tracker?.TrackPropertyChange(itemKey, propName, value, out _);
-
-            // Emit events
+            // DataSource tracks changes internally when TrackPropertyChange is called
+            // This method is for notifying other listeners
             OnDataChanged?.Invoke(dataType);
-
-            // Modified state is automatically handled by ChangeTracker's event
         }
 
         public void NotifyItemAdded(Type dataType, object item)
@@ -251,17 +225,29 @@ namespace Datra.Unity.Editor
                 // Save types
                 foreach (var type in typesToSave)
                 {
-                    if (_repositories.TryGetValue(type, out var repository))
+                    if (_dataSources.TryGetValue(type, out var dataSource))
                     {
+                        try
+                        {
+                            await dataSource.SaveAsync();
+                            savedTypes.Add(type);
+
+                            // Emit modified state change
+                            OnModifiedStateChanged?.Invoke(type, false);
+                        }
+                        catch (Exception repoEx)
+                        {
+                            failedTypes.Add((type, repoEx.Message));
+                            Debug.LogError($"Failed to save {type.Name}: {repoEx.Message}");
+                        }
+                    }
+                    else if (_repositories.TryGetValue(type, out var repository))
+                    {
+                        // Fallback for types without dataSource
                         try
                         {
                             await repository.SaveAsync();
                             savedTypes.Add(type);
-
-                            // Update change tracker baseline
-                            UpdateChangeTrackerBaseline(type, repository);
-
-                            // Emit modified state change
                             OnModifiedStateChanged?.Invoke(type, false);
                         }
                         catch (Exception repoEx)
@@ -304,12 +290,6 @@ namespace Datra.Unity.Editor
         /// </summary>
         public async Task<bool> SaveAsync(Type dataType, bool forceSave = false)
         {
-            if (!_repositories.TryGetValue(dataType, out var repository))
-            {
-                OnOperationFailed?.Invoke($"Repository not found for {dataType.Name}");
-                return false;
-            }
-
             // Check if save is needed
             if (!forceSave && !HasUnsavedChanges(dataType))
             {
@@ -319,10 +299,21 @@ namespace Datra.Unity.Editor
 
             try
             {
-                await repository.SaveAsync();
-
-                // Update change tracker baseline
-                UpdateChangeTrackerBaseline(dataType, repository);
+                // Prefer dataSource for saving (handles transactional changes)
+                if (_dataSources.TryGetValue(dataType, out var dataSource))
+                {
+                    await dataSource.SaveAsync();
+                }
+                else if (_repositories.TryGetValue(dataType, out var repository))
+                {
+                    // Fallback to repository
+                    await repository.SaveAsync();
+                }
+                else
+                {
+                    OnOperationFailed?.Invoke($"Repository not found for {dataType.Name}");
+                    return false;
+                }
 
                 // Emit modified state change
                 OnModifiedStateChanged?.Invoke(dataType, false);
@@ -373,11 +364,23 @@ namespace Datra.Unity.Editor
             {
                 await _dataContext.LoadAllAsync();
 
-                // Re-initialize all change trackers
-                foreach (var kvp in _repositories)
+                // Refresh all data sources to get new baseline from repository
+                foreach (var kvp in _dataSources)
                 {
-                    UpdateChangeTrackerBaseline(kvp.Key, kvp.Value);
-                    OnModifiedStateChanged?.Invoke(kvp.Key, false);
+                    var dataType = kvp.Key;
+                    var dataSource = kvp.Value;
+
+                    // Call RefreshBaseline if available
+                    var refreshMethod = dataSource.GetType().GetMethod("RefreshBaseline");
+                    refreshMethod?.Invoke(dataSource, null);
+
+                    OnModifiedStateChanged?.Invoke(dataType, false);
+                }
+
+                // Update localization tracker baseline
+                if (_localizationChangeTracker != null)
+                {
+                    _localizationChangeTracker.UpdateBaseline();
                 }
 
                 OnOperationCompleted?.Invoke("Data reloaded successfully!");
@@ -388,20 +391,6 @@ namespace Datra.Unity.Editor
                 OnOperationFailed?.Invoke($"Failed to reload data: {e.Message}");
                 Debug.LogError($"Failed to reload data: {e}");
                 return false;
-            }
-        }
-
-        /// <summary>
-        /// Update change tracker baseline after successful save (only for localization)
-        /// </summary>
-        private void UpdateChangeTrackerBaseline(Type dataType, IDataRepository repository)
-        {
-            // Only localization uses changeTrackers now, data types use EditableDataSource
-            if (dataType == typeof(LocalizationContext) &&
-                _changeTrackers.TryGetValue(dataType, out var tracker) &&
-                tracker is LocalizationChangeTracker locTracker)
-            {
-                locTracker.UpdateBaseline();
             }
         }
 

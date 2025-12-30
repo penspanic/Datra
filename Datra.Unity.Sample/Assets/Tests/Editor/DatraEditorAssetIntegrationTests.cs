@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Datra.DataTypes;
+using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
 using Datra.SampleData.Generated;
 using Datra.SampleData.Models;
 using Datra.Unity.Editor.Providers;
-using Datra.Unity.Editor.Utilities;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -24,7 +24,7 @@ namespace Datra.Unity.Tests
         private const string SampleDataBasePath = "Packages/com.penspanic.datra.sampledata/Resources";
 
         [UnityTest]
-        public IEnumerator CreateChangeTrackerForAssetRepository_CreatesValidTracker()
+        public IEnumerator CreateDataSourceForAssetRepository_CreatesValidDataSource()
         {
             // Arrange
             var provider = new AssetDatabaseRawDataProvider(basePath: SampleDataBasePath);
@@ -42,20 +42,22 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            // Act - Simulate what DatraEditorWindow.CreateChangeTrackerForRepository does
-            var repository = context.ScriptAsset;
-            var dataType = typeof(ScriptAssetData);
-            var tracker = CreateChangeTrackerForAssetRepository(repository, dataType);
+            // Act - Create EditableAssetDataSource for the repository
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
 
             // Assert
-            Assert.IsNotNull(tracker, "Should create a valid tracker");
-            Assert.IsFalse(tracker.HasModifications, "Should have no modifications initially");
+            Assert.IsNotNull(dataSource, "Should create a valid data source");
+            Assert.IsFalse(dataSource.HasModifications, "Should have no modifications initially");
+            Assert.AreEqual(context.ScriptAsset.Count, dataSource.EnumerateItems().Count());
 
-            Debug.Log($"Successfully created change tracker for AssetRepository<{dataType.Name}>");
+            Debug.Log($"Successfully created EditableAssetDataSource for AssetRepository<ScriptAssetData>");
         }
 
         [UnityTest]
-        public IEnumerator AssetRepository_ChangeTracking_AddAndDelete()
+        public IEnumerator AssetRepository_ChangeTracking_AddAndRevert()
         {
             // Arrange
             var provider = new AssetDatabaseRawDataProvider(basePath: SampleDataBasePath);
@@ -73,24 +75,28 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            // Create tracker
-            var repository = context.ScriptAsset;
-            var tracker = CreateChangeTrackerForAssetRepository(repository, typeof(ScriptAssetData));
-            Assert.IsNotNull(tracker);
+            // Create data source
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+            Assert.IsNotNull(dataSource);
+
+            var initialCount = dataSource.EnumerateItems().Count();
 
             // Act 1 - Add a new asset
-            var newAssetId = AssetId.NewId();
-            var newAsset = new Asset<ScriptAssetData>(newAssetId, new ScriptAssetData { Name = "Test" });
-            tracker.TrackAdd(newAssetId, newAsset);
+            var newAsset = dataSource.AddNew(new ScriptAssetData { Name = "Test" }, "test.json");
 
-            Assert.IsTrue(tracker.HasModifications, "Should detect added asset");
-            Assert.IsTrue(tracker.IsAdded(newAssetId), "New asset should be marked as added");
+            Assert.IsTrue(dataSource.HasModifications, "Should detect added asset");
+            Assert.AreEqual(ItemState.Added, dataSource.GetItemState(newAsset.Id), "New asset should be in Added state");
+            Assert.AreEqual(initialCount + 1, dataSource.EnumerateItems().Count());
 
             // Act 2 - Revert
-            ((IRepositoryChangeTracker)tracker).RevertAll();
+            dataSource.Revert();
 
             // Assert 2 - Should have no modifications after revert
-            Assert.IsFalse(tracker.HasModifications, "Should have no modifications after revert");
+            Assert.IsFalse(dataSource.HasModifications, "Should have no modifications after revert");
+            Assert.AreEqual(initialCount, dataSource.EnumerateItems().Count());
 
             Debug.Log("Add and revert tracking test passed!");
         }
@@ -114,63 +120,36 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            var repository = context.ScriptAsset;
-            if (repository.Count < 1)
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+
+            if (context.ScriptAsset.Count < 1)
             {
                 Debug.LogWarning("Need at least 1 asset for this test, skipping...");
                 yield break;
             }
 
-            var tracker = CreateChangeTrackerForAssetRepository(repository, typeof(ScriptAssetData));
-            Assert.IsNotNull(tracker);
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+            Assert.IsNotNull(dataSource);
 
             // Get existing asset
-            var existingAsset = repository.Values.First();
+            var existingAsset = dataSource.EnumerateItems().First().Value;
             var existingId = existingAsset.Id;
+            var initialCount = dataSource.EnumerateItems().Count();
 
             // Act - Add new asset and delete existing one
-            var newAssetId = AssetId.NewId();
-            var newAsset = new Asset<ScriptAssetData>(newAssetId, new ScriptAssetData { Name = "New" });
-
-            tracker.TrackAdd(newAssetId, newAsset);
-            tracker.TrackDelete(existingId);
+            var newAsset = dataSource.AddNew(new ScriptAssetData { Name = "New" }, "new.json");
+            dataSource.Delete(existingId);
 
             // Assert
-            Assert.IsTrue(tracker.HasModifications, "Should have modifications");
-            Assert.IsTrue(tracker.IsAdded(newAssetId), "New asset should be added");
-            Assert.IsTrue(tracker.IsDeleted(existingId), "Existing asset should be deleted");
+            Assert.IsTrue(dataSource.HasModifications, "Should have modifications");
+            Assert.AreEqual(ItemState.Added, dataSource.GetItemState(newAsset.Id), "New asset should be in Added state");
+            Assert.AreEqual(ItemState.Deleted, dataSource.GetItemState(existingId), "Existing asset should be in Deleted state");
 
-            var addedKeys = tracker.GetAddedKeys().ToList();
-            var deletedKeys = tracker.GetDeletedKeys().ToList();
-
-            Assert.AreEqual(1, addedKeys.Count, "Should have 1 added key");
-            Assert.AreEqual(1, deletedKeys.Count, "Should have 1 deleted key");
+            // Count should be same (one added, one deleted)
+            Assert.AreEqual(initialCount, dataSource.EnumerateItems().Count());
 
             Debug.Log("Multiple operations tracking test passed!");
-        }
-
-        /// <summary>
-        /// Helper method that mimics DatraEditorWindow.CreateChangeTrackerForRepository for IAssetRepository
-        /// </summary>
-        private RepositoryChangeTracker<AssetId, Asset<ScriptAssetData>> CreateChangeTrackerForAssetRepository(
-            IAssetRepository<ScriptAssetData> repository,
-            Type dataType)
-        {
-            try
-            {
-                // Create tracker with concrete types
-                var tracker = new RepositoryChangeTracker<AssetId, Asset<ScriptAssetData>>();
-
-                // Initialize baseline from repository
-                tracker.InitializeBaseline(repository);
-
-                return tracker;
-            }
-            catch (Exception e)
-            {
-                Debug.LogError($"Failed to create change tracker: {e.Message}");
-                return null;
-            }
         }
     }
 }

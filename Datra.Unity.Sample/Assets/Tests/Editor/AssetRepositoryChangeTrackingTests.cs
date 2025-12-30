@@ -1,12 +1,12 @@
 using System.Collections;
 using System.Linq;
 using Datra.DataTypes;
+using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
 using Datra.SampleData.Generated;
 using Datra.SampleData.Models;
 using Datra.Unity.Editor.Providers;
-using Datra.Unity.Editor.Utilities;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -46,7 +46,7 @@ namespace Datra.Unity.Tests
         }
 
         [UnityTest]
-        public IEnumerator RepositoryChangeTracker_CanTrackAssetRepository()
+        public IEnumerator EditableAssetDataSource_CanTrackAssetRepository()
         {
             // Arrange
             var provider = new AssetDatabaseRawDataProvider(basePath: SampleDataBasePath);
@@ -64,19 +64,21 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            // Act - Create change tracker for AssetRepository
-            var tracker = new RepositoryChangeTracker<AssetId, Asset<ScriptAssetData>>();
+            // Act - Create editable data source for AssetRepository
+            // Cast to IEditableAssetRepository (AssetRepository implements both interfaces)
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
 
-            // Initialize baseline from repository (IAssetRepository implements IReadOnlyDictionary)
-            tracker.InitializeBaseline(context.ScriptAsset);
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
 
             // Assert
-            Assert.IsFalse(tracker.HasModifications, "Should have no modifications initially");
-            Debug.Log($"Change tracker initialized with {context.ScriptAsset.Count} assets");
+            Assert.IsFalse(dataSource.HasModifications, "Should have no modifications initially");
+            Assert.AreEqual(context.ScriptAsset.Count, dataSource.EnumerateItems().Count());
+            Debug.Log($"EditableAssetDataSource initialized with {context.ScriptAsset.Count} assets");
         }
 
         [UnityTest]
-        public IEnumerator RepositoryChangeTracker_TracksAddedAssets()
+        public IEnumerator EditableAssetDataSource_TracksAddedAssets()
         {
             // Arrange
             var provider = new AssetDatabaseRawDataProvider(basePath: SampleDataBasePath);
@@ -94,27 +96,27 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            // Create change tracker
-            var tracker = new RepositoryChangeTracker<AssetId, Asset<ScriptAssetData>>();
-            tracker.InitializeBaseline(context.ScriptAsset);
+            // Create editable data source
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
 
-            // Act - Track a new asset being added
-            var newAssetId = AssetId.NewId();
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+            var initialCount = dataSource.EnumerateItems().Count();
+
+            // Act - Add a new asset
             var newData = new ScriptAssetData { Name = "New Script", Description = "Test", Version = 1 };
-            var newAsset = new Asset<ScriptAssetData>(newAssetId, newData);
-
-            tracker.TrackAdd(newAssetId, newAsset);
+            var newAsset = dataSource.AddNew(newData, "test_new_script.json");
 
             // Assert
-            Assert.IsTrue(tracker.HasModifications, "Should detect added asset");
-            Assert.IsTrue(tracker.IsAdded(newAssetId), "Asset should be marked as added");
-            Assert.Contains(newAssetId, tracker.GetAddedKeys().ToList());
+            Assert.IsTrue(dataSource.HasModifications, "Should detect added asset");
+            Assert.AreEqual(initialCount + 1, dataSource.EnumerateItems().Count(), "Should have one more item");
+            Assert.AreEqual(ItemState.Added, dataSource.GetItemState(newAsset.Id), "Asset should be in Added state");
 
-            Debug.Log($"Added asset tracking works. Added key: {newAssetId}");
+            Debug.Log($"Added asset tracking works. Added key: {newAsset.Id}");
         }
 
         [UnityTest]
-        public IEnumerator RepositoryChangeTracker_TracksDeletedAssets()
+        public IEnumerator EditableAssetDataSource_TracksDeletedAssets()
         {
             // Arrange
             var provider = new AssetDatabaseRawDataProvider(basePath: SampleDataBasePath);
@@ -132,21 +134,24 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            // Create change tracker
-            var tracker = new RepositoryChangeTracker<AssetId, Asset<ScriptAssetData>>();
-            tracker.InitializeBaseline(context.ScriptAsset);
+            // Create editable data source
+            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+
+            var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+            var initialCount = dataSource.EnumerateItems().Count();
 
             // Get first asset's ID
-            var firstAsset = context.ScriptAsset.Values.First();
+            var firstAsset = dataSource.EnumerateItems().First().Value;
             var assetId = firstAsset.Id;
 
-            // Act - Track asset deletion
-            tracker.TrackDelete(assetId);
+            // Act - Delete the asset
+            dataSource.Delete(assetId);
 
             // Assert
-            Assert.IsTrue(tracker.HasModifications, "Should detect deleted asset");
-            Assert.IsTrue(tracker.IsDeleted(assetId), "Asset should be marked as deleted");
-            Assert.Contains(assetId, tracker.GetDeletedKeys().ToList());
+            Assert.IsTrue(dataSource.HasModifications, "Should detect deleted asset");
+            Assert.AreEqual(initialCount - 1, dataSource.EnumerateItems().Count(), "Should have one less item");
+            Assert.AreEqual(ItemState.Deleted, dataSource.GetItemState(assetId), "Asset should be in Deleted state");
 
             Debug.Log($"Deleted asset tracking works. Deleted key: {assetId}");
         }

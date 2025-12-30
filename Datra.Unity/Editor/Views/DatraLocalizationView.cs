@@ -23,6 +23,9 @@ namespace Datra.Unity.Editor.Views
     /// </summary>
     public class DatraLocalizationView : VirtualizedTableView
     {
+        // Localization-specific change tracker
+        private LocalizationChangeTracker changeTracker;
+
         // Localization-specific
         private LanguageCode currentLanguageCode;
         private bool isLoading = false;

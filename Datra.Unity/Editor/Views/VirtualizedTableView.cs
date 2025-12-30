@@ -319,15 +319,15 @@ namespace Datra.Unity.Editor.Views
         /// </summary>
         protected virtual (bool isModified, bool isSpecial) GetRowState(object item)
         {
-            // Default: check if item has any modifications via change tracker
-            if (changeTracker != null && item != null)
+            // Default: check if item has any modifications via dataSource
+            if (dataSource != null && item != null)
             {
                 try
                 {
                     var itemKey = GetKeyFromItem(item);
                     if (itemKey != null)
                     {
-                        var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                        var modifiedProps = dataSource.GetModifiedProperties(itemKey);
                         bool isModified = modifiedProps.Any();
                         return (isModified, false);
                     }

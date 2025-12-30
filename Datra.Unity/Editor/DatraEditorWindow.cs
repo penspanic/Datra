@@ -50,9 +50,6 @@ namespace Datra.Unity.Editor
         private LocalizationContext localizationContext;
         private LocalizationChangeTracker localizationChangeTracker;
 
-        // Change trackers for each data type (legacy - being replaced by dataSources)
-        internal Dictionary<Type, IRepositoryChangeTracker> changeTrackers = new Dictionary<Type, IRepositoryChangeTracker>();
-
         // Editable data sources for transactional editing
         internal Dictionary<Type, IEditableDataSource> dataSources = new Dictionary<Type, IEditableDataSource>();
 
@@ -256,7 +253,6 @@ namespace Datra.Unity.Editor
                     dataManager = new DatraDataManager(
                         dataContext,
                         repositories,
-                        changeTrackers,
                         dataSources,
                         localizationContext,
                         localizationChangeTracker);
@@ -448,7 +444,6 @@ namespace Datra.Unity.Editor
         {
             repositories.Clear();
             dataTypeInfoMap.Clear();
-            changeTrackers.Clear();
             dataSources.Clear();
             
             // Get data type infos from context
@@ -471,9 +466,6 @@ namespace Datra.Unity.Editor
                     // Create LocalizationRepository wrapper and register it
                     var localizationRepository = new LocalizationRepository(localizationContext);
                     repositories[typeof(LocalizationContext)] = localizationRepository;
-
-                    // Register LocalizationRepository's change tracker
-                    changeTrackers[typeof(LocalizationContext)] = localizationChangeTracker;
 
                     // Load all available languages for editor (allows editing multiple languages without switching)
                     localizationContext.LoadAllAvailableLanguagesAsync().Wait();
