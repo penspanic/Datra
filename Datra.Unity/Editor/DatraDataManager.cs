@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 using Datra.Editor.Interfaces;
+using Datra.Editor.DataSources;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
@@ -23,6 +24,7 @@ namespace Datra.Unity.Editor
         private readonly LocalizationContext _localizationContext;
         private readonly Dictionary<Type, IDataRepository> _repositories;
         private readonly Dictionary<Type, IRepositoryChangeTracker> _changeTrackers;
+        private readonly Dictionary<Type, IEditableDataSource> _dataSources;
         private readonly LocalizationChangeTracker _localizationChangeTracker;
 
         // Unified Event System
@@ -57,17 +59,20 @@ namespace Datra.Unity.Editor
         public LocalizationChangeTracker LocalizationChangeTracker => _localizationChangeTracker;
         public IReadOnlyDictionary<Type, IDataRepository> Repositories => _repositories;
         public IReadOnlyDictionary<Type, IRepositoryChangeTracker> ChangeTrackers => _changeTrackers;
+        public IReadOnlyDictionary<Type, IEditableDataSource> DataSources => _dataSources;
 
         public DatraDataManager(
             IDataContext dataContext,
             Dictionary<Type, IDataRepository> repositories,
             Dictionary<Type, IRepositoryChangeTracker> changeTrackers,
+            Dictionary<Type, IEditableDataSource> dataSources,
             LocalizationContext localizationContext,
             LocalizationChangeTracker localizationChangeTracker)
         {
             _dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
             _repositories = repositories ?? throw new ArgumentNullException(nameof(repositories));
             _changeTrackers = changeTrackers ?? throw new ArgumentNullException(nameof(changeTrackers));
+            _dataSources = dataSources ?? new Dictionary<Type, IEditableDataSource>();
             // Localization is optional (EnableLocalization = false in DatraConfiguration)
             _localizationContext = localizationContext;
             _localizationChangeTracker = localizationChangeTracker;
@@ -120,7 +125,7 @@ namespace Datra.Unity.Editor
                 );
             }
 
-            // Subscribe to ChangeTracker events
+            // Subscribe to ChangeTracker events (legacy)
             foreach (var kvp in _changeTrackers)
             {
                 var dataType = kvp.Key;
@@ -133,6 +138,18 @@ namespace Datra.Unity.Editor
                         OnModifiedStateChanged?.Invoke(dataType, hasChanges);
                     };
                 }
+            }
+
+            // Subscribe to DataSource events (new architecture)
+            foreach (var kvp in _dataSources)
+            {
+                var dataType = kvp.Key;
+                var dataSource = kvp.Value;
+
+                dataSource.OnModifiedStateChanged += (hasChanges) =>
+                {
+                    OnModifiedStateChanged?.Invoke(dataType, hasChanges);
+                };
             }
 
             // Subscribe to LocalizationChangeTracker events
@@ -156,6 +173,12 @@ namespace Datra.Unity.Editor
         {
             _changeTrackers.TryGetValue(type, out var tracker);
             return tracker;
+        }
+
+        public IEditableDataSource GetDataSource(Type type)
+        {
+            _dataSources.TryGetValue(type, out var dataSource);
+            return dataSource;
         }
 
         // State queries

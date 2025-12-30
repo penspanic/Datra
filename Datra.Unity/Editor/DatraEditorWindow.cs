@@ -14,6 +14,7 @@ using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Services;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
+using Datra.Editor.DataSources;
 using Datra.Unity.Editor.ViewModels;
 using Datra.Unity.Editor.Windows;
 
@@ -49,8 +50,11 @@ namespace Datra.Unity.Editor
         private LocalizationContext localizationContext;
         private LocalizationChangeTracker localizationChangeTracker;
 
-        // Change trackers for each data type
+        // Change trackers for each data type (legacy - being replaced by dataSources)
         internal Dictionary<Type, IRepositoryChangeTracker> changeTrackers = new Dictionary<Type, IRepositoryChangeTracker>();
+
+        // Editable data sources for transactional editing
+        internal Dictionary<Type, IEditableDataSource> dataSources = new Dictionary<Type, IEditableDataSource>();
 
         // ViewModel and Services (new architecture)
         private DatraEditorViewModel viewModel;
@@ -253,6 +257,7 @@ namespace Datra.Unity.Editor
                         dataContext,
                         repositories,
                         changeTrackers,
+                        dataSources,
                         localizationContext,
                         localizationChangeTracker);
 
@@ -483,11 +488,92 @@ namespace Datra.Unity.Editor
             }
         }
 
+        private void CreateEditableDataSourceForRepository(Type dataType, object repository)
+        {
+            try
+            {
+                var repoType = repository.GetType();
+
+                // Check for ISingleDataRepository<TData>
+                var singleRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ISingleDataRepository<>));
+
+                if (singleRepoInterface != null)
+                {
+                    var valueType = singleRepoInterface.GetGenericArguments()[0];
+
+                    // Create EditableSingleDataSource<TData>
+                    var dataSourceType = typeof(EditableSingleDataSource<>).MakeGenericType(valueType);
+                    var dataSource = Activator.CreateInstance(dataSourceType, repository) as IEditableDataSource;
+
+                    if (dataSource != null)
+                    {
+                        dataSources[dataType] = dataSource;
+                    }
+                    return;
+                }
+
+                // Check for IKeyValueDataRepository<TKey, TValue>
+                var keyValueRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IKeyValueDataRepository<,>));
+
+                if (keyValueRepoInterface != null)
+                {
+                    var genericArgs = keyValueRepoInterface.GetGenericArguments();
+                    var keyType = genericArgs[0];
+                    var valueType = genericArgs[1];
+
+                    // Create EditableKeyValueDataSource<TKey, TData>
+                    var dataSourceType = typeof(EditableKeyValueDataSource<,>).MakeGenericType(keyType, valueType);
+                    var dataSource = Activator.CreateInstance(dataSourceType, repository) as IEditableDataSource;
+
+                    if (dataSource != null)
+                    {
+                        dataSources[dataType] = dataSource;
+                    }
+                    return;
+                }
+
+                // Check for IEditableAssetRepository<T>
+                var editableAssetRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Editor.Interfaces.IEditableAssetRepository<>));
+
+                if (editableAssetRepoInterface != null)
+                {
+                    var assetDataType = editableAssetRepoInterface.GetGenericArguments()[0];
+
+                    // Create EditableAssetDataSource<T>
+                    var dataSourceType = typeof(EditableAssetDataSource<>).MakeGenericType(assetDataType);
+                    var dataSource = Activator.CreateInstance(dataSourceType, repository) as IEditableDataSource;
+
+                    if (dataSource != null)
+                    {
+                        dataSources[dataType] = dataSource;
+                    }
+                    return;
+                }
+
+                // Fallback: Check for IAssetRepository<T> (may not be editable)
+                var assetRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IAssetRepository<>));
+
+                if (assetRepoInterface != null)
+                {
+                    Debug.LogWarning($"Repository for {dataType.Name} implements IAssetRepository but not IEditableAssetRepository. Editing may not work correctly.");
+                }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"Failed to create editable data source for {dataType.Name}: {e.Message}");
+            }
+        }
+
         private void LoadDataTypes()
         {
             repositories.Clear();
             dataTypeInfoMap.Clear();
             changeTrackers.Clear();
+            dataSources.Clear();
             
             // Get data type infos from context
             var dataTypeInfos = dataContext.GetDataTypeInfos();
@@ -548,8 +634,11 @@ namespace Datra.Unity.Editor
                         repositories[dataTypeInfo.DataType] = repository;
                         dataTypeInfoMap[dataTypeInfo.DataType] = dataTypeInfo;
 
-                        // Create RepositoryChangeTracker for this data type
+                        // Create RepositoryChangeTracker for this data type (legacy)
                         CreateChangeTrackerForRepository(dataTypeInfo.DataType, repository);
+
+                        // Create EditableDataSource for this data type (new architecture)
+                        CreateEditableDataSourceForRepository(dataTypeInfo.DataType, repository);
                     }
                 }
             }
@@ -613,11 +702,11 @@ namespace Datra.Unity.Editor
 
                 ShowDataInspector();
 
-                // Get change tracker for this data type
-                changeTrackers.TryGetValue(dataType, out var tracker);
+                // Get data source for this data type
+                dataSources.TryGetValue(dataType, out var source);
 
-                // Pass tracker to inspector panel
-                dataInspectorPanel.SetDataContext(dataContext, repository, dataType, tracker);
+                // Pass data source to inspector panel
+                dataInspectorPanel.SetDataContext(dataContext, repository, dataType, source);
                 UpdateCurrentDataModifiedState();
             }
         }
@@ -676,7 +765,7 @@ namespace Datra.Unity.Editor
             if (tab != null)
             {
                 ShowDataInspector();
-                dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType, changeTrackers.GetValueOrDefault(tab.DataType));
+                dataInspectorPanel.SetDataContext(tab.DataContext, tab.Repository, tab.DataType, dataSources.GetValueOrDefault(tab.DataType));
             }
         }
 
@@ -870,7 +959,7 @@ namespace Datra.Unity.Editor
                     // Refresh current view if data inspector is active
                     if (currentInspectorPanel == dataInspectorPanel && dataInspectorPanel.CurrentType != null)
                     {
-                        dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType, changeTrackers.GetValueOrDefault(dataInspectorPanel.CurrentType));
+                        dataInspectorPanel.SetDataContext(dataContext, dataInspectorPanel.CurrentRepository, dataInspectorPanel.CurrentType, dataSources.GetValueOrDefault(dataInspectorPanel.CurrentType));
                     }
                     else if (currentInspectorPanel == localizationInspectorPanel)
                     {

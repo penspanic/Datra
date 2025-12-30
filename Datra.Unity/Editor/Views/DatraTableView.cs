@@ -131,20 +131,32 @@ namespace Datra.Unity.Editor.Views
             Type type,
             IDataRepository repo,
             IDataContext context,
-            IRepositoryChangeTracker tracker,
+            IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
             Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
 
+            // Unsubscribe from previous dataSource
+            if (dataSource != null)
+            {
+                dataSource.OnModifiedStateChanged -= OnDataSourceModifiedStateChanged;
+            }
+
             // Don't call base.SetData - we need to initialize columns first
             dataType = type;
             repository = repo;
             dataContext = context;
-            changeTracker = tracker;
+            dataSource = source;
             localizationContext = localizationCtx;
             localizationChangeTracker = localizationTracker;
+
+            // Subscribe to new dataSource
+            if (dataSource != null)
+            {
+                dataSource.OnModifiedStateChanged += OnDataSourceModifiedStateChanged;
+            }
 
             if (isDifferentType)
             {
@@ -161,6 +173,21 @@ namespace Datra.Unity.Editor.Views
             CleanupFields();
             RefreshContent();
             UpdateFooter();
+        }
+
+        private void OnDataSourceModifiedStateChanged(bool isModified)
+        {
+            if (hasUnsavedChanges != isModified)
+            {
+                hasUnsavedChanges = isModified;
+                UpdateFooter();
+                OnDataModified?.Invoke(dataType, isModified);
+
+                if (!isModified)
+                {
+                    OnModificationsCleared();
+                }
+            }
         }
 
         private void BuildExpandedColumns()
@@ -400,13 +427,13 @@ namespace Datra.Unity.Editor.Views
                 cellIndex++;
             }
 
-            // Apply modified state
+            // Apply modified state from dataSource
             var itemKey = GetKeyFromItem(item);
-            if (itemKey != null && changeTracker != null)
+            if (itemKey != null && dataSource != null)
             {
                 try
                 {
-                    var modifiedProps = changeTracker.GetModifiedProperties(itemKey);
+                    var modifiedProps = dataSource.GetModifiedProperties(itemKey);
                     foreach (var propName in modifiedProps)
                     {
                         // Find cell for this property and mark as modified
@@ -546,17 +573,20 @@ namespace Datra.Unity.Editor.Views
         private void TrackNestedPropertyChange(object actualData, object originalItem, ColumnInfo colInfo, object newValue)
         {
             var itemKey = GetKeyFromItem(originalItem);
+            if (itemKey == null || dataSource == null) return;
+
             // Track at the parent property level for change tracking
             var parentValue = colInfo.Property.GetValue(actualData);
-            changeTracker.TrackPropertyChange(itemKey, colInfo.Property.Name, parentValue, out bool isModified);
-            UpdateModifiedState();
 
-            // Mark asset as modified in the repository (for Asset data)
-            if (isModified)
+            // Use reflection to call TrackPropertyChange on typed dataSource
+            var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
+            if (trackMethod != null)
             {
-                MarkAssetModified(originalItem);
+                var parameters = new object[] { itemKey, colInfo.Property.Name, parentValue, false };
+                trackMethod.Invoke(dataSource, parameters);
             }
 
+            UpdateModifiedState();
             UpdateRowStateVisuals(originalItem);
         }
 
@@ -579,7 +609,18 @@ namespace Datra.Unity.Editor.Views
 
                 field.OnValueChanged += (propName, newValue) => {
                     var itemKey = GetKeyFromItem(originalItem);
-                    changeTracker.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
+                    if (itemKey == null || dataSource == null) return;
+
+                    // Use reflection to call TrackPropertyChange on typed dataSource
+                    var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
+                    bool isModified = false;
+                    if (trackMethod != null)
+                    {
+                        var parameters = new object[] { itemKey, propName, newValue, false };
+                        trackMethod.Invoke(dataSource, parameters);
+                        isModified = (bool)parameters[3];
+                    }
+
                     field.SetModified(isModified);
                     UpdateModifiedState();
 
@@ -595,12 +636,23 @@ namespace Datra.Unity.Editor.Views
 
                 field.OnRevertRequested += (propName) => {
                     var itemKey = GetKeyFromItem(originalItem);
-                    if (itemKey == null) return;
+                    if (itemKey == null || dataSource == null) return;
 
-                    var baselineValue = changeTracker.GetPropertyBaselineValue(itemKey, propName);
+                    // Use reflection to get baseline value from dataSource
+                    var baselineValue = dataSource.GetPropertyBaselineValue(itemKey, propName);
                     property.SetValue(actualData, baselineValue);
                     UpdateFieldValue(field, property.PropertyType, baselineValue);
-                    changeTracker.TrackPropertyChange(itemKey, propName, baselineValue, out bool isModified);
+
+                    // Track the reverted value
+                    var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
+                    bool isModified = false;
+                    if (trackMethod != null)
+                    {
+                        var parameters = new object[] { itemKey, propName, baselineValue, false };
+                        trackMethod.Invoke(dataSource, parameters);
+                        isModified = (bool)parameters[3];
+                    }
+
                     field.SetModified(isModified);
                     UpdateModifiedState();
                 };

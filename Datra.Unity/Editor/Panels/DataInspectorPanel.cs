@@ -9,6 +9,7 @@ using Datra.Interfaces;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
+using Datra.Editor.DataSources;
 using Datra.Unity.Editor.Views;
 
 namespace Datra.Unity.Editor.Panels
@@ -18,7 +19,7 @@ namespace Datra.Unity.Editor.Panels
         private Type currentType;
         private IDataRepository currentRepository;
         private IDataContext currentDataContext;
-        private IRepositoryChangeTracker currentChangeTracker;
+        private IEditableDataSource currentDataSource;
 
         // Localization support
         private Datra.Services.LocalizationContext localizationContext;
@@ -95,11 +96,11 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        public void SetDataContext(IDataContext dataContext, IDataRepository repository, Type dataType, IRepositoryChangeTracker changeTracker)
+        public void SetDataContext(IDataContext dataContext, IDataRepository repository, Type dataType, IEditableDataSource dataSource)
         {
             currentDataContext = dataContext;
             currentRepository = repository;
-            currentChangeTracker = changeTracker;
+            currentDataSource = dataSource;
             currentType = dataType;
 
             // Determine the default view mode based on data type
@@ -130,7 +131,7 @@ namespace Datra.Unity.Editor.Panels
             UpdateDataHeader();
 
             // Set data in controller
-            viewModeController.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
+            viewModeController.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
         }
 
         private void UpdateDataHeader()
@@ -234,7 +235,7 @@ namespace Datra.Unity.Editor.Panels
             }
 
             // Let the controller handle the view refresh
-            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentChangeTracker, localizationContext, localizationChangeTracker);
+            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentDataSource, localizationContext, localizationChangeTracker);
         }
         
         protected override string GetEmptyStateMessage()

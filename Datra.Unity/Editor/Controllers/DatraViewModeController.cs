@@ -7,6 +7,7 @@ using Datra.Unity.Editor.Panels;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
+using Datra.Editor.DataSources;
 
 namespace Datra.Unity.Editor.Controllers
 {
@@ -36,7 +37,7 @@ namespace Datra.Unity.Editor.Controllers
         private IDataRepository repository;
         private IDataContext dataContext;
         private bool isReadOnly;
-        private IRepositoryChangeTracker changeTracker;
+        private IEditableDataSource dataSource;
 
         // Localization support
         private Datra.Services.LocalizationContext localizationContext;
@@ -60,7 +61,7 @@ namespace Datra.Unity.Editor.Controllers
             Type type,
             IDataRepository repo,
             IDataContext context,
-            IRepositoryChangeTracker changeTracker,
+            IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
             LocalizationChangeTracker localizationTracker = null,
             bool readOnly = false)
@@ -74,7 +75,7 @@ namespace Datra.Unity.Editor.Controllers
             this.dataType = type;
             this.repository = repo;
             this.dataContext = context;
-            this.changeTracker = changeTracker;
+            this.dataSource = source;
             this.localizationContext = localizationCtx;
             this.localizationChangeTracker = localizationTracker;
             this.isReadOnly = readOnly;
@@ -148,7 +149,7 @@ namespace Datra.Unity.Editor.Controllers
             }
 
             currentView = cachedFormView;
-            currentView.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
+            currentView.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
             currentView.IsReadOnly = isReadOnly;
 
             contentContainer.Add(currentView);
@@ -165,12 +166,12 @@ namespace Datra.Unity.Editor.Controllers
             }
 
             currentView = cachedTableView;
-            currentView.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
+            currentView.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
             currentView.IsReadOnly = isReadOnly;
 
             contentContainer.Add(currentView);
         }
-        
+
         private void ShowSplitView()
         {
             // Reuse cached split view if available
@@ -203,9 +204,9 @@ namespace Datra.Unity.Editor.Controllers
             }
 
             // Update data for both views
-            cachedSplitView.tableView.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
+            cachedSplitView.tableView.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
             cachedSplitView.tableView.IsReadOnly = isReadOnly;
-            cachedSplitView.formView.SetData(dataType, repository, dataContext, changeTracker, localizationContext, localizationChangeTracker);
+            cachedSplitView.formView.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
             cachedSplitView.formView.IsReadOnly = isReadOnly;
 
             contentContainer.Add(cachedSplitView.splitView);

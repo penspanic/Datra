@@ -21,11 +21,15 @@ namespace Datra.Unity.Editor.Views
     {
         // Core properties
         protected Type dataType;
-        protected IDataRepository repository;
+        protected IDataRepository repository;  // Keep for compatibility (file path, etc.)
         protected object dataContext;
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
-        // External change tracker (IRepositoryChangeTracker)
+        // Editable data source (replaces changeTracker - provides data + change tracking)
+        protected IEditableDataSource dataSource;
+
+        // Legacy: External change tracker (deprecated, use dataSource instead)
+        [Obsolete("Use dataSource instead")]
         protected IRepositoryChangeTracker changeTracker;
 
         // Localization support (for FixedLocale properties)
@@ -142,19 +146,31 @@ namespace Datra.Unity.Editor.Views
             Type type,
             IDataRepository repo,
             IDataContext context,
-            IRepositoryChangeTracker tracker,
+            IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
             Utilities.LocalizationChangeTracker localizationTracker = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
 
+            // Unsubscribe from previous dataSource
+            if (dataSource != null)
+            {
+                dataSource.OnModifiedStateChanged -= OnDataSourceModifiedStateChanged;
+            }
+
             dataType = type;
             repository = repo;
             dataContext = context;
-            changeTracker = tracker;
+            dataSource = source;
             localizationContext = localizationCtx;
             localizationChangeTracker = localizationTracker;
+
+            // Subscribe to new dataSource
+            if (dataSource != null)
+            {
+                dataSource.OnModifiedStateChanged += OnDataSourceModifiedStateChanged;
+            }
 
             if (isDifferentType)
             {
@@ -164,6 +180,24 @@ namespace Datra.Unity.Editor.Views
             CleanupFields();
             RefreshContent();
             UpdateFooter();
+        }
+
+        /// <summary>
+        /// Handler for dataSource modification state changes
+        /// </summary>
+        private void OnDataSourceModifiedStateChanged(bool isModified)
+        {
+            if (hasUnsavedChanges != isModified)
+            {
+                hasUnsavedChanges = isModified;
+                UpdateFooter();
+                OnDataModified?.Invoke(dataType, isModified);
+
+                if (!isModified)
+                {
+                    OnModificationsCleared();
+                }
+            }
         }
         
         protected abstract void InitializeView();
@@ -188,7 +222,7 @@ namespace Datra.Unity.Editor.Views
         /// <summary>
         /// Virtual method to check if there are actual modifications in derived classes
         /// </summary>
-        protected virtual bool HasActualModifications() => changeTracker?.HasModifications ?? false;
+        protected virtual bool HasActualModifications() => dataSource?.HasModifications ?? false;
 
         /// <summary>
         /// Updates the modified state based on actual modification check
@@ -255,15 +289,29 @@ namespace Datra.Unity.Editor.Views
             }
         }
         
-        protected virtual void SaveChanges()
+        protected virtual async void SaveChanges()
         {
             if (isReadOnly) return;
 
-            OnSaveRequested?.Invoke(dataType, repository);
+            try
+            {
+                // Save through dataSource (applies changes to repository and saves)
+                if (dataSource != null)
+                {
+                    await dataSource.SaveAsync();
+                }
 
-            // Update state based on actual modifications
-            UpdateModifiedState();
-            UpdateStatus("Changes saved successfully");
+                OnSaveRequested?.Invoke(dataType, repository);
+
+                // Update state based on actual modifications
+                UpdateModifiedState();
+                UpdateStatus("Changes saved successfully");
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"Failed to save changes: {e}");
+                UpdateStatus($"Save failed: {e.Message}");
+            }
         }
 
         protected virtual void RevertChanges()
@@ -274,13 +322,11 @@ namespace Datra.Unity.Editor.Views
                 "Are you sure you want to revert all changes?",
                 "Revert", "Cancel"))
             {
-                changeTracker.RevertAll();
+                // Revert through dataSource (just clears deltas, repository unchanged)
+                dataSource?.Revert();
 
-                // Refresh all fields
-                foreach (var field in activeFields)
-                {
-                    field.RefreshField();
-                }
+                // Refresh content to show baseline data
+                RefreshContent();
 
                 // Update state based on actual modifications
                 UpdateModifiedState();
@@ -589,29 +635,20 @@ namespace Datra.Unity.Editor.Views
                 // Determine file path
                 string filePath = $"{fileName}.json";
 
-                // Find the Add method: Add(T data, string filePath)
-                var addMethod = repository.GetType().GetMethod("Add", new[] { dataType, typeof(string) });
-                if (addMethod != null)
+                // Use reflection to call AddNew on the typed EditableAssetDataSource
+                // AddNew(T data, string filePath) returns Asset<T>
+                var addNewMethod = dataSource?.GetType().GetMethod("AddNew");
+                if (addNewMethod != null)
                 {
-                    var asset = addMethod.Invoke(repository, new[] { newData, filePath });
-
-                    // Track addition
-                    if (asset != null)
-                    {
-                        var assetId = GetAssetId(asset);
-                        if (assetId.HasValue)
-                        {
-                            changeTracker?.TrackAdd(assetId.Value, asset);
-                        }
-                    }
+                    addNewMethod.Invoke(dataSource, new[] { newData, filePath });
 
                     RefreshContent();
-                    MarkAsModified();
+                    UpdateModifiedState();
                     UpdateStatus($"New asset '{fileName}' created");
                 }
                 else
                 {
-                    EditorUtility.DisplayDialog("Error", "Repository does not support asset creation", "OK");
+                    EditorUtility.DisplayDialog("Error", "DataSource does not support asset creation", "OK");
                 }
             }
             catch (TargetInvocationException tie)
@@ -631,51 +668,50 @@ namespace Datra.Unity.Editor.Views
         {
             try
             {
-                // Check for duplicate ID
+                // Check for duplicate ID (using dataSource)
                 if (IsIdDuplicate(newId))
                 {
-                    EditorUtility.DisplayDialog("Duplicate ID", 
+                    EditorUtility.DisplayDialog("Duplicate ID",
                         $"An item with ID '{newId}' already exists", "OK");
                     return;
                 }
-                
+
                 // Create a new instance and set the ID
                 var newItem = Activator.CreateInstance(dataType);
                 var idProperty = dataType.GetProperty("Id");
-                
+
                 if (idProperty != null && idProperty.CanWrite)
                 {
                     idProperty.SetValue(newItem, newId);
                 }
-                
-                // Find the Add method on the repository
-                var addMethod = repository.GetType().GetMethod("Add");
+
+                // Add through dataSource (marks as added, applied on Save)
+                // Use reflection to call Add(TKey key, TValue value) on typed dataSource
+                var keyType = newId.GetType();
+                var addMethod = dataSource?.GetType().GetMethod("Add", new[] { keyType, dataType });
                 if (addMethod != null)
                 {
                     try
                     {
-                        addMethod.Invoke(repository, new[] { newItem });
-                        
-                        // Mark item as new before refresh
-                        OnNewItemAdded(newItem);
-                        
+                        addMethod.Invoke(dataSource, new[] { newId, newItem });
+
                         // Refresh the display
                         RefreshContent();
-                        MarkAsModified();
+                        UpdateModifiedState();
                         UpdateStatus($"New {dataType.Name} added with ID: {newId}");
                     }
                     catch (TargetInvocationException tie)
                     {
                         var innerEx = tie.InnerException ?? tie;
-                        EditorUtility.DisplayDialog("Error", 
-                            $"Failed to add new item: {innerEx.Message}", 
+                        EditorUtility.DisplayDialog("Error",
+                            $"Failed to add new item: {innerEx.Message}",
                             "OK");
                         Debug.LogError($"Failed to add new item: {innerEx}");
                     }
                 }
                 else
                 {
-                    UpdateStatus("Add method not found on repository");
+                    UpdateStatus("DataSource does not support Add");
                 }
             }
             catch (Exception e)
@@ -687,10 +723,10 @@ namespace Datra.Unity.Editor.Views
         
         protected bool IsIdDuplicate(object id)
         {
-            if (repository == null || id == null) return false;
+            if (dataSource == null || id == null) return false;
 
-            // Use EnumerateItems() - no reflection needed
-            foreach (var item in repository.EnumerateItems())
+            // Use dataSource.EnumerateItems() - provides merged view
+            foreach (var item in dataSource.EnumerateItems())
             {
                 var key = GetKeyFromItem(item);
                 if (key != null && key.Equals(id))
@@ -776,7 +812,7 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Delete an asset item from IEditableAssetRepository
+        /// Delete an asset item via dataSource
         /// </summary>
         private void DeleteAssetItem(object assetWrapper)
         {
@@ -787,32 +823,30 @@ namespace Datra.Unity.Editor.Views
                 return;
             }
 
-            // Track deletion
-            changeTracker?.TrackDelete(assetId.Value);
-
-            // Mark item as deleted
+            // Mark item as deleted (visual feedback)
             OnItemMarkedForDeletion(assetWrapper);
 
-            // Find Remove(AssetId) method
-            var removeMethod = repository.GetType().GetMethod("Remove", new[] { typeof(AssetId) });
-            if (removeMethod != null)
+            // Delete through dataSource (marks for deletion, applied on Save)
+            // Use reflection to call Delete(AssetId key) on typed dataSource
+            var deleteMethod = dataSource?.GetType().GetMethod("Delete", new[] { typeof(AssetId) });
+            if (deleteMethod != null)
             {
-                var result = removeMethod.Invoke(repository, new object[] { assetId.Value });
+                deleteMethod.Invoke(dataSource, new object[] { assetId.Value });
 
                 RefreshContent();
-                MarkAsModified();
-                UpdateStatus("Asset deleted");
+                UpdateModifiedState();
+                UpdateStatus("Asset marked for deletion");
 
                 InvokeOnItemDeleted(assetWrapper);
             }
             else
             {
-                UpdateStatus("Remove method not found on repository");
+                UpdateStatus("DataSource does not support deletion");
             }
         }
 
         /// <summary>
-        /// Delete a table data item from IKeyValueDataRepository
+        /// Delete a table data item via dataSource
         /// </summary>
         private void DeleteTableItem(object item)
         {
@@ -823,27 +857,26 @@ namespace Datra.Unity.Editor.Views
                 return;
             }
 
-            // Track deletion
-            changeTracker?.TrackDelete(keyToRemove);
-
-            // Mark item as deleted
+            // Mark item as deleted (visual feedback)
             OnItemMarkedForDeletion(item);
 
-            // Find the Remove method on the repository
-            var removeMethod = repository.GetType().GetMethod("Remove");
-            if (removeMethod != null)
+            // Delete through dataSource (marks for deletion, applied on Save)
+            // Use reflection to call Delete(TKey key) on typed dataSource
+            var keyType = keyToRemove.GetType();
+            var deleteMethod = dataSource?.GetType().GetMethod("Delete", new[] { keyType });
+            if (deleteMethod != null)
             {
-                var result = removeMethod.Invoke(repository, new[] { keyToRemove });
+                deleteMethod.Invoke(dataSource, new[] { keyToRemove });
 
                 RefreshContent();
-                MarkAsModified();
-                UpdateStatus("Item deleted");
+                UpdateModifiedState();
+                UpdateStatus("Item marked for deletion");
 
                 InvokeOnItemDeleted(item);
             }
             else
             {
-                UpdateStatus("Remove method not found on repository");
+                UpdateStatus("DataSource does not support deletion");
             }
         }
         
@@ -948,9 +981,8 @@ namespace Datra.Unity.Editor.Views
         
         protected virtual void OnNewItemAdded(object newItem)
         {
-            var itemKey = GetKeyFromItem(newItem);
-            if (itemKey != null)
-                changeTracker.TrackAdd(itemKey, newItem);
+            // With dataSource, additions are already tracked when Add() is called
+            // This hook is only for UI feedback (e.g., highlight new row)
         }
         
         protected virtual void OnItemMarkedForDeletion(object item)

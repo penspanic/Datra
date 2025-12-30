@@ -86,11 +86,19 @@ namespace Datra.Unity.Editor.Views
             foreach (var field in fields)
             {
                 field.OnValueChanged += (propName, value) => {
-                    // Track in external change tracker
+                    // Track property change in editable data source
                     var dataKey = GetKeyFromItem(item);
-                    if (dataKey != null)
+                    if (dataKey != null && dataSource != null)
                     {
-                        changeTracker.TrackChange(dataKey, item);
+                        // Use reflection to call TrackPropertyChange on typed dataSource
+                        var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
+                        if (trackMethod != null)
+                        {
+                            var parameters = new object[] { dataKey, propName, value, false };
+                            trackMethod.Invoke(dataSource, parameters);
+                            bool isModified = (bool)parameters[3];
+                            field.SetModified(isModified);
+                        }
                     }
 
                     // Mark asset as modified in the repository (for Asset data)
@@ -220,11 +228,19 @@ namespace Datra.Unity.Editor.Views
                 foreach (var field in fields)
                 {
                     field.OnValueChanged += (propName, value) => {
-                        // Track in external change tracker (use original item for key)
+                        // Track property change in editable data source (use original item for key)
                         var itemKey = GetKeyFromItem(item);
-                        if (itemKey != null)
+                        if (itemKey != null && dataSource != null)
                         {
-                            changeTracker.TrackChange(itemKey, item);
+                            // Use reflection to call TrackPropertyChange on typed dataSource
+                            var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
+                            if (trackMethod != null)
+                            {
+                                var parameters = new object[] { itemKey, propName, value, false };
+                                trackMethod.Invoke(dataSource, parameters);
+                                bool isModified = (bool)parameters[3];
+                                field.SetModified(isModified);
+                            }
                         }
 
                         // Mark asset as modified in the repository (for Asset data)
