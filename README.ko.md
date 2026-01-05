@@ -71,9 +71,9 @@ var config = context.GameConfig.Get();
 ```json
 {
   "dependencies": {
-    "com.penspanic.datra": "https://github.com/penspanic/Datra.git?path=Datra/Plugins",
-    "com.penspanic.datra.unity": "https://github.com/penspanic/Datra.git?path=Datra.Unity/Runtime",
-    "com.penspanic.datra.editor": "https://github.com/penspanic/Datra.git?path=Datra.Unity/Editor"
+    "com.penspanic.datra": "https://github.com/penspanic/Datra.git?path=Datra",
+    "com.penspanic.datra.editor": "https://github.com/penspanic/Datra.git?path=Datra.Editor",
+    "com.penspanic.datra.unity": "https://github.com/penspanic/Datra.git?path=Datra.Unity"
   }
 }
 ```
