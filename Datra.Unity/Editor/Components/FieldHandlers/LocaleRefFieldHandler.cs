@@ -77,8 +77,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                     localeProvider.ShowLocaleEditPopup(localeRef, buttonWorldBound, updatedText =>
                     {
                         textField.value = updatedText ?? "(Missing)";
-                        // LocaleRef is readonly, changes are tracked via LocalizationContext
-                        context.OnValueChanged?.Invoke(localeRef);
+                        // LocaleRef key is readonly - changes are tracked via LocalizationContext
+                        // MarkAsModified() is called in ShowLocaleEditPopup's onModified callback
+                        // No need to call OnValueChanged since the LocaleRef value itself doesn't change
                     });
                 }
             };
