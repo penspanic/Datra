@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using Datra.Helpers;
 using Datra.Interfaces;
 
 namespace Datra.DataTypes
@@ -73,13 +75,69 @@ namespace Datra.DataTypes
         {
             if (service == null)
                 throw new ArgumentNullException(nameof(service));
-                
+
             if (string.IsNullOrEmpty(Key))
                 return string.Empty;
-                
+
             return service.Localize(Key);
         }
-        
+
+        /// <summary>
+        /// Evaluates the locale reference and formats the result with the provided values.
+        /// Placeholders in the localized text (e.g., {DamageMultiplier}, {Count}) are replaced with corresponding property values.
+        /// </summary>
+        /// <param name="context">The localization context</param>
+        /// <param name="values">An anonymous object containing the values for placeholders</param>
+        /// <returns>The formatted localized string</returns>
+        /// <example>
+        /// var desc = skill.Description.EvaluateWithFormat(context, new {
+        ///     DamageMultiplier = skill.DamageMultiplier * 100,
+        ///     ProjCount = skill.ProjectileCount
+        /// });
+        /// </example>
+        public string EvaluateWithFormat(ILocalizationContext context, object? values)
+        {
+            var text = Evaluate(context);
+            return StringTemplateHelper.Format(text, values);
+        }
+
+        /// <summary>
+        /// Evaluates the locale reference and formats the result with the provided dictionary values.
+        /// Placeholders in the localized text (e.g., {DamageMultiplier}, {Count}) are replaced with corresponding dictionary values.
+        /// </summary>
+        /// <param name="context">The localization context</param>
+        /// <param name="values">A dictionary containing key-value pairs for placeholders</param>
+        /// <returns>The formatted localized string</returns>
+        public string EvaluateWithFormat(ILocalizationContext context, IDictionary<string, object?> values)
+        {
+            var text = Evaluate(context);
+            return StringTemplateHelper.Format(text, values);
+        }
+
+        /// <summary>
+        /// Evaluates the locale reference and formats the result with the provided values.
+        /// </summary>
+        /// <param name="service">The localization service</param>
+        /// <param name="values">An anonymous object containing the values for placeholders</param>
+        /// <returns>The formatted localized string</returns>
+        public string EvaluateWithFormat(ILocalizationService service, object? values)
+        {
+            var text = Evaluate(service);
+            return StringTemplateHelper.Format(text, values);
+        }
+
+        /// <summary>
+        /// Evaluates the locale reference and formats the result with the provided dictionary values.
+        /// </summary>
+        /// <param name="service">The localization service</param>
+        /// <param name="values">A dictionary containing key-value pairs for placeholders</param>
+        /// <returns>The formatted localized string</returns>
+        public string EvaluateWithFormat(ILocalizationService service, IDictionary<string, object?> values)
+        {
+            var text = Evaluate(service);
+            return StringTemplateHelper.Format(text, values);
+        }
+
         /// <summary>
         /// Implicit conversion from string key
         /// </summary>

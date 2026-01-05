@@ -17,7 +17,7 @@ namespace Datra.Tests
         {
             private readonly Dictionary<string, string> _texts = new Dictionary<string, string>();
             public string CurrentLanguage { get; private set; }
-            
+
             public MockLocalizationContext()
             {
                 // Initialize with test data
@@ -26,6 +26,9 @@ namespace Datra.Tests
                 _texts["Message_Welcome"] = "Welcome!";
                 _texts["Character_Hero_Name"] = "Hero";
                 _texts["Character_Hero_Desc"] = "A brave warrior";
+                // Template test data
+                _texts["Skill_Damage"] = "Deal {DamageMultiplier}% damage to {Count} enemies";
+                _texts["Skill_Stunt"] = "Trigger {Stunt} on landing";
                 CurrentLanguage = "en";
             }
             
@@ -177,10 +180,118 @@ namespace Datra.Tests
         {
             // Arrange
             LocaleRef localeRef = "Button_Start";
-            
+
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationContext)null!));
             Assert.Throws<ArgumentNullException>(() => localeRef.Evaluate((ILocalizationService)null!));
         }
+
+        #region EvaluateWithFormat Tests
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithAnonymousObject_Works()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Damage";
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, new { DamageMultiplier = 150, Count = 3 });
+
+            // Assert
+            Assert.Equal("Deal 150% damage to 3 enemies", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithDictionary_Works()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Damage";
+            var values = new Dictionary<string, object?>
+            {
+                { "DamageMultiplier", 200 },
+                { "Count", 5 }
+            };
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, values);
+
+            // Assert
+            Assert.Equal("Deal 200% damage to 5 enemies", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithNullValues_ReturnsUnformatted()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Damage";
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, (object?)null);
+
+            // Assert
+            Assert.Equal("Deal {DamageMultiplier}% damage to {Count} enemies", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithPartialValues_ReplacesAvailable()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Damage";
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, new { DamageMultiplier = 150 });
+
+            // Assert
+            Assert.Equal("Deal 150% damage to {Count} enemies", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithNestedLocalization_Works()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Stunt";
+
+            // Act - First get the stunt name, then format
+            var stuntName = "Backflip"; // In real code, this would come from LocalizationManager
+            var result = localeRef.EvaluateWithFormat(context, new { Stunt = stuntName });
+
+            // Assert
+            Assert.Equal("Trigger Backflip on landing", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_WithFloatValues_FormatsCorrectly()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Skill_Damage";
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, new { DamageMultiplier = 150.5f, Count = 3 });
+
+            // Assert
+            Assert.Equal("Deal 150.5% damage to 3 enemies", result);
+        }
+
+        [Fact]
+        public void LocaleRef_EvaluateWithFormat_NoPlaceholders_ReturnsOriginal()
+        {
+            // Arrange
+            var context = new MockLocalizationContext();
+            LocaleRef localeRef = "Button_Start";
+
+            // Act
+            var result = localeRef.EvaluateWithFormat(context, new { SomeValue = 100 });
+
+            // Assert
+            Assert.Equal("Start", result);
+        }
+
+        #endregion
     }
 }
