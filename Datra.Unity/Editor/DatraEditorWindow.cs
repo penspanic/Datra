@@ -311,11 +311,20 @@ namespace Datra.Unity.Editor
                 // For now, just let the view handle its own updates
             }
 
-            // Always refresh LocalizationInspectorPanel when LocalizationContext changes
-            // This is important because LocaleEditPopup can be opened from DataInspectorPanel (e.g., TableView)
-            // and we need to ensure the LocalizationInspectorPanel shows updated values when the user switches to it
+            // Handle LocalizationContext changes
             if (dataType == typeof(LocalizationContext))
             {
+                // Don't refresh if localization panel is currently active and the user is editing
+                // The view handles its own updates during editing, and RefreshContent would
+                // destroy the TextField being edited (causing input loss)
+                if (currentInspectorPanel == localizationInspectorPanel)
+                {
+                    // Skip refresh - the view is already updated by the editing code
+                    return;
+                }
+
+                // Refresh when the change came from elsewhere (e.g., LocaleEditPopup in DataInspectorPanel)
+                // so that LocalizationInspectorPanel shows updated values when user switches to it
                 localizationInspectorPanel.RefreshContent();
             }
         }
@@ -709,7 +718,18 @@ namespace Datra.Unity.Editor
         
         private async void OnInspectorSaveRequested(Type dataType, IDataRepository repository)
         {
-            await SaveSpecificData(dataType);
+            if (viewModel?.DataService == null) return;
+
+            // Perform actual save through DatraDataManager
+            var success = await viewModel.DataService.SaveAsync(dataType, forceSave: false);
+
+            // Notify view that save completed
+            currentInspectorPanel?.NotifySaveCompleted(success);
+
+            if (success)
+            {
+                RefreshCurrentInspectorPanel();
+            }
         }
 
         private async void SaveCurrentData()

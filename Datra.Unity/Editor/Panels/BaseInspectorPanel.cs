@@ -124,7 +124,15 @@ namespace Datra.Unity.Editor.Panels
         {
             OnSaveRequested?.Invoke(type, repository);
         }
-        
+
+        /// <summary>
+        /// Notify panel that save operation completed - to be forwarded to the view
+        /// </summary>
+        public virtual void NotifySaveCompleted(bool success)
+        {
+            // Override in derived classes to forward to view
+        }
+
         public virtual void Cleanup()
         {
             // Override in derived classes if cleanup is needed

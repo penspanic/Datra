@@ -259,6 +259,14 @@ namespace Datra.Unity.Editor.Controllers
             }
         }
 
+        /// <summary>
+        /// Notify the current view that save operation completed
+        /// </summary>
+        public void NotifySaveCompleted(bool success)
+        {
+            currentView?.OnSaveCompleted(success);
+        }
+
         public void Cleanup()
         {
             CleanupCurrentView();

@@ -388,20 +388,19 @@ namespace Datra.Unity.Editor.Views
                     FieldLayoutMode.Table,
                     this);
 
-                // OnValueChanged: Handle property changes with proper tracking
+                // OnValueChanged: Called on commit (FocusOut/Enter), not on every keystroke
+                // StringFieldHandler already updates wrapper.Text in real-time during typing
                 field.OnValueChanged += (propName, newValue) => {
-                    // Update wrapper and localization context for current language
-                    wrapper.Text = newValue as string;
+                    // Commit to localization context (this triggers external events)
                     localizationContext.SetText(wrapper.Id, newValue as string, currentLanguageCode);
 
-                    // Track property change (not just key-level change)
+                    // Track property change for change tracking UI
                     changeTracker.TrackPropertyChange(wrapper.Id, propName, newValue, out bool isModified);
                     field.SetModified(isModified);
 
                     // Update UI states
                     UpdateModifiedState();
                     UpdateRowStateVisuals(wrapper);
-                    MarkAsModified();
                     UpdateStatistics();
                 };
 
@@ -633,13 +632,30 @@ namespace Datra.Unity.Editor.Views
             return cell;
         }
 
+        /// <summary>
+        /// Request save - actual saving is handled by DatraEditorWindow via OnSaveRequested event
+        /// </summary>
         protected override void SaveChanges()
         {
             if (localizationContext == null || isReadOnly) return;
+            InvokeOnSaveRequested(dataType, repository);
+        }
 
-            // Call base.SaveChanges() to trigger OnSaveRequested event
-            // This ensures localization uses the same save infrastructure as other data types
-            base.SaveChanges();
+        /// <summary>
+        /// Called by DatraEditorWindow after save operation completes
+        /// </summary>
+        public override void OnSaveCompleted(bool success)
+        {
+            if (success)
+            {
+                changeTracker?.UpdateBaseline();
+                UpdateModifiedState();
+                UpdateStatus("Localization saved successfully");
+            }
+            else
+            {
+                UpdateStatus("Save failed");
+            }
         }
 
         protected override void OnModificationsCleared()
@@ -648,6 +664,14 @@ namespace Datra.Unity.Editor.Views
 
             // Rebuild ListView to clear visual modifications
             listView?.Rebuild();
+        }
+
+        /// <summary>
+        /// Override to use LocalizationChangeTracker instead of dataSource for modification check
+        /// </summary>
+        protected override bool HasActualModifications()
+        {
+            return changeTracker?.HasModifications() ?? false;
         }
 
         protected override void RevertChanges()

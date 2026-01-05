@@ -107,16 +107,20 @@ namespace Datra.Editor.DataSources
 
         public IEnumerable<KeyValuePair<TKey, TData>> EnumerateItems()
         {
-            // Items from baseline (excluding deleted, using working copy if modified)
+            // Items from baseline (excluding deleted)
+            // Always return working copies to prevent baseline mutation during editing
             foreach (var kvp in _baseline)
             {
                 if (_deletedKeys.Contains(kvp.Key))
                     continue;
 
-                if (_workingCopies.TryGetValue(kvp.Key, out var workingCopy))
-                    yield return new KeyValuePair<TKey, TData>(kvp.Key, workingCopy);
-                else
-                    yield return kvp;
+                // Get or create working copy - this ensures baseline is never exposed for direct modification
+                if (!_workingCopies.TryGetValue(kvp.Key, out var workingCopy))
+                {
+                    workingCopy = DeepClone(kvp.Value);
+                    _workingCopies[kvp.Key] = workingCopy;
+                }
+                yield return new KeyValuePair<TKey, TData>(kvp.Key, workingCopy);
             }
 
             // Added items

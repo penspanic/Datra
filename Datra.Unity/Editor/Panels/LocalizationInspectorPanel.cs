@@ -139,6 +139,14 @@ namespace Datra.Unity.Editor.Panels
         {
             localizationView?.SaveData();
         }
+
+        /// <summary>
+        /// Notify view that save operation completed
+        /// </summary>
+        public override void NotifySaveCompleted(bool success)
+        {
+            localizationView?.OnSaveCompleted(success);
+        }
         
         protected override string GetEmptyStateMessage()
         {

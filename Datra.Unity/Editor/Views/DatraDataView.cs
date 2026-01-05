@@ -287,28 +287,28 @@ namespace Datra.Unity.Editor.Views
             }
         }
         
-        protected virtual async void SaveChanges()
+        /// <summary>
+        /// Request save - actual saving is handled by DatraEditorWindow via OnSaveRequested event
+        /// </summary>
+        protected virtual void SaveChanges()
         {
             if (isReadOnly) return;
+            InvokeOnSaveRequested(dataType, repository);
+        }
 
-            try
+        /// <summary>
+        /// Called by DatraEditorWindow after save operation completes
+        /// </summary>
+        public virtual void OnSaveCompleted(bool success)
+        {
+            if (success)
             {
-                // Save through dataSource (applies changes to repository and saves)
-                if (dataSource != null)
-                {
-                    await dataSource.SaveAsync();
-                }
-
-                OnSaveRequested?.Invoke(dataType, repository);
-
-                // Update state based on actual modifications
                 UpdateModifiedState();
                 UpdateStatus("Changes saved successfully");
             }
-            catch (Exception e)
+            else
             {
-                Debug.LogError($"Failed to save changes: {e}");
-                UpdateStatus($"Save failed: {e.Message}");
+                UpdateStatus("Save failed");
             }
         }
 

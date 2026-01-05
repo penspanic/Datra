@@ -501,13 +501,22 @@ namespace Datra.Unity.Editor.Views
                 }
                 else
                 {
+                    // Use Unity's isDelayed mode for string fields
                     var textField = new TextField();
-                    textField.value = value as string ?? "";
+                    var originalValue = value as string ?? "";
+                    textField.value = originalValue;
+                    textField.isDelayed = true;
+
                     textField.RegisterValueChangedCallback(evt =>
                     {
-                        colInfo.SetValue(actualData, evt.newValue);
-                        TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
+                        if (evt.newValue != originalValue)
+                        {
+                            colInfo.SetValue(actualData, evt.newValue);
+                            TrackNestedPropertyChange(actualData, originalItem, colInfo, evt.newValue);
+                            originalValue = evt.newValue;
+                        }
                     });
+
                     field = textField;
                 }
             }

@@ -257,6 +257,14 @@ namespace Datra.Unity.Editor.Panels
             viewModeController?.RefreshModifiedState();
         }
 
+        /// <summary>
+        /// Notify view that save operation completed
+        /// </summary>
+        public override void NotifySaveCompleted(bool success)
+        {
+            viewModeController?.NotifySaveCompleted(success);
+        }
+
         public override void Cleanup()
         {
             // Cleanup view controller

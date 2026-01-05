@@ -7,7 +7,9 @@ using UnityEditor.UIElements;
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Handler for string fields
+    /// Handler for string fields.
+    /// Uses Unity's isDelayed mode - OnValueChanged is only called when editing is complete
+    /// (Enter key or FocusOut), preventing UI rebuild during typing.
     /// </summary>
     public class StringFieldHandler : IFieldTypeHandler
     {
@@ -21,11 +23,41 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         public VisualElement CreateField(FieldCreationContext context)
         {
             var textField = new TextField();
-            textField.value = context.Value as string ?? "";
+            var originalValue = context.Value as string ?? "";
+            textField.value = originalValue;
+
+            // Use Unity's built-in delayed mode:
+            // - Value change event only fires on Enter or FocusOut
+            // - Prevents event spam during typing
+            // - Works correctly with IME input (Korean, Japanese, etc.)
+            textField.isDelayed = true;
+
             textField.RegisterValueChangedCallback(evt =>
             {
-                context.OnValueChanged?.Invoke(evt.newValue);
+                // Only fire OnValueChanged if value actually changed from original
+                if (evt.newValue != originalValue)
+                {
+                    // Update target object's property
+                    if (context.Property != null && context.Target != null)
+                    {
+                        try
+                        {
+                            context.Property.SetValue(context.Target, evt.newValue);
+                        }
+                        catch
+                        {
+                            // Property might be read-only or have other issues
+                        }
+                    }
+
+                    // Fire the commit callback
+                    context.OnValueChanged?.Invoke(evt.newValue);
+
+                    // Update original value for subsequent edits
+                    originalValue = evt.newValue;
+                }
             });
+
             return textField;
         }
     }
