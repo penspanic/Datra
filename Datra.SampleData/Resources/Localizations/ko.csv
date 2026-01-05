@@ -4,40 +4,40 @@ Button_Exit,종료,메인 메뉴
 Button_OK,확인,대화상자
 Button_Settings,설정,메인 메뉴
 Button_Start,시작,메인 메뉴
-CharacterData.hero_001.name,아서,캐릭터 이름
-CharacterData.hero_002.name,마린,캐릭터 이름
-CharacterData.hero_003.name,레나,캐릭터 이름
-CharacterData.hero_004.name,토르,캐릭터 이름
-CharacterData.hero_005.name,루나,캐릭터 이름
+CharacterData.hero_001.Name,아서,캐릭터 이름
+CharacterData.hero_002.Name,마린,캐릭터 이름
+CharacterData.hero_003.Name,레나,캐릭터 이름
+CharacterData.hero_004.Name,토르,캐릭터 이름
+CharacterData.hero_005.Name,루나,캐릭터 이름
 Error_FileNotFound,파일을 찾을 수 없습니다,파일 에러
 Error_InvalidInput,잘못된 입력입니다,입력 검증
 Error_NetworkDisconnected,네트워크 연결이 끊어졌습니다,에러 팝업
-ItemData.1001.description,철로 만든 기본 검,아이템 설명
-ItemData.1001.name,철제 검,아이템 이름
-ItemData.1002.description,가죽으로 만든 가벼운 갑옷,아이템 설명
-ItemData.1002.name,가죽 갑옷,아이템 이름
-ItemData.2001.description,체력 50을 회복합니다,아이템 설명
-ItemData.2001.name,체력 물약,아이템 이름
-ItemData.3001.description,마법의 힘이 깃든 지팡이,아이템 설명
-ItemData.3001.name,마법 지팡이,아이템 이름
-ItemData.3002.description,미스릴로 만든 고급 갑옷,아이템 설명
-ItemData.3002.name,미스릴 갑옷,아이템 이름
+ItemData.1001.Description,철로 만든 기본 검,아이템 설명
+ItemData.1001.Name,철제 검,아이템 이름
+ItemData.1002.Description,가죽으로 만든 가벼운 갑옷,아이템 설명
+ItemData.1002.Name,가죽 갑옷,아이템 이름
+ItemData.2001.Description,체력 50을 회복합니다,아이템 설명
+ItemData.2001.Name,체력 물약,아이템 이름
+ItemData.3001.Description,마법의 힘이 깃든 지팡이,아이템 설명
+ItemData.3001.Name,마법 지팡이,아이템 이름
+ItemData.3002.Description,미스릴로 만든 고급 갑옷,아이템 설명
+ItemData.3002.Name,미스릴 갑옷,아이템 이름
 Message_Goodbye,안녕히 가세요!,로그아웃 시
 Message_Loading,로딩 중...,데이터 로딩
 Message_SaveComplete,저장이 완료되었습니다,저장 알림
 Message_Welcome,환영합니다!,첫 접속 시
-QuestData.quest_main_001.name,시작의 여정,퀘스트 이름
-QuestData.quest_main_001.description,마을 장로를 만나 모험을 시작하세요.,퀘스트 설명
+QuestData.quest_main_001.Name,시작의 여정,퀘스트 이름
+QuestData.quest_main_001.Description,마을 장로를 만나 모험을 시작하세요.,퀘스트 설명
 QuestData.quest_main_001.Objectives#0.Description,마을 장로와 대화하기,퀘스트 목표
 QuestData.quest_main_001.Objectives#1.Description,마을 근처의 슬라임 5마리 처치,퀘스트 목표
-QuestData.quest_main_002.name,숲 탐험,퀘스트 이름
-QuestData.quest_main_002.description,고대 사당을 찾아 숲으로 모험을 떠나세요.,퀘스트 설명
+QuestData.quest_main_002.Name,숲 탐험,퀘스트 이름
+QuestData.quest_main_002.Description,고대 사당을 찾아 숲으로 모험을 떠나세요.,퀘스트 설명
 QuestData.quest_main_002.Objectives#0.Description,치유 허브 10개 수집,퀘스트 목표
 QuestData.quest_main_002.Objectives#1.Description,숲 속 사당 도달,퀘스트 목표
-QuestData.quest_side_001.name,사냥꾼의 부탁,퀘스트 이름
-QuestData.quest_side_001.description,지역 사냥꾼의 일을 도와주세요.,퀘스트 설명
+QuestData.quest_side_001.Name,사냥꾼의 부탁,퀘스트 이름
+QuestData.quest_side_001.Description,지역 사냥꾼의 일을 도와주세요.,퀘스트 설명
 QuestData.quest_side_001.Objectives#0.Description,야생 멧돼지 3마리 사냥,퀘스트 목표
 QuestData.quest_side_001.Objectives#1.Description,멧돼지 엄니 3개 수집,퀘스트 목표
-QuestData.quest_daily_001.name,일일 훈련,퀘스트 이름
-QuestData.quest_daily_001.description,일일 전투 훈련을 완료하세요.,퀘스트 설명
+QuestData.quest_daily_001.Name,일일 훈련,퀘스트 이름
+QuestData.quest_daily_001.Description,일일 전투 훈련을 완료하세요.,퀘스트 설명
 QuestData.quest_daily_001.Objectives#0.Description,아무 몬스터나 10마리 처치,퀘스트 목표

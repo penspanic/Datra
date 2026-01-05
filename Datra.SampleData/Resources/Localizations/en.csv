@@ -4,40 +4,40 @@ Button_Exit,Exit,Main menu
 Button_OK,OK,Dialog
 Button_Settings,Settings,Main menu
 Button_Start,Start,Main menu
-CharacterData.hero_001.name,Arthur,Character name
-CharacterData.hero_002.name,Marin,Character name
-CharacterData.hero_003.name,Lena,Character name
-CharacterData.hero_004.name,Thor,Character name
-CharacterData.hero_005.name,Luna,Character name
+CharacterData.hero_001.Name,Arthur,Character name
+CharacterData.hero_002.Name,Marin,Character name
+CharacterData.hero_003.Name,Lena,Character name
+CharacterData.hero_004.Name,Thor,Character name
+CharacterData.hero_005.Name,Luna,Character name
 Error_FileNotFound,File not found,File error
 Error_InvalidInput,Invalid input,Input validation
 Error_NetworkDisconnected,Network connection lost,Error popup
-ItemData.1001.description,Basic sword made of iron,Item description
-ItemData.1001.name,Iron Sword,Item name
-ItemData.1002.description,Light armor made of leather,Item description
-ItemData.1002.name,Leather Armor,Item name
-ItemData.2001.description,Restores 50 HP,Item description
-ItemData.2001.name,Health Potion,Item name
-ItemData.3001.description,Staff imbued with magical power,Item description
-ItemData.3001.name,Magic Staff,Item name
-ItemData.3002.description,Premium armor made of mithril,Item description
-ItemData.3002.name,Mithril Armor,Item name
+ItemData.1001.Description,Basic sword made of iron,Item description
+ItemData.1001.Name,Iron Sword,Item name
+ItemData.1002.Description,Light armor made of leather,Item description
+ItemData.1002.Name,Leather Armor,Item name
+ItemData.2001.Description,Restores 50 HP,Item description
+ItemData.2001.Name,Health Potion,Item name
+ItemData.3001.Description,Staff imbued with magical power,Item description
+ItemData.3001.Name,Magic Staff,Item name
+ItemData.3002.Description,Premium armor made of mithril,Item description
+ItemData.3002.Name,Mithril Armor,Item name
 Message_Goodbye,Goodbye!,Logout
 Message_Loading,Loading...,Data loading
 Message_SaveComplete,Save completed,Save notification
 Message_Welcome,Welcome!,First login
-QuestData.quest_main_001.name,The Beginning,Quest name
-QuestData.quest_main_001.description,Start your adventure by meeting the village elder.,Quest description
+QuestData.quest_main_001.Name,The Beginning,Quest name
+QuestData.quest_main_001.Description,Start your adventure by meeting the village elder.,Quest description
 QuestData.quest_main_001.Objectives#0.Description,Talk to the village elder,Quest objective
 QuestData.quest_main_001.Objectives#1.Description,Defeat 5 slimes near the village,Quest objective
-QuestData.quest_main_002.name,Forest Expedition,Quest name
-QuestData.quest_main_002.description,Venture into the forest to find the ancient shrine.,Quest description
+QuestData.quest_main_002.Name,Forest Expedition,Quest name
+QuestData.quest_main_002.Description,Venture into the forest to find the ancient shrine.,Quest description
 QuestData.quest_main_002.Objectives#0.Description,Collect 10 healing herbs,Quest objective
 QuestData.quest_main_002.Objectives#1.Description,Reach the forest shrine,Quest objective
-QuestData.quest_side_001.name,Hunter's Request,Quest name
-QuestData.quest_side_001.description,Help the local hunter with his work.,Quest description
+QuestData.quest_side_001.Name,Hunter's Request,Quest name
+QuestData.quest_side_001.Description,Help the local hunter with his work.,Quest description
 QuestData.quest_side_001.Objectives#0.Description,Hunt 3 wild boars,Quest objective
 QuestData.quest_side_001.Objectives#1.Description,Collect 3 boar tusks,Quest objective
-QuestData.quest_daily_001.name,Daily Training,Quest name
-QuestData.quest_daily_001.description,Complete your daily combat training.,Quest description
+QuestData.quest_daily_001.Name,Daily Training,Quest name
+QuestData.quest_daily_001.Description,Complete your daily combat training.,Quest description
 QuestData.quest_daily_001.Objectives#0.Description,Defeat 10 monsters of any type,Quest objective
