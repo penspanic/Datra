@@ -26,18 +26,18 @@ Message_Goodbye,안녕히 가세요!,로그아웃 시
 Message_Loading,로딩 중...,데이터 로딩
 Message_SaveComplete,저장이 완료되었습니다,저장 알림
 Message_Welcome,환영합니다!,첫 접속 시
-QuestData.quest_main_001.Name,시작의 여정,퀘스트 이름
+QuestData.quest_daily_001.Description,일일 전투 훈련을 완료하세요.,퀘스트 설명
+QuestData.quest_daily_001.Name,일일 훈련,퀘스트 이름
+QuestData.quest_daily_001.Objectives#0.Description,아무 몬스터나 10마리 처치,퀘스트 목표
 QuestData.quest_main_001.Description,마을 장로를 만나 모험을 시작하세요.,퀘스트 설명
+QuestData.quest_main_001.Name,시작의 여정,퀘스트 이름
 QuestData.quest_main_001.Objectives#0.Description,마을 장로와 대화하기,퀘스트 목표
 QuestData.quest_main_001.Objectives#1.Description,마을 근처의 슬라임 5마리 처치,퀘스트 목표
-QuestData.quest_main_002.Name,숲 탐험,퀘스트 이름
 QuestData.quest_main_002.Description,고대 사당을 찾아 숲으로 모험을 떠나세요.,퀘스트 설명
+QuestData.quest_main_002.Name,숲 탐험,퀘스트 이름
 QuestData.quest_main_002.Objectives#0.Description,치유 허브 10개 수집,퀘스트 목표
 QuestData.quest_main_002.Objectives#1.Description,숲 속 사당 도달,퀘스트 목표
-QuestData.quest_side_001.Name,사냥꾼의 부탁,퀘스트 이름
 QuestData.quest_side_001.Description,지역 사냥꾼의 일을 도와주세요.,퀘스트 설명
+QuestData.quest_side_001.Name,사냥꾼의 부탁,퀘스트 이름
 QuestData.quest_side_001.Objectives#0.Description,야생 멧돼지 3마리 사냥,퀘스트 목표
 QuestData.quest_side_001.Objectives#1.Description,멧돼지 엄니 3개 수집,퀘스트 목표
-QuestData.quest_daily_001.Name,일일 훈련,퀘스트 이름
-QuestData.quest_daily_001.Description,일일 전투 훈련을 완료하세요.,퀘스트 설명
-QuestData.quest_daily_001.Objectives#0.Description,아무 몬스터나 10마리 처치,퀘스트 목표

@@ -26,18 +26,18 @@ Message_Goodbye,Goodbye!,Logout
 Message_Loading,Loading...,Data loading
 Message_SaveComplete,Save completed,Save notification
 Message_Welcome,Welcome!,First login
-QuestData.quest_main_001.Name,The Beginning,Quest name
+QuestData.quest_daily_001.Description,Complete your daily combat training.,Quest description
+QuestData.quest_daily_001.Name,Daily Training,Quest name
+QuestData.quest_daily_001.Objectives#0.Description,Defeat 10 monsters of any type,Quest objective
 QuestData.quest_main_001.Description,Start your adventure by meeting the village elder.,Quest description
+QuestData.quest_main_001.Name,The Beginning,Quest name
 QuestData.quest_main_001.Objectives#0.Description,Talk to the village elder,Quest objective
 QuestData.quest_main_001.Objectives#1.Description,Defeat 5 slimes near the village,Quest objective
-QuestData.quest_main_002.Name,Forest Expedition,Quest name
 QuestData.quest_main_002.Description,Venture into the forest to find the ancient shrine.,Quest description
+QuestData.quest_main_002.Name,Forest Expedition,Quest name
 QuestData.quest_main_002.Objectives#0.Description,Collect 10 healing herbs,Quest objective
 QuestData.quest_main_002.Objectives#1.Description,Reach the forest shrine,Quest objective
-QuestData.quest_side_001.Name,Hunter's Request,Quest name
 QuestData.quest_side_001.Description,Help the local hunter with his work.,Quest description
+QuestData.quest_side_001.Name,Hunter's Request,Quest name
 QuestData.quest_side_001.Objectives#0.Description,Hunt 3 wild boars,Quest objective
 QuestData.quest_side_001.Objectives#1.Description,Collect 3 boar tusks,Quest objective
-QuestData.quest_daily_001.Name,Daily Training,Quest name
-QuestData.quest_daily_001.Description,Complete your daily combat training.,Quest description
-QuestData.quest_daily_001.Objectives#0.Description,Defeat 10 monsters of any type,Quest objective
