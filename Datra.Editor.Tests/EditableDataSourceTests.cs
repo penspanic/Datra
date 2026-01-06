@@ -267,7 +267,7 @@ namespace Datra.Editor.Tests
             var source = new EditableKeyValueDataSource<int, TestTableData>(repo);
 
             source.Delete(2);
-            var items = source.EnumerateItems().ToList();
+            var items = ((IEditableDataSource<int, TestTableData>)source).EnumerateItems().ToList();
 
             Assert.Single(items);
             Assert.Equal(1, items[0].Value.Id);
@@ -624,7 +624,7 @@ namespace Datra.Editor.Tests
             dataSource.Delete(2);
 
             // Assert - DataSource should exclude deleted item
-            var dataSourceItems = dataSource.EnumerateItems().ToList();
+            var dataSourceItems = ((IEditableDataSource<int, TestTableData>)dataSource).EnumerateItems().ToList();
             Assert.Single(dataSourceItems);
             Assert.Equal(1, dataSourceItems[0].Value.Id);
 
@@ -723,7 +723,7 @@ namespace Datra.Editor.Tests
             dataSource.TrackPropertyChange(3, "Name", "Modified", out _);
 
             // What View should show (from dataSource):
-            var viewItems = dataSource.EnumerateItems().ToList();
+            var viewItems = ((IEditableDataSource<int, TestTableData>)dataSource).EnumerateItems().ToList();
             Assert.Equal(3, viewItems.Count); // 1, 3, 4 (2 is deleted)
 
             // What View should NOT use (repository is unchanged):

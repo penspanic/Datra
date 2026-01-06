@@ -232,6 +232,10 @@ namespace Datra.Unity.Tests
             public void Revert()
             {
             }
+
+            public void RefreshBaseline()
+            {
+            }
         }
 
         #endregion

@@ -12,9 +12,9 @@ using Datra.Localization;
 using Datra.Services;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Services;
-using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
 using Datra.Editor.DataSources;
+using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.ViewModels;
 using Datra.Unity.Editor.Windows;
 
@@ -48,7 +48,7 @@ namespace Datra.Unity.Editor
         private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new();
         private DatraDataManager dataManager;
         private LocalizationContext localizationContext;
-        private LocalizationChangeTracker localizationChangeTracker;
+        private EditableLocalizationDataSource localizationDataSource;
 
         // Editable data sources for transactional editing
         internal Dictionary<Type, IEditableDataSource> dataSources = new Dictionary<Type, IEditableDataSource>();
@@ -280,8 +280,7 @@ namespace Datra.Unity.Editor
                         dataContext,
                         repositories,
                         dataSources,
-                        localizationContext,
-                        localizationChangeTracker);
+                        localizationDataSource);
 
                     // Subscribe to manager events
                     dataManager.OnModifiedStateChanged += OnManagerModifiedStateChanged;
@@ -373,11 +372,10 @@ namespace Datra.Unity.Editor
             dataServiceAdapter = new DatraDataManagerAdapter(dataManager);
 
             // Create localization service adapter if available
-            if (localizationContext != null && localizationChangeTracker != null)
+            if (localizationDataSource != null)
             {
                 localizationServiceAdapter = new LocalizationEditorServiceAdapter(
-                    localizationContext,
-                    localizationChangeTracker,
+                    localizationDataSource,
                     dataManager);
             }
 
@@ -493,10 +491,10 @@ namespace Datra.Unity.Editor
             {
                 localizationContext = localizationProperty.GetValue(dataContext) as LocalizationContext;
 
-                // Create and register LocalizationChangeTracker and LocalizationRepository
+                // Create EditableLocalizationDataSource and LocalizationRepository
                 if (localizationContext != null)
                 {
-                    localizationChangeTracker = new LocalizationChangeTracker(localizationContext);
+                    localizationDataSource = new EditableLocalizationDataSource(localizationContext);
 
                     // Create LocalizationRepository wrapper and register it
                     var localizationRepository = new LocalizationRepository(localizationContext);
@@ -505,14 +503,14 @@ namespace Datra.Unity.Editor
                     // Load all available languages for editor (allows editing multiple languages without switching)
                     localizationContext.LoadAllAvailableLanguagesAsync().Wait();
 
-                    // Initialize LocalizationChangeTracker for all loaded languages
+                    // Initialize baseline for all loaded languages
                     // This is important because LocaleEditPopup can edit multiple languages at once
                     var loadedLanguages = localizationContext.GetLoadedLanguages();
                     foreach (var languageCode in loadedLanguages)
                     {
-                        if (!localizationChangeTracker.IsLanguageInitialized(languageCode))
+                        if (!localizationDataSource.IsLanguageInitialized(languageCode))
                         {
-                            localizationChangeTracker.InitializeLanguage(languageCode);
+                            localizationDataSource.InitializeBaseline(languageCode);
                         }
                     }
 
@@ -520,8 +518,8 @@ namespace Datra.Unity.Editor
                     var availableLanguages = localizationContext.GetAvailableLanguages();
                     toolbar.SetupLanguages(availableLanguages, localizationContext.CurrentLanguageCode);
 
-                    // Pass localizationContext to DataInspectorPanel for FixedLocale property support
-                    dataInspectorPanel.SetLocalizationContext(localizationContext, localizationChangeTracker);
+                    // Pass localizationDataSource to DataInspectorPanel for FixedLocale property support
+                    dataInspectorPanel.SetLocalizationContext(localizationContext, localizationDataSource);
                 }
             }
             
@@ -557,17 +555,16 @@ namespace Datra.Unity.Editor
 
                 ShowLocalizationInspector();
 
-                // Set change tracker before setting context
-                if (localizationChangeTracker != null)
-                {
-                    localizationInspectorPanel.SetChangeTracker(localizationChangeTracker);
-                }
-
                 // Get LocalizationRepository from repositories
                 IDataRepository localizationRepository = null;
                 repositories.TryGetValue(typeof(LocalizationContext), out localizationRepository);
 
-                localizationInspectorPanel.SetLocalizationContext(localizationContext, localizationRepository, dataContext);
+                // Set context with unified data source pattern
+                localizationInspectorPanel.SetLocalizationContext(
+                    localizationContext,
+                    localizationRepository,
+                    dataContext,
+                    localizationDataSource);
 
                 UpdateCurrentDataModifiedState();
             }

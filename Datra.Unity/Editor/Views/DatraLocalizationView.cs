@@ -8,7 +8,6 @@ using Datra.Models;
 using Datra.Services;
 using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Models;
-using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
 using Datra.Editor.Models;
 using Datra.Unity.Editor.Windows;
@@ -24,11 +23,15 @@ namespace Datra.Unity.Editor.Views
     /// </summary>
     public class DatraLocalizationView : VirtualizedTableView
     {
-        // Localization-specific change tracker
-        private LocalizationChangeTracker changeTracker;
-
         // Localization-specific
         private LanguageCode currentLanguageCode;
+
+        /// <summary>
+        /// Casting helper: Access dataSource as IEditableLocalizationDataSource.
+        /// Uses the unified dataSource field from base class.
+        /// </summary>
+        private IEditableLocalizationDataSource LocalizationSource =>
+            dataSource as IEditableLocalizationDataSource;
         private bool isLoading = false;
         private VisualElement loadingOverlay;
 
@@ -54,16 +57,8 @@ namespace Datra.Unity.Editor.Views
             if (!(item is LocalizationKeyWrapper wrapper))
                 return (false, false);
 
-            // Check if modified via change tracker
-            bool isModified = false;
-            if (changeTracker != null)
-            {
-                isModified = changeTracker.IsModified(wrapper.Id);
-            }
-            else
-            {
-                Debug.LogWarning("[GetRowState] changeTracker is null!");
-            }
+            // Check if modified via localization data source
+            bool isModified = LocalizationSource?.IsKeyModified(wrapper.Id) ?? false;
 
             // Check if missing translation
             bool isMissing = wrapper.IsMissing;
@@ -134,30 +129,19 @@ namespace Datra.Unity.Editor.Views
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
-            Utilities.LocalizationChangeTracker localizationTracker = null)
+            IEditableLocalizationDataSource localizationSource = null)
         {
-            dataType = type;
-            repository = repo;
-            dataContext = context;
-            // Localization doesn't use EditableDataSource yet - uses LocalizationChangeTracker directly
-            dataSource = source;
-            localizationContext = localizationCtx;
-            localizationChangeTracker = localizationTracker;
+            // For localization view, prefer localizationSource if provided,
+            // otherwise use source (which should be IEditableLocalizationDataSource)
+            var actualSource = localizationSource ?? source as IEditableLocalizationDataSource ?? source;
+
+            // Call base to set up dataSource and event subscriptions
+            base.SetData(type, repo, context, actualSource, localizationCtx, localizationSource);
 
             if (context is LocalizationContext locContext)
             {
                 localizationContext = locContext;
             }
-
-            CleanupFields();
-        }
-
-        /// <summary>
-        /// Set change tracker (must be called before SetLocalizationContext)
-        /// </summary>
-        public void SetChangeTracker(LocalizationChangeTracker tracker)
-        {
-            changeTracker = tracker;
         }
 
         /// <summary>
@@ -208,11 +192,10 @@ namespace Datra.Unity.Editor.Views
             {
                 await localizationContext.LoadLanguageAsync(languageCode);
 
-                // Initialize change tracker for this language (only if not already initialized)
-                var localizationChangeTracker = changeTracker as LocalizationChangeTracker;
-                if (!localizationChangeTracker!.IsLanguageInitialized(languageCode))
+                // Initialize baseline for this language (only if not already initialized)
+                if (LocalizationSource != null && !LocalizationSource.IsLanguageInitialized(languageCode))
                 {
-                    localizationChangeTracker.InitializeLanguage(languageCode);
+                    LocalizationSource.InitializeBaseline(languageCode);
                 }
 
                 RefreshContent();
@@ -403,11 +386,11 @@ namespace Datra.Unity.Editor.Views
                 // OnValueChanged: Called on commit (FocusOut/Enter), not on every keystroke
                 // StringFieldHandler already updates wrapper.Text in real-time during typing
                 field.OnValueChanged += (propName, newValue) => {
-                    // Commit to localization context (this triggers external events)
-                    localizationContext.SetText(wrapper.Id, newValue as string, currentLanguageCode);
+                    // Commit to localization data source (this handles change tracking and events)
+                    LocalizationSource?.SetText(wrapper.Id, newValue as string, currentLanguageCode);
 
-                    // Track property change for change tracking UI
-                    changeTracker.TrackPropertyChange(wrapper.Id, propName, newValue, out bool isModified);
+                    // Check if modified for UI feedback
+                    bool isModified = LocalizationSource?.IsKeyModified(wrapper.Id) ?? false;
                     field.SetModified(isModified);
 
                     // Update UI states
@@ -418,15 +401,15 @@ namespace Datra.Unity.Editor.Views
 
                 // OnRevertRequested: Revert to baseline value
                 field.OnRevertRequested += (propName) => {
-                    // Get baseline value from change tracker
-                    var baselineValue = changeTracker.GetPropertyBaselineValue(wrapper.Id, propName);
+                    // Get baseline value from data source
+                    var baselineValue = LocalizationSource?.GetBaselineText(wrapper.Id, currentLanguageCode);
 
                     // Restore to baseline for current language
-                    wrapper.Text = baselineValue as string;
-                    localizationContext.SetText(wrapper.Id, baselineValue as string, currentLanguageCode);
+                    wrapper.Text = baselineValue;
+                    LocalizationSource?.SetText(wrapper.Id, baselineValue, currentLanguageCode);
 
-                    // Re-track with baseline value (should mark as not modified)
-                    changeTracker.TrackPropertyChange(wrapper.Id, propName, baselineValue, out bool isModified);
+                    // Check if still modified
+                    bool isModified = LocalizationSource?.IsKeyModified(wrapper.Id) ?? false;
                     field.SetModified(isModified);
 
                     // Update UI states
@@ -437,7 +420,7 @@ namespace Datra.Unity.Editor.Views
                 textCell.Add(field);
 
                 // Initialize modified state based on property-level tracking
-                if (changeTracker != null && changeTracker.IsPropertyModified(wrapper.Id, "Text"))
+                if (LocalizationSource != null && LocalizationSource.IsKeyModified(wrapper.Id))
                 {
                     field.SetModified(true);
                 }
@@ -556,8 +539,7 @@ namespace Datra.Unity.Editor.Views
         {
             try
             {
-                await localizationContext.AddKeyAsync(keyId, "New key", "");
-                (changeTracker as LocalizationChangeTracker)!.TrackKeyAdd(keyId);
+                LocalizationSource?.AddKey(keyId, "New key", "");
                 RefreshContent();
                 MarkAsModified();
                 UpdateStatus($"Key '{keyId}' added");
@@ -567,9 +549,10 @@ namespace Datra.Unity.Editor.Views
                 Debug.LogError($"Failed to add key: {e.Message}");
                 UpdateStatus($"Error: {e.Message}");
             }
+            await Task.CompletedTask;
         }
 
-        private async void DeleteLocalizationKey(LocalizationKeyWrapper wrapper)
+        private void DeleteLocalizationKey(LocalizationKeyWrapper wrapper)
         {
             if (wrapper.IsFixedKey)
             {
@@ -583,8 +566,7 @@ namespace Datra.Unity.Editor.Views
             {
                 try
                 {
-                    await localizationContext.DeleteKeyAsync(wrapper.Id);
-                    (changeTracker as LocalizationChangeTracker)!.TrackKeyDelete(wrapper.Id);
+                    LocalizationSource?.DeleteKey(wrapper.Id);
                     RefreshContent();
                     MarkAsModified();
                     UpdateStatus($"Key '{wrapper.Id}' deleted");
@@ -627,7 +609,7 @@ namespace Datra.Unity.Editor.Views
                     {
                         var translatedText = localizationContext.GetText(wrapper.Id, currentLanguageCode);
                         wrapper.Text = translatedText;
-                        (changeTracker as LocalizationChangeTracker)!.TrackTextChange(wrapper.Id, translatedText);
+                        LocalizationSource?.SetText(wrapper.Id, translatedText, currentLanguageCode);
                     }
                 }
 
@@ -676,7 +658,7 @@ namespace Datra.Unity.Editor.Views
         {
             if (success)
             {
-                changeTracker?.UpdateBaseline();
+                LocalizationSource?.RefreshBaseline();
                 UpdateModifiedState();
                 UpdateStatus("Localization saved successfully");
             }
@@ -695,18 +677,18 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Override to use LocalizationChangeTracker instead of dataSource for modification check
+        /// Override to use LocalizationSource for modification check
         /// </summary>
         protected override bool HasActualModifications()
         {
-            return changeTracker?.HasModifications() ?? false;
+            return LocalizationSource?.HasModifications ?? false;
         }
 
         protected override void RevertChanges()
         {
             if (localizationContext == null) return;
 
-            changeTracker?.RevertAll();
+            LocalizationSource?.Revert();
             hasUnsavedChanges = false;
             RefreshContent();
             UpdateModifiedState();

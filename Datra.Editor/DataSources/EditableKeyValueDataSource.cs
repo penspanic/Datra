@@ -14,10 +14,13 @@ namespace Datra.Editor.DataSources
     /// <summary>
     /// Editable data source for key-value (table) data.
     /// Provides a transactional editing layer that doesn't modify the repository until Save().
+    ///
+    /// Inherits from EditableDataSourceBase for consistent event notification patterns.
+    /// All state-changing operations use ExecuteWithNotification to ensure events are fired.
     /// </summary>
     /// <typeparam name="TKey">The key type</typeparam>
     /// <typeparam name="TData">The data type (must implement ITableData&lt;TKey&gt;)</typeparam>
-    public class EditableKeyValueDataSource<TKey, TData> : IEditableDataSource<TKey, TData>
+    public class EditableKeyValueDataSource<TKey, TData> : EditableDataSourceBase, IEditableDataSource<TKey, TData>
         where TKey : notnull
         where TData : class, ITableData<TKey>
     {
@@ -45,8 +48,6 @@ namespace Datra.Editor.DataSources
             public object? CurrentValue { get; set; }
         }
 
-        public event Action<bool>? OnModifiedStateChanged;
-
         public EditableKeyValueDataSource(IKeyValueDataRepository<TKey, TData> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
@@ -70,23 +71,19 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        /// <summary>
-        /// Refresh baseline from repository (call after external reload)
-        /// </summary>
-        public void RefreshBaseline()
+        protected override void RefreshBaselineInternal()
         {
             InitializeBaseline();
-            OnModifiedStateChanged?.Invoke(false);
         }
 
         #endregion
 
         #region IEditableDataSource Implementation
 
-        public bool HasModifications =>
+        public override bool HasModifications =>
             _addedKeys.Count > 0 || _deletedKeys.Count > 0 || _modifiedKeys.Count > 0;
 
-        public int Count
+        public override int Count
         {
             get
             {
@@ -97,15 +94,15 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        IEnumerable<object> IEditableDataSource.EnumerateItems()
+        public override IEnumerable<object> EnumerateItems()
         {
-            foreach (var kvp in EnumerateItems())
+            foreach (var kvp in ((IEditableDataSource<TKey, TData>)this).EnumerateItems())
             {
                 yield return kvp.Value;
             }
         }
 
-        public IEnumerable<KeyValuePair<TKey, TData>> EnumerateItems()
+        IEnumerable<KeyValuePair<TKey, TData>> IEditableDataSource<TKey, TData>.EnumerateItems()
         {
             // Items from baseline (excluding deleted)
             // Always return working copies to prevent baseline mutation during editing
@@ -167,7 +164,7 @@ namespace Datra.Editor.DataSources
             return _workingCopies.ContainsKey(key) || _baseline.ContainsKey(key);
         }
 
-        ItemState IEditableDataSource.GetItemState(object key)
+        public override ItemState GetItemState(object key)
         {
             if (key is TKey typedKey)
                 return GetItemState(typedKey);
@@ -214,12 +211,7 @@ namespace Datra.Editor.DataSources
             if (!_baseline.ContainsKey(key) && !_workingCopies.ContainsKey(key))
                 return; // Item doesn't exist
 
-            bool hadModifications = HasModifications;
-
-            _modifiedKeys.Add(key);
-
-            if (!hadModifications && HasModifications)
-                OnModifiedStateChanged?.Invoke(true);
+            ExecuteWithNotification(() => _modifiedKeys.Add(key));
         }
 
         public void TrackPropertyChange(TKey key, string propertyName, object? newValue, out bool isPropertyModified)
@@ -291,8 +283,7 @@ namespace Datra.Editor.DataSources
             }
 
             // Notify if modification state changed
-            if (hadModifications != HasModifications)
-                OnModifiedStateChanged?.Invoke(HasModifications);
+            NotifyIfStateChanged(hadModifications);
         }
 
         public void Add(TKey key, TData value)
@@ -300,42 +291,38 @@ namespace Datra.Editor.DataSources
             if (ContainsKey(key))
                 throw new InvalidOperationException($"Item with key '{key}' already exists.");
 
-            bool hadModifications = HasModifications;
-
-            _workingCopies[key] = DeepClone(value);
-            _addedKeys.Add(key);
-            _deletedKeys.Remove(key);
-
-            if (!hadModifications)
-                OnModifiedStateChanged?.Invoke(true);
+            ExecuteWithNotification(() =>
+            {
+                _workingCopies[key] = DeepClone(value);
+                _addedKeys.Add(key);
+                _deletedKeys.Remove(key);
+            });
         }
 
         public void Delete(TKey key)
         {
-            bool hadModifications = HasModifications;
-
-            if (_addedKeys.Contains(key))
+            ExecuteWithNotification(() =>
             {
-                // Was added in this session - just remove
-                _addedKeys.Remove(key);
-                _workingCopies.Remove(key);
+                if (_addedKeys.Contains(key))
+                {
+                    // Was added in this session - just remove
+                    _addedKeys.Remove(key);
+                    _workingCopies.Remove(key);
 
-                // Remove property changes
-                RemovePropertyChangesForKey(key);
-            }
-            else if (_baseline.ContainsKey(key))
-            {
-                // Exists in baseline - mark for deletion
-                _deletedKeys.Add(key);
-                _modifiedKeys.Remove(key);
-                _workingCopies.Remove(key);
+                    // Remove property changes
+                    RemovePropertyChangesForKey(key);
+                }
+                else if (_baseline.ContainsKey(key))
+                {
+                    // Exists in baseline - mark for deletion
+                    _deletedKeys.Add(key);
+                    _modifiedKeys.Remove(key);
+                    _workingCopies.Remove(key);
 
-                // Remove property changes
-                RemovePropertyChangesForKey(key);
-            }
-
-            if (hadModifications != HasModifications)
-                OnModifiedStateChanged?.Invoke(HasModifications);
+                    // Remove property changes
+                    RemovePropertyChangesForKey(key);
+                }
+            });
         }
 
         public TData? GetBaselineValue(TKey key)
@@ -343,7 +330,7 @@ namespace Datra.Editor.DataSources
             return _baseline.TryGetValue(key, out var value) ? DeepClone(value) : null;
         }
 
-        bool IEditableDataSource.IsPropertyModified(object key, string propertyName)
+        public override bool IsPropertyModified(object key, string propertyName)
         {
             if (key is TKey typedKey)
                 return IsPropertyModified(typedKey, propertyName);
@@ -355,7 +342,7 @@ namespace Datra.Editor.DataSources
             return _propertyChanges.ContainsKey((key, propertyName));
         }
 
-        IEnumerable<string> IEditableDataSource.GetModifiedProperties(object key)
+        public override IEnumerable<string> GetModifiedProperties(object key)
         {
             if (key is TKey typedKey)
                 return GetModifiedProperties(typedKey);
@@ -369,7 +356,7 @@ namespace Datra.Editor.DataSources
                 .Select(k => k.propertyName);
         }
 
-        object? IEditableDataSource.GetPropertyBaselineValue(object key, string propertyName)
+        public override object? GetPropertyBaselineValue(object key, string propertyName)
         {
             if (key is TKey typedKey)
                 return GetPropertyBaselineValue(typedKey, propertyName);
@@ -389,25 +376,20 @@ namespace Datra.Editor.DataSources
 
         #region Revert
 
-        public void Revert()
+        protected override void RevertInternal()
         {
-            bool hadModifications = HasModifications;
-
             _workingCopies.Clear();
             _addedKeys.Clear();
             _deletedKeys.Clear();
             _modifiedKeys.Clear();
             _propertyChanges.Clear();
-
-            if (hadModifications)
-                OnModifiedStateChanged?.Invoke(false);
         }
 
         #endregion
 
         #region Save
 
-        public async Task SaveAsync()
+        protected override async Task SaveInternalAsync()
         {
             // Apply deletions
             foreach (var key in _deletedKeys)
@@ -443,9 +425,6 @@ namespace Datra.Editor.DataSources
 
             // Save to storage
             await _repository.SaveAsync();
-
-            // Refresh baseline from repository
-            RefreshBaseline();
         }
 
         #endregion

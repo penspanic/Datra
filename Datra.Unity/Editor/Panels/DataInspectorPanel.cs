@@ -23,7 +23,7 @@ namespace Datra.Unity.Editor.Panels
 
         // Localization support
         private Datra.Services.LocalizationContext localizationContext;
-        private LocalizationChangeTracker localizationChangeTracker;
+        private IEditableLocalizationDataSource localizationDataSource;
 
         // View mode controller
         private DatraViewModeController viewModeController;
@@ -131,7 +131,7 @@ namespace Datra.Unity.Editor.Panels
             UpdateDataHeader();
 
             // Set data in controller
-            viewModeController.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationChangeTracker);
+            viewModeController.SetData(dataType, repository, dataContext, dataSource, localizationContext, localizationDataSource);
         }
 
         private void UpdateDataHeader()
@@ -235,7 +235,7 @@ namespace Datra.Unity.Editor.Panels
             }
 
             // Let the controller handle the view refresh
-            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentDataSource, localizationContext, localizationChangeTracker);
+            viewModeController.SetData(currentType, currentRepository, currentDataContext, currentDataSource, localizationContext, localizationDataSource);
         }
         
         protected override string GetEmptyStateMessage()
@@ -280,10 +280,10 @@ namespace Datra.Unity.Editor.Panels
         /// <summary>
         /// Sets the localization context for FixedLocale property support
         /// </summary>
-        public void SetLocalizationContext(Datra.Services.LocalizationContext context, LocalizationChangeTracker tracker)
+        public void SetLocalizationContext(Datra.Services.LocalizationContext context, IEditableLocalizationDataSource dataSource)
         {
             localizationContext = context;
-            localizationChangeTracker = tracker;
+            localizationDataSource = dataSource;
         }
     }
 }

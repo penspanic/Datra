@@ -11,7 +11,6 @@ using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Interfaces;
-using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
 using Datra.Unity.Editor.Windows;
 
@@ -30,7 +29,7 @@ namespace Datra.Unity.Editor.Views
 
         // Localization support (for FixedLocale properties)
         protected Datra.Services.LocalizationContext localizationContext;
-        protected Utilities.LocalizationChangeTracker localizationChangeTracker;
+        protected IEditableLocalizationDataSource localizationDataSource;
 
         // Common UI elements
         protected VisualElement searchField;  // Base type to support both TextField and ToolbarSearchField
@@ -146,7 +145,7 @@ namespace Datra.Unity.Editor.Views
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
-            Utilities.LocalizationChangeTracker localizationTracker = null)
+            IEditableLocalizationDataSource localizationSource = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
@@ -162,7 +161,7 @@ namespace Datra.Unity.Editor.Views
             dataContext = context;
             dataSource = source;
             localizationContext = localizationCtx;
-            localizationChangeTracker = localizationTracker;
+            localizationDataSource = localizationSource;
 
             // Subscribe to new dataSource
             if (dataSource != null)
@@ -1093,7 +1092,7 @@ namespace Datra.Unity.Editor.Views
 
             Components.LocaleEditPopup.ShowWindow(
                 localizationContext,
-                localizationChangeTracker,
+                localizationDataSource,
                 localeRef.Key,
                 buttonWorldBound,
                 onModified: () =>

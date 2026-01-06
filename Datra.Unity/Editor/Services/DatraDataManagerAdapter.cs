@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Datra.Editor.Interfaces;
+using Datra.Editor.DataSources;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
-using Datra.Unity.Editor.Utilities;
 
 namespace Datra.Unity.Editor.Services
 {
@@ -90,53 +90,42 @@ namespace Datra.Unity.Editor.Services
     }
 
     /// <summary>
-    /// Adapter that wraps LocalizationChangeTracker to expose ILocaleEditorService.
+    /// Adapter that wraps EditableLocalizationDataSource to expose ILocaleEditorService.
     /// </summary>
     public class LocalizationEditorServiceAdapter : ILocaleEditorService
     {
-        private readonly LocalizationContext _context;
-        private readonly LocalizationChangeTracker _changeTracker;
+        private readonly EditableLocalizationDataSource _dataSource;
         private readonly DatraDataManager _manager;
 
         public LocalizationEditorServiceAdapter(
-            LocalizationContext context,
-            LocalizationChangeTracker changeTracker,
+            EditableLocalizationDataSource dataSource,
             DatraDataManager manager)
         {
-            _context = context;
-            _changeTracker = changeTracker;
+            _dataSource = dataSource;
             _manager = manager;
 
-            if (_context != null)
+            if (_dataSource != null)
             {
-                SubscribeToContextEvents();
-            }
+                _dataSource.OnTextChanged += (key, language) =>
+                    OnTextChanged?.Invoke(key, language);
 
-            if (_changeTracker is INotifyModifiedStateChanged notifyTracker)
-            {
-                notifyTracker.OnModifiedStateChanged += hasChanges =>
+                _dataSource.OnLanguageChanged += language =>
+                    OnLanguageChanged?.Invoke(language);
+
+                _dataSource.OnModifiedStateChanged += hasChanges =>
                     OnModifiedStateChanged?.Invoke(hasChanges);
             }
         }
 
-        private void SubscribeToContextEvents()
-        {
-            _context.SubscribeToEditorEvents(
-                onTextChanged: (key, language) => OnTextChanged?.Invoke(key, language),
-                onKeyAdded: key => OnTextChanged?.Invoke(key, CurrentLanguage),
-                onKeyDeleted: key => OnTextChanged?.Invoke(key, CurrentLanguage)
-            );
-        }
-
-        public LocalizationContext Context => _context;
-        public bool IsAvailable => _context != null;
-        public LanguageCode CurrentLanguage => _context?.CurrentLanguageCode ?? default;
+        public LocalizationContext Context => _dataSource?.Context;
+        public bool IsAvailable => _dataSource != null;
+        public LanguageCode CurrentLanguage => _dataSource?.CurrentLanguage ?? default;
 
         public IReadOnlyList<LanguageCode> AvailableLanguages =>
-            _context?.GetAvailableLanguages()?.ToList() ?? new List<LanguageCode>();
+            _dataSource?.AvailableLanguages ?? new List<LanguageCode>();
 
         public IReadOnlyList<LanguageCode> LoadedLanguages =>
-            _context?.GetLoadedLanguages()?.ToList() ?? new List<LanguageCode>();
+            _dataSource?.LoadedLanguages ?? new List<LanguageCode>();
 
         public event Action<string, LanguageCode> OnTextChanged;
         public event Action<LanguageCode> OnLanguageChanged;
@@ -144,15 +133,14 @@ namespace Datra.Unity.Editor.Services
 
         public async Task SwitchLanguageAsync(LanguageCode language)
         {
-            if (_context == null) return;
-            await _context.LoadLanguageAsync(language);
-            OnLanguageChanged?.Invoke(language);
+            if (_dataSource == null) return;
+            await _dataSource.SwitchLanguageAsync(language);
         }
 
         public async Task LoadAllLanguagesAsync()
         {
-            if (_context == null) return;
-            await _context.LoadAllAvailableLanguagesAsync();
+            if (_dataSource == null || Context == null) return;
+            await Context.LoadAllAvailableLanguagesAsync();
 
             foreach (var language in LoadedLanguages)
             {
@@ -160,20 +148,20 @@ namespace Datra.Unity.Editor.Services
             }
         }
 
-        public string GetText(string key) => _context?.GetText(key) ?? string.Empty;
+        public string GetText(string key) => _dataSource?.GetText(key) ?? string.Empty;
 
         public string GetText(string key, LanguageCode language) =>
-            _context?.GetText(key, language) ?? string.Empty;
+            _dataSource?.GetText(key, language) ?? string.Empty;
 
         public void SetText(string key, string value, LanguageCode language)
         {
-            _context?.SetText(key, value, language);
+            _dataSource?.SetText(key, value, language);
         }
 
-        public bool HasUnsavedChanges() => _changeTracker?.HasModifications() ?? false;
+        public bool HasUnsavedChanges() => _dataSource?.HasModifications ?? false;
 
         public bool HasUnsavedChanges(LanguageCode language) =>
-            _changeTracker?.HasModifications(language) ?? false;
+            _dataSource?.HasLanguageModifications(language) ?? false;
 
         public async Task<bool> SaveAsync(bool forceSave = false)
         {
@@ -183,12 +171,11 @@ namespace Datra.Unity.Editor.Services
 
         public async Task<bool> SaveAsync(LanguageCode language, bool forceSave = false)
         {
-            if (_context == null) return false;
+            if (_dataSource == null) return false;
 
             try
             {
-                await _context.SaveLanguageAsync(language);
-                _changeTracker?.UpdateBaseline(language);
+                await _dataSource.SaveCurrentLanguageAsync();
                 return true;
             }
             catch
@@ -199,15 +186,15 @@ namespace Datra.Unity.Editor.Services
 
         public void InitializeBaseline(LanguageCode language)
         {
-            if (_changeTracker != null && !_changeTracker.IsLanguageInitialized(language))
+            if (_dataSource != null && !_dataSource.IsLanguageInitialized(language))
             {
-                _changeTracker.InitializeLanguage(language);
+                _dataSource.InitializeBaseline(language);
             }
         }
 
         public void InitializeAllBaselines()
         {
-            if (_changeTracker == null) return;
+            if (_dataSource == null) return;
 
             foreach (var language in LoadedLanguages)
             {

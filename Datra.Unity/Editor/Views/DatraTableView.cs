@@ -15,6 +15,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Cursor = UnityEngine.UIElements.Cursor;
+using LocaleRef = Datra.DataTypes.LocaleRef;
 
 namespace Datra.Unity.Editor.Views
 {
@@ -133,7 +134,7 @@ namespace Datra.Unity.Editor.Views
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
-            Utilities.LocalizationChangeTracker localizationTracker = null)
+            IEditableLocalizationDataSource localizationSource = null)
         {
             // Only reset modification state if switching to a different data type
             bool isDifferentType = dataType != type;
@@ -150,7 +151,7 @@ namespace Datra.Unity.Editor.Views
             dataContext = context;
             dataSource = source;
             localizationContext = localizationCtx;
-            localizationChangeTracker = localizationTracker;
+            localizationDataSource = localizationSource;
 
             // Subscribe to new dataSource
             if (dataSource != null)

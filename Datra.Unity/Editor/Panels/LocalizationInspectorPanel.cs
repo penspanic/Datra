@@ -4,14 +4,14 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Services;
 using Datra.Unity.Editor.Views;
-using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 
 namespace Datra.Unity.Editor.Panels
 {
     public class LocalizationInspectorPanel : BaseInspectorPanel
     {
         private LocalizationContext localizationContext;
-        private LocalizationChangeTracker changeTracker;
+        private IEditableLocalizationDataSource localizationDataSource;
         private DatraLocalizationView localizationView;
 
         public bool HasUnsavedChanges => localizationView?.HasUnsavedChanges ?? false;
@@ -32,15 +32,11 @@ namespace Datra.Unity.Editor.Panels
             // Localization panel doesn't need any special initialization
         }
 
-        /// <summary>
-        /// Set change tracker for localization (must be called before SetLocalizationContext)
-        /// </summary>
-        public void SetChangeTracker(LocalizationChangeTracker tracker)
-        {
-            changeTracker = tracker;
-        }
-
-        public void SetLocalizationContext(LocalizationContext context, Datra.Interfaces.IDataRepository repository = null, Datra.Interfaces.IDataContext dataContext = null)
+        public void SetLocalizationContext(
+            LocalizationContext context,
+            Datra.Interfaces.IDataRepository repository,
+            Datra.Interfaces.IDataContext dataContext,
+            IEditableLocalizationDataSource dataSource)
         {
             // If already set to the same context and view exists, do nothing
             // This prevents recreating the view and losing change tracking
@@ -50,6 +46,7 @@ namespace Datra.Unity.Editor.Panels
             }
 
             localizationContext = context;
+            localizationDataSource = dataSource;
 
             if (context == null)
             {
@@ -64,22 +61,17 @@ namespace Datra.Unity.Editor.Panels
             breadcrumbContainer.Clear();
             UpdateBreadcrumb();
 
-            // Create localization-specific view (only if not already created)
+            // Create localization-specific view
             contentContainer.Clear();
             localizationView = new DatraLocalizationView();
 
-            // Set change tracker before setting context
-            if (changeTracker != null)
-            {
-                localizationView.SetChangeTracker(changeTracker);
-            }
-
-            // Set data (repository, dataContext, dataSource) - required for base DatraDataView functionality
-            // Note: Localization doesn't use EditableDataSource yet, pass null
-            if (repository != null && dataContext != null)
-            {
-                localizationView.SetData(typeof(LocalizationContext), repository, dataContext, null);
-            }
+            // Set data using unified pattern: dataSource is the localization data source
+            localizationView.SetData(
+                typeof(LocalizationContext),
+                repository,
+                dataContext,
+                dataSource,   // source (IEditableDataSource) - will be cast to IEditableLocalizationDataSource
+                context);     // localizationCtx
 
             localizationView.SetLocalizationContext(context);
 

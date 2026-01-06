@@ -6,7 +6,7 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using Datra.Localization;
 using Datra.Services;
-using Datra.Unity.Editor.Utilities;
+using Datra.Editor.Interfaces;
 
 namespace Datra.Unity.Editor.Components
 {
@@ -18,7 +18,7 @@ namespace Datra.Unity.Editor.Components
     public class LocaleEditPopup : EditorWindow
     {
         private LocalizationContext localizationContext;
-        private LocalizationChangeTracker changeTracker;
+        private IEditableLocalizationDataSource localizationDataSource;
         private string localeKey;
         private Action onModified;
 
@@ -27,14 +27,14 @@ namespace Datra.Unity.Editor.Components
 
         public static void ShowWindow(
             LocalizationContext context,
-            LocalizationChangeTracker tracker,
+            IEditableLocalizationDataSource dataSource,
             string key,
             Rect buttonWorldBound,
             Action onModified = null)
         {
             var window = GetWindow<LocaleEditPopup>(true, "Edit Locale", true);
             window.localizationContext = context ?? throw new ArgumentNullException(nameof(context));
-            window.changeTracker = tracker;
+            window.localizationDataSource = dataSource;
             window.localeKey = key;
             window.onModified = onModified;
             window.editedTexts = new Dictionary<LanguageCode, string>();

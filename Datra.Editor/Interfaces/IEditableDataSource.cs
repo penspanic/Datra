@@ -68,6 +68,12 @@ namespace Datra.Editor.Interfaces
         void Revert();
 
         /// <summary>
+        /// Refresh baseline from current data state.
+        /// Call after save to reset modification tracking.
+        /// </summary>
+        void RefreshBaseline();
+
+        /// <summary>
         /// Apply all pending changes to the repository and save
         /// </summary>
         Task SaveAsync();
