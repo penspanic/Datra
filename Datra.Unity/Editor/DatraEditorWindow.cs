@@ -66,6 +66,32 @@ namespace Datra.Unity.Editor
         // Public accessor for ViewModel (enables testing and external access)
         public DatraEditorViewModel ViewModel => viewModel;
 
+        // Public accessor for LocalizationContext (enables PropertyDrawer access)
+        public LocalizationContext LocalizationContext => localizationContext;
+
+        /// <summary>
+        /// Gets the currently open DatraEditorWindow instance, if any.
+        /// Returns null if no window is open.
+        /// </summary>
+        public static DatraEditorWindow GetOpenedWindow()
+        {
+            return Resources.FindObjectsOfTypeAll<DatraEditorWindow>().FirstOrDefault();
+        }
+
+        /// <summary>
+        /// Gets the currently open DatraEditorWindow, or opens a new one if none exists.
+        /// </summary>
+        public static DatraEditorWindow GetOrOpenWindow()
+        {
+            var window = GetOpenedWindow();
+            if (window == null)
+            {
+                ShowWindow();
+                window = GetOpenedWindow();
+            }
+            return window;
+        }
+
         /// <summary>
         /// Selects a data type and updates the inspector view.
         /// This is the public API for programmatic selection (used for testing).
