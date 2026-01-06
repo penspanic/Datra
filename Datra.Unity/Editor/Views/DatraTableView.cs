@@ -394,13 +394,20 @@ namespace Datra.Unity.Editor.Views
                 var deleteButton = actionsCell.Q<Button>();
                 if (deleteButton != null)
                 {
-                    // Clear previous callbacks
-                    deleteButton.clicked += () => {
-                        if (!isReadOnly)
-                        {
-                            DeleteItem(item); // Use original item (with AssetId)
-                        }
-                    };
+                    // Store item in userData and use single handler to prevent accumulation
+                    deleteButton.userData = item;
+
+                    // Only register handler once (check if already registered via tooltip marker)
+                    if (deleteButton.tooltip != "handler-registered")
+                    {
+                        deleteButton.tooltip = "handler-registered";
+                        deleteButton.clicked += () => {
+                            if (!isReadOnly && deleteButton.userData != null)
+                            {
+                                DeleteItem(deleteButton.userData);
+                            }
+                        };
+                    }
                 }
                 cellIndex++;
             }

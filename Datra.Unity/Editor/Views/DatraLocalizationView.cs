@@ -11,6 +11,7 @@ using Datra.Unity.Editor.Models;
 using Datra.Unity.Editor.Utilities;
 using Datra.Editor.Interfaces;
 using Datra.Editor.Models;
+using Datra.Unity.Editor.Windows;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
@@ -328,8 +329,19 @@ namespace Datra.Unity.Editor.Views
             var deleteButton = actionsCell.Q<Button>();
             if (deleteButton != null)
             {
+                // Store wrapper in userData and use single handler to prevent accumulation
+                deleteButton.userData = wrapper;
                 deleteButton.SetEnabled(!isReadOnly && !wrapper.IsFixedKey);
-                deleteButton.clicked += () => DeleteLocalizationKey(wrapper);
+
+                // Only register handler once (check if already registered via tooltip marker)
+                if (deleteButton.tooltip != "handler-registered")
+                {
+                    deleteButton.tooltip = "handler-registered";
+                    deleteButton.clicked += () => {
+                        if (deleteButton.userData is LocalizationKeyWrapper w)
+                            DeleteLocalizationKey(w);
+                    };
+                }
             }
 
             // Bind key cell
@@ -519,9 +531,25 @@ namespace Datra.Unity.Editor.Views
         // Actions
         protected override void OnAddButtonClicked()
         {
-            var keyId = $"NewKey_{DateTime.Now.Ticks}";
+            DatraInputDialog.Show("New Localization Key",
+                "Enter key for the new localization entry:",
+                "NewKey",
+                (input) => {
+                    if (string.IsNullOrWhiteSpace(input))
+                    {
+                        EditorUtility.DisplayDialog("Invalid Key", "Key cannot be empty", "OK");
+                        return;
+                    }
 
-            _ = AddKeyAsync(keyId);
+                    // Check if key already exists
+                    if (localizationContext?.GetKeyData(input) != null)
+                    {
+                        EditorUtility.DisplayDialog("Duplicate Key", $"Key '{input}' already exists", "OK");
+                        return;
+                    }
+
+                    _ = AddKeyAsync(input);
+                });
         }
 
         private async Task AddKeyAsync(string keyId)
