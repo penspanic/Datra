@@ -595,13 +595,8 @@ namespace Datra.Unity.Editor.Views
             // Track at the parent property level for change tracking
             var parentValue = colInfo.Property.GetValue(actualData);
 
-            // Use reflection to call TrackPropertyChange on typed dataSource
-            var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
-            if (trackMethod != null)
-            {
-                var parameters = new object[] { itemKey, colInfo.Property.Name, parentValue, false };
-                trackMethod.Invoke(dataSource, parameters);
-            }
+            // Use interface method directly (no reflection needed)
+            dataSource.TrackPropertyChange(itemKey, colInfo.Property.Name, parentValue, out _);
 
             UpdateModifiedState();
             UpdateRowStateVisuals(originalItem);
@@ -628,15 +623,8 @@ namespace Datra.Unity.Editor.Views
                     var itemKey = GetKeyFromItem(originalItem);
                     if (itemKey == null || dataSource == null) return;
 
-                    // Use reflection to call TrackPropertyChange on typed dataSource
-                    var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
-                    bool isModified = false;
-                    if (trackMethod != null)
-                    {
-                        var parameters = new object[] { itemKey, propName, newValue, false };
-                        trackMethod.Invoke(dataSource, parameters);
-                        isModified = (bool)parameters[3];
-                    }
+                    // Use interface method directly (no reflection needed)
+                    dataSource.TrackPropertyChange(itemKey, propName, newValue, out bool isModified);
 
                     field.SetModified(isModified);
                     UpdateModifiedState();
@@ -655,20 +643,13 @@ namespace Datra.Unity.Editor.Views
                     var itemKey = GetKeyFromItem(originalItem);
                     if (itemKey == null || dataSource == null) return;
 
-                    // Use reflection to get baseline value from dataSource
+                    // Get baseline value from dataSource
                     var baselineValue = dataSource.GetPropertyBaselineValue(itemKey, propName);
                     property.SetValue(actualData, baselineValue);
                     UpdateFieldValue(field, property.PropertyType, baselineValue);
 
-                    // Track the reverted value
-                    var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
-                    bool isModified = false;
-                    if (trackMethod != null)
-                    {
-                        var parameters = new object[] { itemKey, propName, baselineValue, false };
-                        trackMethod.Invoke(dataSource, parameters);
-                        isModified = (bool)parameters[3];
-                    }
+                    // Track the reverted value using interface method
+                    dataSource.TrackPropertyChange(itemKey, propName, baselineValue, out bool isModified);
 
                     field.SetModified(isModified);
                     UpdateModifiedState();

@@ -93,15 +93,9 @@ namespace Datra.Unity.Editor.Views
                     var dataKey = GetKeyFromItem(item);
                     if (dataKey != null && dataSource != null)
                     {
-                        // Use reflection to call TrackPropertyChange on typed dataSource
-                        var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
-                        if (trackMethod != null)
-                        {
-                            var parameters = new object[] { dataKey, propName, value, false };
-                            trackMethod.Invoke(dataSource, parameters);
-                            bool isModified = (bool)parameters[3];
-                            field.SetModified(isModified);
-                        }
+                        // Use interface method directly (no reflection needed)
+                        dataSource.TrackPropertyChange(dataKey, propName, value, out bool isModified);
+                        field.SetModified(isModified);
                     }
 
                     // Mark asset as modified in the repository (for Asset data)
@@ -235,15 +229,9 @@ namespace Datra.Unity.Editor.Views
                         var itemKey = GetKeyFromItem(item);
                         if (itemKey != null && dataSource != null)
                         {
-                            // Use reflection to call TrackPropertyChange on typed dataSource
-                            var trackMethod = dataSource.GetType().GetMethod("TrackPropertyChange");
-                            if (trackMethod != null)
-                            {
-                                var parameters = new object[] { itemKey, propName, value, false };
-                                trackMethod.Invoke(dataSource, parameters);
-                                bool isModified = (bool)parameters[3];
-                                field.SetModified(isModified);
-                            }
+                            // Use interface method directly (no reflection needed)
+                            dataSource.TrackPropertyChange(itemKey, propName, value, out bool isModified);
+                            field.SetModified(isModified);
                         }
 
                         // Mark asset as modified in the repository (for Asset data)

@@ -82,6 +82,25 @@ namespace Datra.Editor.Interfaces
         /// Event raised when modification state changes
         /// </summary>
         event Action<bool>? OnModifiedStateChanged;
+
+        /// <summary>
+        /// Get the key for an item. Each data source type defines its own key semantics:
+        /// - KeyValue: ID property value
+        /// - Single: constant key (always the same)
+        /// - Localization: the locale key string
+        /// - Asset: AssetId
+        /// </summary>
+        object? GetItemKey(object item);
+
+        /// <summary>
+        /// Track a property change and update modification state.
+        /// This is the non-generic version for use by Views that don't know the key type.
+        /// </summary>
+        /// <param name="key">The item key (obtained from GetItemKey)</param>
+        /// <param name="propertyName">Name of the changed property</param>
+        /// <param name="newValue">The new value</param>
+        /// <param name="isPropertyModified">Output: true if property differs from baseline</param>
+        void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified);
     }
 
     /// <summary>

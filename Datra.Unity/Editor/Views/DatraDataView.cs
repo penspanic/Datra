@@ -449,10 +449,21 @@ namespace Datra.Unity.Editor.Views
                 .ToList();
         }
 
+        /// <summary>
+        /// Get the key for an item. Delegates to dataSource if available, otherwise falls back to legacy logic.
+        /// </summary>
         protected object GetKeyFromItem(object item)
         {
             if (item == null) return null;
 
+            // Use dataSource's GetItemKey if available (preferred path)
+            if (dataSource != null)
+            {
+                var key = dataSource.GetItemKey(item);
+                if (key != null) return key;
+            }
+
+            // Fallback for cases where dataSource is not set or returns null
             // Handle Asset<T> wrapper - return AssetId
             if (IsAssetWrapper(item))
             {
@@ -464,13 +475,6 @@ namespace Datra.Unity.Editor.Views
             {
                 var keyProperty = itemType.GetProperty("Key");
                 return keyProperty?.GetValue(item);
-            }
-
-            // For non-KeyValuePair items (single data or table items)
-            // If this is single data (not table data), use fixed key
-            if (!IsTableData(dataType))
-            {
-                return "single";
             }
 
             // For table data items, try to get the ID property

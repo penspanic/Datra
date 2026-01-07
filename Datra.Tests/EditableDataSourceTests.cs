@@ -510,5 +510,115 @@ namespace Datra.Tests
         }
 
         #endregion
+
+        #region GetItemKey Tests
+
+        [Fact]
+        public void GetItemKey_WithKeyValuePair_ReturnsKey()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            repo.AddInitialData("item1", "Item 1", 10);
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+
+            var kvp = new KeyValuePair<string, TestData>("item1", new TestData { Id = "item1", Name = "Item 1", Value = 10 });
+
+            // Act
+            var key = dataSource.GetItemKey(kvp);
+
+            // Assert
+            Assert.Equal("item1", key);
+        }
+
+        [Fact]
+        public void GetItemKey_WithDirectData_ReturnsIdProperty()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+
+            var data = new TestData { Id = "test_id", Name = "Test", Value = 42 };
+
+            // Act
+            var key = dataSource.GetItemKey(data);
+
+            // Assert
+            Assert.Equal("test_id", key);
+        }
+
+        [Fact]
+        public void GetItemKey_WithNull_ReturnsNull()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+
+            // Act
+            var key = dataSource.GetItemKey(null!);
+
+            // Assert
+            Assert.Null(key);
+        }
+
+        #endregion
+
+        #region NonGeneric TrackPropertyChange Tests
+
+        [Fact]
+        public void TrackPropertyChange_NonGeneric_WithValidKey_DetectsModification()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            repo.AddInitialData("item1", "Item 1", 10);
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+            IEditableDataSource nonGeneric = dataSource;
+
+            // Act
+            nonGeneric.TrackPropertyChange("item1", "Name", "Modified Name", out bool isPropertyModified);
+
+            // Assert
+            Assert.True(isPropertyModified);
+            Assert.True(dataSource.IsPropertyModified("item1", "Name"));
+        }
+
+        [Fact]
+        public void TrackPropertyChange_NonGeneric_WithWrongKeyType_DoesNotModify()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            repo.AddInitialData("item1", "Item 1", 10);
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+            IEditableDataSource nonGeneric = dataSource;
+
+            // Act - use int instead of string key
+            nonGeneric.TrackPropertyChange(123, "Name", "Modified Name", out bool isPropertyModified);
+
+            // Assert
+            Assert.False(isPropertyModified);
+            Assert.False(dataSource.HasModifications);
+        }
+
+        [Fact]
+        public void TrackPropertyChange_NonGeneric_RevertingToBaseline_ClearsModification()
+        {
+            // Arrange
+            var repo = new MockKeyValueRepository();
+            repo.AddInitialData("item1", "Original Name", 10);
+            var dataSource = new EditableKeyValueDataSource<string, TestData>(repo);
+            IEditableDataSource nonGeneric = dataSource;
+
+            // First modify
+            nonGeneric.TrackPropertyChange("item1", "Name", "Modified", out _);
+            Assert.True(dataSource.HasModifications);
+
+            // Act - revert to original
+            nonGeneric.TrackPropertyChange("item1", "Name", "Original Name", out bool isPropertyModified);
+
+            // Assert
+            Assert.False(isPropertyModified);
+            Assert.False(dataSource.HasModifications);
+        }
+
+        #endregion
     }
 }

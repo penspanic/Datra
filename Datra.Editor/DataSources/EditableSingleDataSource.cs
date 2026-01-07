@@ -88,14 +88,32 @@ namespace Datra.Editor.DataSources
 
         IEnumerable<object> IEditableDataSource.EnumerateItems()
         {
-            var data = GetCurrentData();
+            // Always return working copy to prevent baseline mutation during editing
+            // This matches EditableKeyValueDataSource behavior
+            var data = GetOrCreateWorkingCopy();
             if (data != null)
                 yield return data;
         }
 
+        /// <summary>
+        /// Get or create working copy for editing.
+        /// This ensures baseline is never exposed for direct modification.
+        /// </summary>
+        private TData? GetOrCreateWorkingCopy()
+        {
+            if (_baseline == null) return null;
+
+            if (_workingCopy == null)
+            {
+                _workingCopy = DeepClone(_baseline);
+            }
+            return _workingCopy;
+        }
+
         public IEnumerable<KeyValuePair<string, TData>> EnumerateItems()
         {
-            var data = GetCurrentData();
+            // Always return working copy to prevent baseline mutation during editing
+            var data = GetOrCreateWorkingCopy();
             if (data != null)
                 yield return new KeyValuePair<string, TData>(SingleKey, data);
         }
@@ -307,6 +325,35 @@ namespace Datra.Editor.DataSources
 
             var propInfo = typeof(TData).GetProperty(propertyName);
             return propInfo?.GetValue(_baseline);
+        }
+
+        /// <summary>
+        /// Get the key for an item. For single data, always returns SingleKey.
+        /// Since single data only has one item, we always return the constant key.
+        /// </summary>
+        public object? GetItemKey(object item)
+        {
+            // For single data, there's only one item, so always return SingleKey
+            // We don't need to verify the type - if someone is calling this with an item,
+            // they got it from EnumerateItems() which only returns our single data item.
+            if (item == null) return null;
+            return SingleKey;
+        }
+
+        /// <summary>
+        /// Track property change (non-generic version for IEditableDataSource).
+        /// </summary>
+        public void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            // For single data, accept both SingleKey and "single" for backward compatibility
+            if (key is string strKey && (strKey == SingleKey || strKey == "single"))
+            {
+                TrackPropertyChange(SingleKey, propertyName, newValue, out isPropertyModified);
+            }
+            else
+            {
+                isPropertyModified = false;
+            }
         }
 
         #endregion

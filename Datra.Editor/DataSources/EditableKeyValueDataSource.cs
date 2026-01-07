@@ -372,6 +372,53 @@ namespace Datra.Editor.DataSources
             return propInfo?.GetValue(baselineItem);
         }
 
+        /// <summary>
+        /// Get the key from an item. Supports various item wrapper types.
+        /// </summary>
+        public override object? GetItemKey(object item)
+        {
+            if (item == null) return null;
+
+            // Handle KeyValuePair<TKey, TData>
+            if (item is KeyValuePair<TKey, TData> kvp)
+            {
+                return kvp.Key;
+            }
+
+            // Handle direct TData item
+            if (item is TData data)
+            {
+                return data.Id;
+            }
+
+            // Try to extract from generic KeyValuePair
+            var itemType = item.GetType();
+            if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
+            {
+                var keyProp = itemType.GetProperty("Key");
+                return keyProp?.GetValue(item);
+            }
+
+            // Try to get Id property
+            var idProp = item.GetType().GetProperty("Id");
+            return idProp?.GetValue(item);
+        }
+
+        /// <summary>
+        /// Track property change (non-generic version for IEditableDataSource).
+        /// </summary>
+        public override void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            if (key is TKey typedKey)
+            {
+                TrackPropertyChange(typedKey, propertyName, newValue, out isPropertyModified);
+            }
+            else
+            {
+                isPropertyModified = false;
+            }
+        }
+
         #endregion
 
         #region Revert

@@ -236,6 +236,13 @@ namespace Datra.Unity.Tests
             public void RefreshBaseline()
             {
             }
+
+            public object GetItemKey(object item) => null;
+
+            public void TrackPropertyChange(object key, string propertyName, object newValue, out bool isPropertyModified)
+            {
+                isPropertyModified = false;
+            }
         }
 
         #endregion

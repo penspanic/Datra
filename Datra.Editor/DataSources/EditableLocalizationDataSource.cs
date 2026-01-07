@@ -355,6 +355,43 @@ namespace Datra.Editor.DataSources
             });
         }
 
+        /// <summary>
+        /// Get the key from an item. For localization, the key is the locale key string.
+        /// </summary>
+        public override object? GetItemKey(object item)
+        {
+            if (item == null) return null;
+
+            // Handle KeyValuePair<string, string> (key, text)
+            if (item is KeyValuePair<string, string> kvp)
+            {
+                return kvp.Key;
+            }
+
+            // Handle string (direct key)
+            if (item is string strKey)
+            {
+                return strKey;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Track property change (non-generic version for IEditableDataSource).
+        /// For localization, propertyName is typically "Text".
+        /// </summary>
+        public override void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            isPropertyModified = false;
+
+            if (key is string strKey && propertyName == "Text" && newValue is string textValue)
+            {
+                SetText(strKey, textValue);
+                isPropertyModified = IsKeyModified(strKey);
+            }
+        }
+
         public async Task SaveCurrentLanguageAsync()
         {
             bool hadModifications = HasModifications;

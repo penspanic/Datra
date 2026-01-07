@@ -71,6 +71,17 @@ namespace Datra.Editor.DataSources
         /// </summary>
         protected abstract void RefreshBaselineInternal();
 
+        /// <summary>
+        /// Get the key for an item. Implementation must be provided by derived class.
+        /// </summary>
+        public abstract object? GetItemKey(object item);
+
+        /// <summary>
+        /// Track a property change (non-generic version).
+        /// Implementation must be provided by derived class.
+        /// </summary>
+        public abstract void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified);
+
         #endregion
 
         #region State Change Notification Helpers

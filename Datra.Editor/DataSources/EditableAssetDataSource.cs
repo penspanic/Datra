@@ -395,6 +395,50 @@ namespace Datra.Editor.DataSources
             return propInfo?.GetValue(baselineAsset.Data);
         }
 
+        /// <summary>
+        /// Get the key from an item. For assets, the key is AssetId.
+        /// </summary>
+        public object? GetItemKey(object item)
+        {
+            if (item == null) return null;
+
+            // Handle Asset<T> directly
+            if (item is Asset<T> asset)
+            {
+                return asset.Id;
+            }
+
+            // Handle KeyValuePair<AssetId, Asset<T>>
+            if (item is KeyValuePair<AssetId, Asset<T>> kvp)
+            {
+                return kvp.Key;
+            }
+
+            // Try to get Id property (for Asset<T> wrapper)
+            var idProp = item.GetType().GetProperty("Id");
+            if (idProp != null && idProp.PropertyType == typeof(AssetId))
+            {
+                return idProp.GetValue(item);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Track property change (non-generic version for IEditableDataSource).
+        /// </summary>
+        public void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            if (key is AssetId typedKey)
+            {
+                TrackPropertyChange(typedKey, propertyName, newValue, out isPropertyModified);
+            }
+            else
+            {
+                isPropertyModified = false;
+            }
+        }
+
         #endregion
 
         #region Revert
