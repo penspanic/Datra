@@ -16,6 +16,11 @@ namespace Datra.Unity.Editor.Panels
 
         public bool HasUnsavedChanges => localizationView?.HasUnsavedChanges ?? false;
 
+        /// <summary>
+        /// Fired when user requests to sync FixedLocale keys with data
+        /// </summary>
+        public event Action OnSyncFixedLocaleKeysRequested;
+
         public LocalizationInspectorPanel() : base()
         {
             AddToClassList("datra-localization-inspector-panel");
@@ -78,6 +83,7 @@ namespace Datra.Unity.Editor.Panels
             // DatraLocalizationView now extends DatraDataView, so use its events
             localizationView.OnDataModified += (type, isModified) => InvokeDataModified(type, isModified);
             localizationView.OnSaveRequested += (type, repo) => InvokeSaveRequested(type, repo);
+            localizationView.OnSyncFixedLocaleKeysRequested += () => OnSyncFixedLocaleKeysRequested?.Invoke();
 
             contentContainer.Add(localizationView);
         }

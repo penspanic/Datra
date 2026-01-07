@@ -644,6 +644,25 @@ namespace Datra.Services
                     $"Cannot delete fixed localization key: {key}");
             }
 
+            await DeleteKeyInternalAsync(key);
+        }
+
+        /// <summary>
+        /// Force-deletes a localization key from all languages, including fixed keys.
+        /// This is used for syncing FixedLocale keys when data items are removed.
+        /// </summary>
+        /// <param name="key">The key to delete</param>
+        /// <exception cref="ArgumentException">If key is null or empty</exception>
+        public async Task ForceDeleteKeyAsync(string key)
+        {
+            if (string.IsNullOrEmpty(key))
+                throw new ArgumentException("Key cannot be null or empty", nameof(key));
+
+            await DeleteKeyInternalAsync(key);
+        }
+
+        private async Task DeleteKeyInternalAsync(string key)
+        {
             // Remove from key repository
             if (_keyRepository != null)
             {
@@ -727,6 +746,139 @@ namespace Datra.Services
 
             // Fire event for editor
             OnKeyAdded?.Invoke(key);
+        }
+
+        /// <summary>
+        /// Adds multiple localization keys in a batch (saves once at the end).
+        /// Much faster than calling AddKeyAsync multiple times.
+        /// </summary>
+        /// <param name="keys">List of keys to add with their metadata</param>
+        /// <returns>Number of keys successfully added</returns>
+        public async Task<int> AddKeysBatchAsync(IEnumerable<(string key, string description, string category, bool isFixedKey)> keys)
+        {
+            int addedCount = 0;
+
+            foreach (var (key, description, category, isFixedKey) in keys)
+            {
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                // Skip if key already exists
+                if (GetKeyData(key) != null)
+                    continue;
+
+                // Add to key repository (no save yet)
+                if (_keyRepository != null)
+                {
+                    var newKeyData = new LocalizationKeyData
+                    {
+                        Id = key,
+                        Description = description,
+                        Category = category,
+                        IsFixedKey = isFixedKey
+                    };
+                    _keyRepository.Add(newKeyData);
+                }
+
+                // Add empty entries to all loaded languages
+                foreach (var languageCode in _languageData.Keys)
+                {
+                    if (!_languageData[languageCode].ContainsKey(key))
+                    {
+                        _languageData[languageCode][key] = new LocalizationEntry
+                        {
+                            Text = "",
+                            Context = ""
+                        };
+                    }
+                }
+
+                addedCount++;
+            }
+
+            // Save once at the end
+            if (addedCount > 0)
+            {
+                if (_keyRepository != null)
+                    await _keyRepository.SaveAsync();
+
+                await SaveAllLoadedLanguagesAsync();
+
+                // Fire events
+                foreach (var (key, _, _, _) in keys)
+                {
+                    if (!string.IsNullOrEmpty(key))
+                        OnKeyAdded?.Invoke(key);
+                }
+            }
+
+            return addedCount;
+        }
+
+        /// <summary>
+        /// Force-deletes multiple localization keys in a batch (saves once at the end).
+        /// Much faster than calling ForceDeleteKeyAsync multiple times.
+        /// </summary>
+        /// <param name="keys">List of keys to delete</param>
+        /// <returns>Number of keys successfully deleted</returns>
+        public async Task<int> ForceDeleteKeysBatchAsync(IEnumerable<string> keys)
+        {
+            int deletedCount = 0;
+            var deletedKeys = new List<string>();
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                // Remove from key repository (no save yet)
+                if (_keyRepository != null)
+                {
+                    _keyRepository.Remove(key);
+                }
+
+                // Remove from all language data
+                foreach (var langData in _languageData.Values)
+                {
+                    langData.Remove(key);
+                }
+
+                deletedKeys.Add(key);
+                deletedCount++;
+            }
+
+            // Save once at the end
+            if (deletedCount > 0)
+            {
+                if (_keyRepository != null)
+                    await _keyRepository.SaveAsync();
+
+                await SaveAllLoadedLanguagesAsync();
+
+                // Fire events
+                foreach (var key in deletedKeys)
+                {
+                    OnKeyDeleted?.Invoke(key);
+                }
+            }
+
+            return deletedCount;
+        }
+
+        /// <summary>
+        /// Saves all loaded language files
+        /// </summary>
+        private async Task SaveAllLoadedLanguagesAsync()
+        {
+            var previousLanguage = _currentLanguageCode;
+
+            foreach (var languageCode in _languageData.Keys)
+            {
+                _currentLanguageCode = languageCode;
+                await SaveCurrentLanguageAsync();
+            }
+
+            _currentLanguageCode = previousLanguage;
         }
 
         /// <summary>

@@ -100,6 +100,34 @@ Switch to localization mode to edit translations:
 - Language selector
 - Key-value editor
 - Multi-language preview
+- Auto Translate (requires translation provider)
+- **Sync Keys**: Sync FixedLocale keys with data
+
+### Sync FixedLocale Keys
+
+When using `[FixedLocale]` attributes, localization keys are automatically generated based on data items. The **Sync Keys** feature helps maintain consistency:
+
+**Access**: Localization Panel toolbar → 🔄 Sync Keys
+
+**What it detects**:
+- **Missing Keys**: Data items exist but localization keys don't
+- **Orphan Keys**: Localization keys exist but data items were deleted
+
+**Example**:
+```csharp
+[TableData("Characters.csv")]
+public partial class CharacterData : ITableData<string>
+{
+    public string Id { get; set; }
+
+    [FixedLocale]
+    public LocaleRef Name => LocaleRef.CreateFixed(nameof(CharacterData), Id, nameof(Name));
+}
+```
+
+Expected key pattern: `CharacterData.{Id}.Name`
+
+When you add `hero_003` to Characters.csv, Sync Keys will detect the missing key `CharacterData.hero_003.Name` and offer to create it.
 
 ---
 

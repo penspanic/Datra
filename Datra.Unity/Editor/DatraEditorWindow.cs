@@ -221,6 +221,7 @@ namespace Datra.Unity.Editor
             localizationInspectorPanel = new LocalizationInspectorPanel();
             localizationInspectorPanel.OnDataModified += OnDataModified;
             localizationInspectorPanel.OnSaveRequested += OnInspectorSaveRequested;
+            localizationInspectorPanel.OnSyncFixedLocaleKeysRequested += ShowFixedLocaleKeySync;
             
             // Initialize data
             EditorApplication.delayCall += InitializeData;
@@ -885,6 +886,42 @@ namespace Datra.Unity.Editor
         {
             // TODO: Implement settings window
             EditorUtility.DisplayDialog("Settings", "Settings window coming soon!", "OK");
+        }
+
+        /// <summary>
+        /// Analyzes and syncs FixedLocale keys with data.
+        /// Shows a dialog with missing/orphan keys and allows user to sync them.
+        /// </summary>
+        public void ShowFixedLocaleKeySync()
+        {
+            if (dataContext == null || localizationContext == null)
+            {
+                EditorUtility.DisplayDialog("Error", "DataContext or LocalizationContext not initialized.", "OK");
+                return;
+            }
+
+            try
+            {
+                // Create analyzer and run analysis
+                var analyzer = new FixedLocaleKeyAnalyzer(dataContext, localizationContext, repositories);
+                var result = analyzer.Analyze();
+
+                // Show sync window with results
+                FixedLocaleKeySyncWindow.Show(result, localizationContext, () =>
+                {
+                    // After sync, refresh localization data source
+                    localizationDataSource?.RefreshBaseline();
+
+                    // Refresh navigation panel and current view
+                    navigationPanel?.MarkTypeAsModified(typeof(LocalizationContext), false);
+                    RefreshCurrentInspectorPanel();
+                });
+            }
+            catch (Exception e)
+            {
+                EditorUtility.DisplayDialog("Error", $"Failed to analyze FixedLocale keys:\n{e.Message}", "OK");
+                Debug.LogError($"FixedLocale sync failed: {e}");
+            }
         }
 
         private void OnToolbarLanguageChanged(LanguageCode newLanguage)

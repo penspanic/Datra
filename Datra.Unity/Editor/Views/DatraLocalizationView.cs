@@ -23,6 +23,12 @@ namespace Datra.Unity.Editor.Views
     /// </summary>
     public class DatraLocalizationView : VirtualizedTableView
     {
+        // Events
+        /// <summary>
+        /// Fired when user requests to sync FixedLocale keys with data
+        /// </summary>
+        public event Action OnSyncFixedLocaleKeysRequested;
+
         // Localization-specific
         private LanguageCode currentLanguageCode;
 
@@ -107,6 +113,13 @@ namespace Datra.Unity.Editor.Views
             translateButton.tooltip = "Auto-translate all missing keys";
             translateButton.SetEnabled(!isReadOnly);
             toolbar.Add(translateButton);
+
+            // Sync FixedLocale keys button
+            var syncButton = new Button(() => OnSyncFixedLocaleKeysRequested?.Invoke());
+            syncButton.text = "🔄 Sync Keys";
+            syncButton.tooltip = "Sync FixedLocale keys with data (detect missing/orphan keys)";
+            syncButton.SetEnabled(!isReadOnly);
+            toolbar.Add(syncButton);
 
             // Search field
             toolbarSearchField = new ToolbarSearchField();
