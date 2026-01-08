@@ -270,12 +270,12 @@ namespace Datra.Generators.Generators
                 codeBuilder.EndMethod();
             }
 
-            // Generate DeserializeSingleItem for multi-file mode (JSON only)
+            // Generate DeserializeSingleItem for multi-file mode
             if (model.IsMultiFile)
             {
                 codeBuilder.AddBlankLine();
                 codeBuilder.AppendLine("/// <summary>");
-                codeBuilder.AppendLine("/// Deserialize a single item from JSON (for multi-file mode)");
+                codeBuilder.AppendLine("/// Deserialize a single item (for multi-file mode)");
                 codeBuilder.AppendLine("/// </summary>");
                 codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingleItem(string data, global::Datra.Serializers.IDataSerializer serializer)");
                 codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");

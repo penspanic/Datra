@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Datra.Interfaces;
 using Datra.Serializers;
+using Datra.Utilities;
 
 namespace Datra.Repositories
 {
@@ -29,11 +30,11 @@ namespace Datra.Repositories
         /// Creates a multi-file repository
         /// </summary>
         /// <param name="folderPathOrLabel">Folder path (for file system) or Addressables label</param>
-        /// <param name="filePattern">File pattern like "*.json"</param>
+        /// <param name="filePattern">File pattern like "*.json", "*.yaml", or "*.csv"</param>
         /// <param name="rawDataProvider">Data provider that supports LoadMultipleTextAsync</param>
         /// <param name="serializerFactory">Serializer factory</param>
-        /// <param name="deserializeSingleFunc">Function to deserialize a single item from JSON</param>
-        /// <param name="serializeSingleFunc">Function to serialize a single item to JSON</param>
+        /// <param name="deserializeSingleFunc">Function to deserialize a single item</param>
+        /// <param name="serializeSingleFunc">Function to serialize a single item</param>
         public MultiFileKeyValueDataRepository(
             string folderPathOrLabel,
             string filePattern,
@@ -85,7 +86,9 @@ namespace Datra.Repositories
             var files = await _rawDataProvider.LoadMultipleTextAsync(_folderPathOrLabel, _filePattern);
             _loadedFilePath = _rawDataProvider.ResolveFilePath(_folderPathOrLabel);
 
-            var serializer = _serializerFactory?.GetSerializer(".json")
+            // Extract extension from file pattern (e.g., "*.yaml" -> ".yaml")
+            var extension = DataFormatHelper.GetExtensionFromPattern(_filePattern);
+            var serializer = _serializerFactory?.GetSerializer(extension)
                 ?? throw new InvalidOperationException("Serializer factory not available");
 
             _data.Clear();

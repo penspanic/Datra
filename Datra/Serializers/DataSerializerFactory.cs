@@ -1,6 +1,6 @@
 using System;
-using System.IO;
 using Datra.Attributes;
+using Datra.Utilities;
 
 namespace Datra.Serializers
 {
@@ -11,7 +11,7 @@ namespace Datra.Serializers
     {
         private readonly IDataSerializer _jsonSerializer = new JsonDataSerializer();
         private readonly IDataSerializer _yamlSerializer = new YamlDataSerializer();
-        
+
         /// <summary>
         /// Returns appropriate serializer based on file path and format
         /// </summary>
@@ -19,28 +19,15 @@ namespace Datra.Serializers
         {
             if (format == DataFormat.Auto)
             {
-                format = DetectFormat(filePath);
+                format = DataFormatHelper.DetectFormat(filePath);
             }
-            
+
             return format switch
             {
                 DataFormat.Json => _jsonSerializer,
                 DataFormat.Yaml => _yamlSerializer,
                 DataFormat.Csv => throw new NotSupportedException("CSV format should be handled by source-generated serializers, not by DataSerializer."),
                 _ => throw new NotSupportedException($"Data format {format} is not supported.")
-            };
-        }
-        
-        private DataFormat DetectFormat(string filePath)
-        {
-            var extension = Path.GetExtension(filePath)?.ToLower();
-            
-            return extension switch
-            {
-                ".json" => DataFormat.Json,
-                ".yaml" or ".yml" => DataFormat.Yaml,
-                ".csv" => DataFormat.Csv,
-                _ => throw new NotSupportedException($"File extension {extension} is not supported.")
             };
         }
     }
