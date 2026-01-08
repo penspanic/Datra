@@ -1,0 +1,100 @@
+- Id: goblin_001
+  Name: Goblin Scout
+  Type: Normal
+  Element: None
+  Level: 1
+  Health: 50
+  Attack: 8
+  Defense: 2
+  Speed: 1.2
+  DropRate: 0.15
+  IsFlyable: false
+  Abilities:
+    - Scratch
+    - Flee
+  DropItemIds:
+    - 1001
+    - 2001
+  GuaranteedDrop: 2001
+
+- Id: goblin_002
+  Name: Goblin Warrior
+  Type: Normal
+  Element: None
+  Level: 3
+  Health: 100
+  Attack: 15
+  Defense: 5
+  Speed: 1.0
+  DropRate: 0.20
+  IsFlyable: false
+  Abilities:
+    - Slash
+    - Block
+    - Rage
+  DropItemIds:
+    - 1001
+    - 1002
+  GuaranteedDrop: 1001
+
+- Id: fire_elemental_001
+  Name: Fire Elemental
+  Type: Elite
+  Element: Fire
+  Level: 10
+  Health: 500
+  Attack: 45
+  Defense: 15
+  Speed: 0.8
+  DropRate: 0.35
+  IsFlyable: true
+  Abilities:
+    - Fireball
+    - Flame Burst
+    - Immolate
+  DropItemIds:
+    - 3001
+    - 3002
+  GuaranteedDrop: 3001
+
+- Id: dragon_boss
+  Name: Ancient Dragon
+  Type: Boss
+  Element: Fire
+  Level: 50
+  Health: 10000
+  Attack: 200
+  Defense: 100
+  Speed: 1.5
+  DropRate: 1.0
+  IsFlyable: true
+  Abilities:
+    - Dragon Breath
+    - Tail Swipe
+    - Wing Gust
+    - Inferno
+    - Roar
+  DropItemIds:
+    - 3001
+    - 3002
+  GuaranteedDrop: 3002
+
+- Id: shadow_miniboss
+  Name: Shadow Knight
+  Type: Miniboss
+  Element: Dark
+  Level: 25
+  Health: 2500
+  Attack: 80
+  Defense: 40
+  Speed: 1.1
+  DropRate: 0.75
+  IsFlyable: false
+  Abilities:
+    - Shadow Strike
+    - Dark Shield
+    - Void Walk
+  DropItemIds:
+    - 1002
+    - 3001
+  GuaranteedDrop: 1002

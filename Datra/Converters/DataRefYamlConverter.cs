@@ -61,17 +61,17 @@ namespace Datra.Converters
         {
             if (value == null)
             {
-                emitter.Emit(new Scalar(null, null, string.Empty, ScalarStyle.Plain, false, false));
+                emitter.Emit(new Scalar(null, null, string.Empty, ScalarStyle.Plain, true, false));
                 return;
             }
 
             var dataRef = (IDataRef)value;
             var keyValue = dataRef.GetKeyValue();
-            
+
             if (keyValue == null)
-                emitter.Emit(new Scalar(null, null, string.Empty, ScalarStyle.Plain, false, false));
+                emitter.Emit(new Scalar(null, null, string.Empty, ScalarStyle.Plain, true, false));
             else
-                emitter.Emit(new Scalar(null, null, keyValue.ToString() ?? string.Empty, ScalarStyle.Plain, false, false));
+                emitter.Emit(new Scalar(null, null, keyValue.ToString() ?? string.Empty, ScalarStyle.Plain, true, false));
         }
     }
 }

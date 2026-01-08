@@ -249,6 +249,27 @@ namespace Datra.Generators.Generators
                 codeBuilder.EndMethod();
             }
 
+            // Generate YAML-specific methods without serializer parameter
+            var isYamlFormat = CodeBuilder.IsYamlFormat(model.Format, model.FilePath);
+            if (isYamlFormat)
+            {
+                codeBuilder.AddBlankLine();
+
+                // YAML Deserialize method without serializer
+                codeBuilder.BeginMethod($"public static global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> DeserializeYaml(string data)");
+                var yamlBuilder = new YamlSerializerBuilder();
+                yamlBuilder.GenerateTableDeserializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+
+                codeBuilder.AddBlankLine();
+
+                // YAML Serialize method without serializer
+                codeBuilder.BeginMethod($"public static string SerializeYaml(global::System.Collections.Generic.Dictionary<{model.KeyType}, {simpleTypeName}> table)");
+                var yamlBuilder2 = new YamlSerializerBuilder();
+                yamlBuilder2.GenerateTableSerializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+            }
+
             // Generate DeserializeSingleItem for multi-file mode (JSON only)
             if (model.IsMultiFile)
             {
@@ -265,10 +286,10 @@ namespace Datra.Generators.Generators
         private void GenerateSingleSerializerMethods(CodeBuilder codeBuilder, DataModelInfo model, string simpleTypeName)
         {
             var format = CodeBuilder.GetDataFormat(model.Format);
-            
+
             // Deserialize method
             codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeSingle(string data, global::Datra.Serializers.IDataSerializer serializer)");
-            
+
             switch (format)
             {
                 case "Json":
@@ -276,36 +297,57 @@ namespace Datra.Generators.Generators
                     jsonBuilder.GenerateSingleDeserializer(codeBuilder, model, simpleTypeName);
                     break;
                 case "Yaml":
-                    codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");
+                    var yamlBuilder = new YamlSerializerBuilder();
+                    yamlBuilder.GenerateSingleDeserializer(codeBuilder, model, simpleTypeName);
                     break;
                 default:
                     codeBuilder.AppendLine($"return serializer.DeserializeSingle<{simpleTypeName}>(data);");
                     break;
             }
-            
+
             codeBuilder.EndMethod();
             codeBuilder.AddBlankLine();
-            
+
             // Serialize method
             codeBuilder.BeginMethod($"public static string SerializeSingle({simpleTypeName} data, global::Datra.Serializers.IDataSerializer serializer)");
-            
+
             switch (format)
             {
                 case "Json":
-                    var jsonBuilder = new JsonSerializerBuilder();
-                    jsonBuilder.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
+                    var jsonBuilder2 = new JsonSerializerBuilder();
+                    jsonBuilder2.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
                     break;
                 case "Yaml":
-                    codeBuilder.AppendLine("// YAML implementation requires YamlDotNet package");
-                    codeBuilder.AppendLine($"return serializer.SerializeSingle<{simpleTypeName}>(data);");
+                    var yamlBuilder2 = new YamlSerializerBuilder();
+                    yamlBuilder2.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
                     break;
                 default:
                     codeBuilder.AppendLine($"return serializer.SerializeSingle<{simpleTypeName}>(data);");
                     break;
             }
-            
+
             codeBuilder.EndMethod();
+
+            // Generate YAML-specific methods without serializer parameter
+            var isYamlFormat = CodeBuilder.IsYamlFormat(model.Format, model.FilePath);
+            if (isYamlFormat)
+            {
+                codeBuilder.AddBlankLine();
+
+                // YAML Deserialize method without serializer
+                codeBuilder.BeginMethod($"public static {simpleTypeName} DeserializeYaml(string data)");
+                var yamlBuilder3 = new YamlSerializerBuilder();
+                yamlBuilder3.GenerateSingleDeserializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+
+                codeBuilder.AddBlankLine();
+
+                // YAML Serialize method without serializer
+                codeBuilder.BeginMethod($"public static string SerializeYaml({simpleTypeName} data)");
+                var yamlBuilder4 = new YamlSerializerBuilder();
+                yamlBuilder4.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
+                codeBuilder.EndMethod();
+            }
         }
     }
 }

@@ -1,0 +1,18 @@
+ServerName: Datra Test Server
+Version: 1.0.0
+MaxPlayers: 100
+Port: 7777
+MaintenanceMode: false
+TickRate: 60.0
+SyncInterval: 0.05
+Region: Asia
+AllowedRegions:
+  - Asia
+  - Europe
+  - NorthAmerica
+AdminIds:
+  - admin_001
+  - admin_002
+  - superadmin
+WelcomeMessage: Welcome to Datra Test Server!
+DefaultCharacter: hero_001

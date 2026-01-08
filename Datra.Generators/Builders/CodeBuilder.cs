@@ -190,5 +190,27 @@ namespace Datra.Generators.Builders
 
             return false;
         }
+
+        /// <summary>
+        /// Determines if the data format is YAML, either explicitly specified or auto-detected from file extension.
+        /// </summary>
+        /// <param name="format">The format string (e.g., "Yaml", "Json", "Auto")</param>
+        /// <param name="filePath">The file path to check extension for auto-detection</param>
+        /// <returns>True if the format is YAML</returns>
+        public static bool IsYamlFormat(string format, string filePath)
+        {
+            var resolvedFormat = GetDataFormat(format);
+            if (resolvedFormat == "Yaml")
+                return true;
+
+            // Auto-detect from file extension when Format is "Auto"
+            if (resolvedFormat == "Auto" && !string.IsNullOrEmpty(filePath))
+            {
+                return filePath.EndsWith(".yaml", System.StringComparison.OrdinalIgnoreCase) ||
+                       filePath.EndsWith(".yml", System.StringComparison.OrdinalIgnoreCase);
+            }
+
+            return false;
+        }
     }
 }

@@ -103,12 +103,50 @@ Best for complex nested structures.
 
 ### YAML
 
-Best for human-readable configuration.
+Best for human-readable configuration. Full support for both TableData and SingleData.
+
+**TableData (list format):**
 
 ```yaml
-MaxLevel: 100
-ExpMultiplier: 1.5
-StartingGold: 1000
+- Id: goblin_001
+  Name: Goblin Scout
+  Type: Normal
+  Level: 1
+  Health: 50
+  Abilities:
+    - Scratch
+    - Flee
+
+- Id: dragon_boss
+  Name: Ancient Dragon
+  Type: Boss
+  Level: 50
+  Health: 10000
+```
+
+**SingleData (object format):**
+
+```yaml
+ServerName: My Game Server
+MaxPlayers: 100
+MaintenanceMode: false
+AllowedRegions:
+  - Asia
+  - Europe
+```
+
+**Generated Methods:**
+
+For YAML format data types, Datra generates format-specific methods:
+
+```csharp
+// TableData
+var enemies = EnemyDataSerializer.DeserializeYaml(yamlContent);
+var yaml = EnemyDataSerializer.SerializeYaml(enemies);
+
+// SingleData
+var settings = ServerSettingsSerializer.DeserializeYaml(yamlContent);
+var yaml = ServerSettingsSerializer.SerializeYaml(settings);
 ```
 
 ### Auto-Detection

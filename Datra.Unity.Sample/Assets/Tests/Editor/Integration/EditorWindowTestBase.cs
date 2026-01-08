@@ -39,6 +39,14 @@ namespace Datra.Unity.Tests.Integration
         public void TearDown()
         {
             CloseWindow();
+
+            // Clear static caches to prevent test isolation issues
+            DatraBootstrapper.ClearCurrentDataContext();
+
+            // Wait for any pending EditorApplication.delayCall to complete
+            // This prevents InitializeData from interfering with the next test
+            EditorApplication.delayCall += () => { };
+            System.Threading.Thread.Sleep(50);
         }
 
         /// <summary>
@@ -116,6 +124,16 @@ namespace Datra.Unity.Tests.Integration
             {
                 window.Close();
                 window = null;
+            }
+
+            // Also close any other DatraEditorWindow instances that might be lingering
+            var allWindows = Resources.FindObjectsOfTypeAll<DatraEditorWindow>();
+            foreach (var w in allWindows)
+            {
+                if (w != null)
+                {
+                    w.Close();
+                }
             }
         }
 
