@@ -5,6 +5,42 @@ using System.Linq;
 namespace Datra.Localization
 {
     /// <summary>
+    /// Contains metadata about a language
+    /// </summary>
+    public readonly struct LanguageInfo
+    {
+        /// <summary>
+        /// The LanguageCode enum value
+        /// </summary>
+        public LanguageCode Code { get; }
+
+        /// <summary>
+        /// ISO 639-1 code (e.g., "en", "ko", "ja")
+        /// </summary>
+        public string IsoCode { get; }
+
+        /// <summary>
+        /// Native display name (e.g., "한국어", "日本語", "English")
+        /// </summary>
+        public string NativeName { get; }
+
+        /// <summary>
+        /// English display name (e.g., "Korean", "Japanese", "English")
+        /// </summary>
+        public string EnglishName { get; }
+
+        public LanguageInfo(LanguageCode code, string isoCode, string nativeName, string englishName)
+        {
+            Code = code;
+            IsoCode = isoCode;
+            NativeName = nativeName;
+            EnglishName = englishName;
+        }
+
+        public override string ToString() => $"{NativeName} ({IsoCode})";
+    }
+
+    /// <summary>
     /// ISO 639-1 language codes for localization
     /// </summary>
     public enum LanguageCode
@@ -165,6 +201,30 @@ namespace Datra.Localization
             { LanguageCode.Hi, "हिन्दी" },
             { LanguageCode.Sv, "Svenska" }
         };
+
+        private static readonly Dictionary<LanguageCode, string> CodeToEnglishName = new Dictionary<LanguageCode, string>
+        {
+            { LanguageCode.En, "English" },
+            { LanguageCode.Ko, "Korean" },
+            { LanguageCode.Ja, "Japanese" },
+            { LanguageCode.ZhCN, "Chinese (Simplified)" },
+            { LanguageCode.ZhTW, "Chinese (Traditional)" },
+            { LanguageCode.Es, "Spanish" },
+            { LanguageCode.Fr, "French" },
+            { LanguageCode.De, "German" },
+            { LanguageCode.It, "Italian" },
+            { LanguageCode.Pt, "Portuguese" },
+            { LanguageCode.Ru, "Russian" },
+            { LanguageCode.Ar, "Arabic" },
+            { LanguageCode.Nl, "Dutch" },
+            { LanguageCode.Pl, "Polish" },
+            { LanguageCode.Tr, "Turkish" },
+            { LanguageCode.Th, "Thai" },
+            { LanguageCode.Vi, "Vietnamese" },
+            { LanguageCode.Id, "Indonesian" },
+            { LanguageCode.Hi, "Hindi" },
+            { LanguageCode.Sv, "Swedish" }
+        };
         
         /// <summary>
         /// Converts LanguageCode to ISO 639-1 string
@@ -208,13 +268,50 @@ namespace Datra.Localization
         {
             if (string.IsNullOrWhiteSpace(value))
                 return null;
-            
+
             // Try parsing as enum name
             if (Enum.TryParse<LanguageCode>(value, true, out var enumResult))
                 return enumResult;
-            
+
             // Try parsing as ISO code
             return FromIsoCode(value);
+        }
+
+        /// <summary>
+        /// Gets the English display name for the language (e.g., "Korean", "Japanese")
+        /// </summary>
+        public static string GetEnglishName(this LanguageCode code)
+        {
+            return CodeToEnglishName.TryGetValue(code, out var name) ? name : code.ToString();
+        }
+
+        /// <summary>
+        /// Gets full language info including code, ISO code, native name, and English name
+        /// </summary>
+        public static LanguageInfo GetLanguageInfo(this LanguageCode code)
+        {
+            return new LanguageInfo(
+                code,
+                code.ToIsoCode(),
+                code.GetDisplayName(),
+                code.GetEnglishName()
+            );
+        }
+
+        /// <summary>
+        /// Gets all defined language codes
+        /// </summary>
+        public static IEnumerable<LanguageCode> GetAllLanguages()
+        {
+            return Enum.GetValues(typeof(LanguageCode)).Cast<LanguageCode>();
+        }
+
+        /// <summary>
+        /// Gets language info for all defined languages
+        /// </summary>
+        public static IEnumerable<LanguageInfo> GetAllLanguageInfos()
+        {
+            return GetAllLanguages().Select(code => code.GetLanguageInfo());
         }
     }
 }

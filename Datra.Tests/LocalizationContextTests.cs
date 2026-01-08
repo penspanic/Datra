@@ -348,24 +348,185 @@ Character_Hero_Desc,勇敢な戦士,キャラクター情報";
             // Arrange
             var rawDataProvider = new TestRawDataProvider();
             var context = new LocalizationContext(rawDataProvider);
-            
+
             var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
                 "Localizations/LocalizationKeys.csv",
                 rawDataProvider,
                 (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
                 (table) => TestLocalizationKeyDataSerializer.SerializeCsv(table, null)
             );
-            
+
             context.SetKeyRepository(keyRepository);
-            
+
             // Act - Initialize will also detect available languages
             await context.InitializeAsync();
             var languages = context.GetAvailableLanguages().ToList();
-            
+
             // Assert
             Assert.Contains(LanguageCode.En, languages);
             Assert.Contains(LanguageCode.Ko, languages);
             Assert.Contains(LanguageCode.Ja, languages);
+        }
+
+        [Fact]
+        public async Task LocalizationContext_GetAvailableLanguages_ReturnsOnlyExistingFiles()
+        {
+            // Arrange - Provider with only 2 language files (en, ko - no ja)
+            var rawDataProvider = new PartialLanguageTestRawDataProvider();
+            var context = new LocalizationContext(rawDataProvider);
+
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
+                "Localizations/LocalizationKeys.csv",
+                rawDataProvider,
+                (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
+                (table) => TestLocalizationKeyDataSerializer.SerializeCsv(table, null)
+            );
+
+            context.SetKeyRepository(keyRepository);
+            await context.InitializeAsync();
+
+            // Act
+            var languages = context.GetAvailableLanguages().ToList();
+
+            // Assert - Only en and ko should be detected (no ja)
+            Assert.Equal(2, languages.Count);
+            Assert.Contains(LanguageCode.En, languages);
+            Assert.Contains(LanguageCode.Ko, languages);
+            Assert.DoesNotContain(LanguageCode.Ja, languages);
+        }
+
+        [Fact]
+        public async Task LocalizationContext_GetAvailableLanguageIsoCodes_ReturnsCorrectCodes()
+        {
+            // Arrange
+            var rawDataProvider = new TestRawDataProvider();
+            var context = new LocalizationContext(rawDataProvider);
+
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
+                "Localizations/LocalizationKeys.csv",
+                rawDataProvider,
+                (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
+                (table) => TestLocalizationKeyDataSerializer.SerializeCsv(table, null)
+            );
+
+            context.SetKeyRepository(keyRepository);
+            await context.InitializeAsync();
+
+            // Act
+            var isoCodes = context.GetAvailableLanguageIsoCodes().ToList();
+
+            // Assert
+            Assert.Contains("en", isoCodes);
+            Assert.Contains("ko", isoCodes);
+            Assert.Contains("ja", isoCodes);
+        }
+
+        [Fact]
+        public async Task LocalizationContext_GetAvailableLanguages_WithLanguageInfo_ReturnsCorrectMetadata()
+        {
+            // Arrange
+            var rawDataProvider = new TestRawDataProvider();
+            var context = new LocalizationContext(rawDataProvider);
+
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
+                "Localizations/LocalizationKeys.csv",
+                rawDataProvider,
+                (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
+                (table) => TestLocalizationKeyDataSerializer.SerializeCsv(table, null)
+            );
+
+            context.SetKeyRepository(keyRepository);
+            await context.InitializeAsync();
+
+            // Act - Get available languages and their info
+            var availableLanguages = context.GetAvailableLanguages().ToList();
+            var languageInfos = availableLanguages.Select(l => l.GetLanguageInfo()).ToList();
+
+            // Assert - Verify metadata for available languages
+            var koreanInfo = languageInfos.FirstOrDefault(i => i.Code == LanguageCode.Ko);
+            Assert.Equal("ko", koreanInfo.IsoCode);
+            Assert.Equal("한국어", koreanInfo.NativeName);
+            Assert.Equal("Korean", koreanInfo.EnglishName);
+
+            var japaneseInfo = languageInfos.FirstOrDefault(i => i.Code == LanguageCode.Ja);
+            Assert.Equal("ja", japaneseInfo.IsoCode);
+            Assert.Equal("日本語", japaneseInfo.NativeName);
+            Assert.Equal("Japanese", japaneseInfo.EnglishName);
+        }
+
+        [Fact]
+        public async Task LocalizationContext_GetAvailableLanguages_AfterLanguageSwitch_StillReturnsAll()
+        {
+            // Arrange
+            var rawDataProvider = new TestRawDataProvider();
+            var context = new LocalizationContext(rawDataProvider);
+
+            var keyRepository = new KeyValueDataRepository<string, LocalizationKeyData>(
+                "Localizations/LocalizationKeys.csv",
+                rawDataProvider,
+                (data) => TestLocalizationKeyDataSerializer.DeserializeCsv(data, null),
+                (table) => TestLocalizationKeyDataSerializer.SerializeCsv(table, null)
+            );
+
+            context.SetKeyRepository(keyRepository);
+            await context.InitializeAsync();
+
+            // Act - Switch languages multiple times
+            await context.LoadLanguageAsync(LanguageCode.Ko);
+            var languagesAfterKo = context.GetAvailableLanguages().ToList();
+
+            await context.LoadLanguageAsync(LanguageCode.Ja);
+            var languagesAfterJa = context.GetAvailableLanguages().ToList();
+
+            await context.LoadLanguageAsync(LanguageCode.En);
+            var languagesAfterEn = context.GetAvailableLanguages().ToList();
+
+            // Assert - Available languages should remain consistent
+            Assert.Equal(3, languagesAfterKo.Count);
+            Assert.Equal(3, languagesAfterJa.Count);
+            Assert.Equal(3, languagesAfterEn.Count);
+        }
+
+        /// <summary>
+        /// Test provider with only partial language files (en, ko - missing ja)
+        /// </summary>
+        private class PartialLanguageTestRawDataProvider : IRawDataProvider
+        {
+            private readonly Dictionary<string, string> _files = new Dictionary<string, string>();
+
+            public PartialLanguageTestRawDataProvider()
+            {
+                _files["Localizations/LocalizationKeys.csv"] = @"Id,Description,Category
+Button_Start,Start button text,UI
+Button_Exit,Exit button text,UI";
+
+                _files["Localizations/en.csv"] = @"Id,Text,Context
+Button_Start,Start,Main Menu
+Button_Exit,Exit,Main Menu";
+
+                _files["Localizations/ko.csv"] = @"Id,Text,Context
+Button_Start,시작,메인 메뉴
+Button_Exit,종료,메인 메뉴";
+
+                // Note: ja.csv is intentionally missing
+            }
+
+            public bool Exists(string path) => _files.ContainsKey(path);
+
+            public Task<string> LoadTextAsync(string path)
+            {
+                if (_files.TryGetValue(path, out var content))
+                    return Task.FromResult(content);
+                throw new System.IO.FileNotFoundException($"File not found: {path}");
+            }
+
+            public Task SaveTextAsync(string path, string text)
+            {
+                _files[path] = text;
+                return Task.CompletedTask;
+            }
+
+            public string ResolveFilePath(string path) => path;
         }
         
         [Fact]
