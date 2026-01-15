@@ -1,0 +1,182 @@
+# Skill data with polymorphic effects - YAML format
+# Demonstrates $type field for polymorphism support
+
+- Id: skill_fireball
+  Type: Active
+  TargetType: SingleEnemy
+  ManaCost: 25
+  Cooldown: 3.0
+  RequiredLevel: 1
+  Effects:
+    - $type: Datra.SampleData.Models.DamageEffect
+      Id: fireball_damage
+      Description: Fire damage to single target
+      Duration: 0
+      BaseDamage: 50
+      DamageMultiplier: 1.2
+      DamageType: Fire
+      IgnoreDefense: false
+  Tags:
+    - fire
+    - damage
+    - ranged
+
+- Id: skill_heal
+  Type: Active
+  TargetType: SingleAlly
+  ManaCost: 30
+  Cooldown: 5.0
+  RequiredLevel: 1
+  Effects:
+    - $type: Datra.SampleData.Models.HealEffect
+      Id: heal_restore
+      Description: Restore health to ally
+      Duration: 0
+      BaseHeal: 100
+      HealMultiplier: 1.0
+      IsPercentage: false
+  Tags:
+    - heal
+    - support
+
+- Id: skill_lightning_storm
+  Type: Ultimate
+  TargetType: AllEnemies
+  ManaCost: 100
+  Cooldown: 30.0
+  RequiredLevel: 10
+  Effects:
+    - $type: Datra.SampleData.Models.DamageEffect
+      Id: lightning_damage
+      Description: Lightning damage to all enemies
+      Duration: 0
+      BaseDamage: 80
+      DamageMultiplier: 1.5
+      DamageType: Lightning
+      IgnoreDefense: false
+    - $type: Datra.SampleData.Models.CrowdControlEffect
+      Id: lightning_stun
+      Description: Chance to stun enemies
+      Duration: 2.0
+      ControlType: Stun
+      Chance: 0.3
+      BreakOnDamage: true
+  Tags:
+    - lightning
+    - damage
+    - aoe
+    - cc
+
+- Id: skill_battle_cry
+  Type: Active
+  TargetType: AllAllies
+  ManaCost: 40
+  Cooldown: 20.0
+  RequiredLevel: 5
+  Effects:
+    - $type: Datra.SampleData.Models.BuffEffect
+      Id: attack_buff
+      Description: Increase attack of all allies
+      Duration: 10.0
+      BuffId: buff_attack_up
+      Stacks: 1
+      AffectedStat: Attack
+      StatModifier: 0.25
+      IsDebuff: false
+    - $type: Datra.SampleData.Models.BuffEffect
+      Id: speed_buff
+      Description: Increase speed of all allies
+      Duration: 10.0
+      BuffId: buff_speed_up
+      Stacks: 1
+      AffectedStat: Speed
+      StatModifier: 0.15
+      IsDebuff: false
+  Tags:
+    - buff
+    - support
+    - aoe
+
+- Id: skill_summon_wolf
+  Type: Active
+  TargetType: Self
+  ManaCost: 60
+  Cooldown: 45.0
+  RequiredLevel: 8
+  Effects:
+    - $type: Datra.SampleData.Models.SummonEffect
+      Id: wolf_summon
+      Description: Summon a wolf companion
+      Duration: 30.0
+      SummonId: summon_wolf_001
+      Count: 1
+      SummonDuration: 30.0
+      InheritStats: true
+  Tags:
+    - summon
+    - pet
+
+- Id: skill_frost_nova
+  Type: Active
+  TargetType: Area
+  ManaCost: 50
+  Cooldown: 12.0
+  RequiredLevel: 6
+  Effects:
+    - $type: Datra.SampleData.Models.DamageEffect
+      Id: frost_damage
+      Description: Ice damage in area
+      Duration: 0
+      BaseDamage: 35
+      DamageMultiplier: 1.0
+      DamageType: Ice
+      IgnoreDefense: false
+    - $type: Datra.SampleData.Models.CrowdControlEffect
+      Id: frost_slow
+      Description: Slow enemies hit
+      Duration: 4.0
+      ControlType: Slow
+      Chance: 1.0
+      BreakOnDamage: false
+    - $type: Datra.SampleData.Models.BuffEffect
+      Id: frost_debuff
+      Description: Reduce enemy defense
+      Duration: 4.0
+      BuffId: debuff_defense_down
+      Stacks: 2
+      AffectedStat: Defense
+      StatModifier: -0.2
+      IsDebuff: true
+  Tags:
+    - ice
+    - damage
+    - aoe
+    - cc
+    - debuff
+
+- Id: skill_vampiric_strike
+  Type: Active
+  TargetType: SingleEnemy
+  ManaCost: 35
+  Cooldown: 8.0
+  RequiredLevel: 4
+  Effects:
+    - $type: Datra.SampleData.Models.DamageEffect
+      Id: vampiric_damage
+      Description: Physical damage with lifesteal
+      Duration: 0
+      BaseDamage: 60
+      DamageMultiplier: 1.0
+      DamageType: Physical
+      IgnoreDefense: false
+    - $type: Datra.SampleData.Models.HealEffect
+      Id: vampiric_heal
+      Description: Heal based on damage dealt
+      Duration: 0
+      BaseHeal: 30
+      HealMultiplier: 0.5
+      IsPercentage: true
+  Tags:
+    - physical
+    - damage
+    - lifesteal
