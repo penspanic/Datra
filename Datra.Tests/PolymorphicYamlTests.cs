@@ -22,6 +22,41 @@ namespace Datra.Tests
         public List<QuestObjective> Objectives { get; set; } = new List<QuestObjective>();
     }
 
+    #region Dictionary Polymorphism Test Classes
+
+    /// <summary>
+    /// Test class with Dictionary containing polymorphic values
+    /// </summary>
+    public class TestNodeWithEmbeddedObjectives
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public Dictionary<string, EmbeddedObjective> EmbeddedObjectives { get; set; } = new Dictionary<string, EmbeddedObjective>();
+    }
+
+    /// <summary>
+    /// Container class with polymorphic property (similar to EmbeddedCondition)
+    /// </summary>
+    public class EmbeddedObjective
+    {
+        public EmbeddedObjective()
+        {
+            Id = string.Empty;
+            Objective = null!;
+        }
+
+        public EmbeddedObjective(string id, QuestObjective objective)
+        {
+            Id = id;
+            Objective = objective;
+        }
+
+        public string Id { get; set; }
+        public QuestObjective Objective { get; set; }
+    }
+
+    #endregion
+
     public class PolymorphicYamlTests
     {
         private readonly ITestOutputHelper _output;
@@ -34,79 +69,8 @@ namespace Datra.Tests
             _serializer = new YamlDataSerializer(new[] { typeof(QuestObjective) });
         }
 
-        [Fact]
-        public void LoadQuestsYaml_WithPolymorphicObjectives_ShouldDeserializeCorrectTypes()
-        {
-            // Arrange
-            var dataPath = TestDataHelper.FindDataPath();
-            var yamlPath = Path.Combine(dataPath, "QuestsYaml.yaml");
-            var yamlContent = File.ReadAllText(yamlPath);
-
-            // Act
-            var quests = DeserializeQuestList(yamlContent);
-
-            // Assert
-            Assert.NotEmpty(quests);
-            Assert.Equal(4, quests.Count);
-
-            var mainQuest = quests.FirstOrDefault(q => q.Id == "quest_yaml_001");
-            Assert.NotNull(mainQuest);
-            Assert.Equal(QuestType.Main, mainQuest.Type);
-            Assert.Equal(2, mainQuest.Objectives.Count);
-
-            // First objective should be TalkObjective
-            var talkObj = mainQuest.Objectives[0] as TalkObjective;
-            Assert.NotNull(talkObj);
-            Assert.Equal("npc_elder_001", talkObj.TargetNpcId);
-            Assert.Equal(2, talkObj.DialogueKeys.Length);
-
-            // Second objective should be KillObjective
-            var killObj = mainQuest.Objectives[1] as KillObjective;
-            Assert.NotNull(killObj);
-            Assert.Equal("enemy_slime", killObj.TargetEnemyId);
-            Assert.Equal(5, killObj.RequiredCount);
-
-            _output.WriteLine($"Quest: {mainQuest.Id}");
-            _output.WriteLine($"  Type: {mainQuest.Type}");
-            _output.WriteLine($"  Objectives: {mainQuest.Objectives.Count}");
-            foreach (var obj in mainQuest.Objectives)
-            {
-                _output.WriteLine($"    - [{obj.GetType().Name}] {obj.Description}");
-            }
-        }
-
-        [Fact]
-        public void LoadQuestsYaml_WithCollectAndLocationObjectives_ShouldDeserializeCorrectly()
-        {
-            // Arrange
-            var dataPath = TestDataHelper.FindDataPath();
-            var yamlPath = Path.Combine(dataPath, "QuestsYaml.yaml");
-            var yamlContent = File.ReadAllText(yamlPath);
-
-            // Act
-            var quests = DeserializeQuestList(yamlContent);
-            var quest = quests.FirstOrDefault(q => q.Id == "quest_yaml_002");
-
-            // Assert
-            Assert.NotNull(quest);
-            Assert.Equal(2, quest.Objectives.Count);
-
-            // First objective should be CollectObjective
-            var collectObj = quest.Objectives[0] as CollectObjective;
-            Assert.NotNull(collectObj);
-            Assert.Equal(2001, collectObj.TargetItemId);
-            Assert.Equal(10, collectObj.RequiredAmount);
-
-            // Second objective should be LocationObjective
-            var locationObj = quest.Objectives[1] as LocationObjective;
-            Assert.NotNull(locationObj);
-            Assert.Equal("location_forest_shrine", locationObj.LocationId);
-            Assert.Equal(5.0f, locationObj.Radius);
-
-            _output.WriteLine($"Quest: {quest.Id}");
-            _output.WriteLine($"  CollectObjective: Item {collectObj.TargetItemId} x {collectObj.RequiredAmount}");
-            _output.WriteLine($"  LocationObjective: {locationObj.LocationId} (radius: {locationObj.Radius})");
-        }
+        // Note: LoadQuestsYaml tests removed - QuestsYaml.yaml replaced by Skills.yaml
+        // See SkillDataYamlTests.cs for comprehensive YAML polymorphism tests
 
         [Fact]
         public void SerializeTestData_WithPolymorphicObjectives_ShouldIncludeTypeInfo()
@@ -418,42 +382,8 @@ namespace Datra.Tests
             Assert.Contains("CollectObjective", yaml);
         }
 
-        [Fact]
-        public void JsonAndYaml_ShouldProduceSameDeserializationResult()
-        {
-            // Arrange
-            var jsonSerializer = new JsonDataSerializer();
-            var yamlSerializer = new YamlDataSerializer(new[] { typeof(QuestObjective) });
-
-            var dataPath = TestDataHelper.FindDataPath();
-            var jsonPath = Path.Combine(dataPath, "Quests.json");
-            var yamlPath = Path.Combine(dataPath, "QuestsYaml.yaml");
-
-            var jsonContent = File.ReadAllText(jsonPath);
-            var yamlContent = File.ReadAllText(yamlPath);
-
-            // Act
-            var jsonQuests = jsonSerializer.DeserializeSingle<List<TestQuestDataYaml>>(jsonContent);
-            var yamlQuests = DeserializeQuestList(yamlContent);
-
-            // Assert - compare first quest from each
-            var jsonQuest = jsonQuests.First();
-            var yamlQuest = yamlQuests.First(q => q.Id == "quest_yaml_001");
-
-            // Both should have same structure
-            Assert.Equal(jsonQuest.Type, yamlQuest.Type);
-            Assert.Equal(jsonQuest.Objectives.Count, yamlQuest.Objectives.Count);
-
-            // Both should have TalkObjective as first objective
-            Assert.IsType<TalkObjective>(jsonQuest.Objectives[0]);
-            Assert.IsType<TalkObjective>(yamlQuest.Objectives[0]);
-
-            // Both should have KillObjective as second objective
-            Assert.IsType<KillObjective>(jsonQuest.Objectives[1]);
-            Assert.IsType<KillObjective>(yamlQuest.Objectives[1]);
-
-            _output.WriteLine("JSON and YAML produce same deserialization results!");
-        }
+        // Note: JsonAndYaml_ShouldProduceSameDeserializationResult test removed - QuestsYaml.yaml replaced by Skills.yaml
+        // See SkillDataYamlTests.cs for comprehensive YAML polymorphism tests
 
         /// <summary>
         /// Helper method to deserialize quest list from YAML.
@@ -473,5 +403,161 @@ namespace Datra.Tests
             return deserializer.Deserialize<List<TestQuestDataYaml>>(reader)
                    ?? new List<TestQuestDataYaml>();
         }
+
+        #region Dictionary Polymorphism Tests
+
+        [Fact]
+        public void Dictionary_WithPolymorphicValues_ShouldSerializeWithTypeInfo()
+        {
+            // Arrange
+            var node = new TestNodeWithEmbeddedObjectives
+            {
+                Id = "node_gate",
+                Name = "Gate Node",
+                EmbeddedObjectives = new Dictionary<string, EmbeddedObjective>
+                {
+                    ["obj_kill"] = new EmbeddedObjective("obj_kill", new KillObjective
+                    {
+                        Id = "kill_01",
+                        Description = "Kill enemies",
+                        TargetEnemyId = "enemy_dragon",
+                        RequiredCount = 3
+                    }),
+                    ["obj_collect"] = new EmbeddedObjective("obj_collect", new CollectObjective
+                    {
+                        Id = "collect_01",
+                        Description = "Collect items",
+                        TargetItemId = 1001,
+                        RequiredAmount = 5
+                    })
+                }
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(node);
+            _output.WriteLine("Serialized YAML with Dictionary:");
+            _output.WriteLine(yaml);
+
+            // Assert
+            Assert.Contains("obj_kill", yaml);
+            Assert.Contains("obj_collect", yaml);
+            Assert.Contains("$type", yaml);
+            Assert.Contains("KillObjective", yaml);
+            Assert.Contains("CollectObjective", yaml);
+        }
+
+        [Fact]
+        public void Dictionary_WithPolymorphicValues_ShouldRoundTripCorrectly()
+        {
+            // Arrange
+            var originalNode = new TestNodeWithEmbeddedObjectives
+            {
+                Id = "node_test",
+                Name = "Test Node",
+                EmbeddedObjectives = new Dictionary<string, EmbeddedObjective>
+                {
+                    ["talk_obj"] = new EmbeddedObjective("talk_obj", new TalkObjective
+                    {
+                        Id = "talk_01",
+                        Description = "Talk to NPC",
+                        TargetNpcId = "npc_elder",
+                        DialogueKeys = new[] { "greet", "farewell" }
+                    }),
+                    ["location_obj"] = new EmbeddedObjective("location_obj", new LocationObjective
+                    {
+                        Id = "location_01",
+                        Description = "Go to location",
+                        LocationId = "castle_entrance",
+                        Radius = 15.5f
+                    })
+                }
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(originalNode);
+            _output.WriteLine("Serialized YAML:");
+            _output.WriteLine(yaml);
+
+            var deserialized = _serializer.DeserializeSingle<TestNodeWithEmbeddedObjectives>(yaml);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(originalNode.Id, deserialized.Id);
+            Assert.Equal(originalNode.Name, deserialized.Name);
+            Assert.Equal(2, deserialized.EmbeddedObjectives.Count);
+
+            // Check Dictionary keys
+            Assert.True(deserialized.EmbeddedObjectives.ContainsKey("talk_obj"));
+            Assert.True(deserialized.EmbeddedObjectives.ContainsKey("location_obj"));
+
+            // Check polymorphic types are preserved
+            var talkObj = deserialized.EmbeddedObjectives["talk_obj"];
+            Assert.Equal("talk_obj", talkObj.Id);
+            Assert.IsType<TalkObjective>(talkObj.Objective);
+            var talk = (TalkObjective)talkObj.Objective;
+            Assert.Equal("npc_elder", talk.TargetNpcId);
+            Assert.Equal(2, talk.DialogueKeys.Length);
+
+            var locationObj = deserialized.EmbeddedObjectives["location_obj"];
+            Assert.Equal("location_obj", locationObj.Id);
+            Assert.IsType<LocationObjective>(locationObj.Objective);
+            var location = (LocationObjective)locationObj.Objective;
+            Assert.Equal("castle_entrance", location.LocationId);
+            Assert.Equal(15.5f, location.Radius);
+
+            _output.WriteLine("Dictionary round-trip test passed!");
+        }
+
+        [Fact]
+        public void Dictionary_Empty_ShouldRoundTripCorrectly()
+        {
+            // Arrange
+            var node = new TestNodeWithEmbeddedObjectives
+            {
+                Id = "empty_node",
+                Name = "Empty Node",
+                EmbeddedObjectives = new Dictionary<string, EmbeddedObjective>()
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(node);
+            _output.WriteLine("Serialized YAML with empty dictionary:");
+            _output.WriteLine(yaml);
+
+            var deserialized = _serializer.DeserializeSingle<TestNodeWithEmbeddedObjectives>(yaml);
+
+            // Assert
+            Assert.NotNull(deserialized);
+            Assert.Equal(node.Id, deserialized.Id);
+            Assert.Empty(deserialized.EmbeddedObjectives);
+
+            _output.WriteLine("Empty dictionary round-trip test passed!");
+        }
+
+        [Fact]
+        public void PolymorphicConverter_Accepts_ShouldReturnTrueForDictionary()
+        {
+            // Arrange
+            var resolver = new PortableTypeResolver();
+            var polymorphicTypes = new System.Collections.Generic.HashSet<System.Type> { typeof(QuestObjective) };
+            var converter = new PolymorphicYamlTypeConverter(resolver, polymorphicTypes);
+
+            // Act & Assert
+            // Dictionary with value type that has polymorphic properties
+            Assert.True(converter.Accepts(typeof(Dictionary<string, EmbeddedObjective>)),
+                "Should accept Dictionary<string, EmbeddedObjective> (value has polymorphic properties)");
+
+            // Dictionary with direct polymorphic value type
+            Assert.True(converter.Accepts(typeof(Dictionary<string, QuestObjective>)),
+                "Should accept Dictionary<string, QuestObjective> (value is polymorphic type)");
+
+            // Class containing Dictionary with polymorphic values
+            Assert.True(converter.Accepts(typeof(TestNodeWithEmbeddedObjectives)),
+                "Should accept TestNodeWithEmbeddedObjectives (contains Dictionary with polymorphic values)");
+
+            _output.WriteLine("Dictionary Accepts checks passed!");
+        }
+
+        #endregion
     }
 }

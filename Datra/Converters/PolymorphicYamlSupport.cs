@@ -437,6 +437,14 @@ namespace Datra.Converters
                     return true;
             }
 
+            // Accept Dictionary<TKey, TValue> where TValue has polymorphic properties
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var valueType = type.GetGenericArguments()[1];
+                if (IsPolymorphicType(valueType) || HasPolymorphicProperties(valueType))
+                    return true;
+            }
+
             // Accept classes that have polymorphic properties
             if (type.IsClass && !type.IsAbstract && type != typeof(string))
             {
@@ -470,9 +478,53 @@ namespace Datra.Converters
                         return true;
                 }
 
+                // Check if property type is a dictionary with polymorphic values
+                if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+                {
+                    var valueType = propType.GetGenericArguments()[1];
+                    if (IsPolymorphicType(valueType) || HasPolymorphicPropertiesRecursive(valueType, new HashSet<Type> { type }))
+                        return true;
+                }
+
                 // Check if property type itself is polymorphic
                 if (IsPolymorphicType(propType))
                     return true;
+            }
+            return false;
+        }
+
+        private bool HasPolymorphicPropertiesRecursive(Type type, HashSet<Type> visited)
+        {
+            if (visited.Contains(type))
+                return false;
+            visited.Add(type);
+
+            if (!type.IsClass || type == typeof(string))
+                return false;
+
+            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            foreach (var property in properties)
+            {
+                var propType = property.PropertyType;
+
+                if (IsPolymorphicType(propType))
+                    return true;
+
+                // Check nested lists
+                if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    var elementType = propType.GetGenericArguments()[0];
+                    if (IsPolymorphicType(elementType))
+                        return true;
+                }
+
+                // Check nested dictionaries
+                if (propType.IsGenericType && propType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+                {
+                    var valueType = propType.GetGenericArguments()[1];
+                    if (IsPolymorphicType(valueType) || HasPolymorphicPropertiesRecursive(valueType, visited))
+                        return true;
+                }
             }
             return false;
         }
@@ -510,6 +562,14 @@ namespace Datra.Converters
             {
                 var elementType = type.GetElementType()!;
                 return ReadPolymorphicArray(parser, elementType, rootDeserializer);
+            }
+
+            // Handle Dictionary<TKey, TValue> where TValue has polymorphic properties
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var keyType = type.GetGenericArguments()[0];
+                var valueType = type.GetGenericArguments()[1];
+                return ReadPolymorphicDictionary(parser, type, keyType, valueType, rootDeserializer);
             }
 
             if (!parser.Accept<MappingStart>(out _))
@@ -610,6 +670,117 @@ namespace Datra.Converters
                 array.SetValue(tempList[i], i);
             }
             return array;
+        }
+
+        private object? ReadPolymorphicDictionary(IParser parser, Type dictType, Type keyType, Type valueType, ObjectDeserializer rootDeserializer)
+        {
+            var dict = (System.Collections.IDictionary)Activator.CreateInstance(dictType)!;
+
+            if (!parser.Accept<MappingStart>(out _))
+            {
+                throw new YamlException($"Expected mapping for dictionary type {dictType}");
+            }
+
+            parser.Consume<MappingStart>();
+
+            while (!parser.Accept<MappingEnd>(out _))
+            {
+                // Read key (typically string)
+                var keyScalar = parser.Consume<Scalar>();
+                var key = ConvertString(keyScalar.Value, keyType);
+
+                // Read value - could be polymorphic
+                object? value;
+                if (parser.Accept<MappingStart>(out _))
+                {
+                    // Value is an object, read it with polymorphism support
+                    var mapping = new Dictionary<string, object?>();
+                    string? typeFieldValue = null;
+
+                    parser.Consume<MappingStart>();
+
+                    while (!parser.Accept<MappingEnd>(out _))
+                    {
+                        var propKeyScalar = parser.Consume<Scalar>();
+                        var propKey = propKeyScalar.Value;
+
+                        if (propKey == TypeFieldName)
+                        {
+                            var valueScalar = parser.Consume<Scalar>();
+                            typeFieldValue = valueScalar.Value;
+                        }
+                        else
+                        {
+                            var nodeValue = ReadNodeValue(parser, rootDeserializer);
+                            mapping[propKey] = nodeValue;
+                        }
+                    }
+
+                    parser.Consume<MappingEnd>();
+
+                    // Determine actual type for the value
+                    Type actualValueType = valueType;
+                    if (!string.IsNullOrEmpty(typeFieldValue))
+                    {
+                        actualValueType = _typeResolver.ResolveType(typeFieldValue) ?? valueType;
+                    }
+                    else if (valueType.IsAbstract || valueType.IsInterface)
+                    {
+                        throw new YamlException($"Cannot deserialize abstract type {valueType.Name} without $type field");
+                    }
+
+                    value = CreateInstanceWithPropertyTypes(actualValueType, mapping, rootDeserializer);
+                }
+                else if (parser.Accept<Scalar>(out var valueScalar))
+                {
+                    parser.MoveNext();
+                    value = ConvertString(valueScalar.Value, valueType);
+                }
+                else if (parser.Accept<SequenceStart>(out _))
+                {
+                    // Value is a list
+                    if (valueType.IsGenericType && valueType.GetGenericTypeDefinition() == typeof(List<>))
+                    {
+                        var elementType = valueType.GetGenericArguments()[0];
+                        value = ReadPolymorphicList(parser, valueType, elementType, rootDeserializer);
+                    }
+                    else
+                    {
+                        // Skip the sequence
+                        var depth = 0;
+                        parser.Consume<SequenceStart>();
+                        depth++;
+                        while (depth > 0)
+                        {
+                            if (parser.Accept<SequenceStart>(out _))
+                            {
+                                parser.MoveNext();
+                                depth++;
+                            }
+                            else if (parser.Accept<SequenceEnd>(out _))
+                            {
+                                parser.MoveNext();
+                                depth--;
+                            }
+                            else
+                            {
+                                parser.MoveNext();
+                            }
+                        }
+                        value = null;
+                    }
+                }
+                else
+                {
+                    parser.MoveNext();
+                    value = null;
+                }
+
+                dict[key!] = value;
+            }
+
+            parser.Consume<MappingEnd>();
+            return dict;
         }
 
         private object? ReadPolymorphicElement(IParser parser, Type elementType, ObjectDeserializer rootDeserializer)
@@ -774,6 +945,14 @@ namespace Datra.Converters
             // Handle nested objects
             if (value is Dictionary<string, object?> dict)
             {
+                // Check if targetType is a Dictionary - convert nested dict to typed Dictionary
+                if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+                {
+                    var keyType = targetType.GetGenericArguments()[0];
+                    var valueType = targetType.GetGenericArguments()[1];
+                    return ConvertPolymorphicDictionary(dict, targetType, keyType, valueType, rootDeserializer);
+                }
+
                 // Check for nested $type
                 if (dict.TryGetValue(TypeFieldName, out var typeVal) && typeVal is string typeName)
                 {
@@ -876,6 +1055,39 @@ namespace Datra.Converters
             }
 
             return array;
+        }
+
+        private object? ConvertPolymorphicDictionary(Dictionary<string, object?> sourceDict, Type dictType, Type keyType, Type valueType, ObjectDeserializer rootDeserializer)
+        {
+            var targetDict = (System.Collections.IDictionary)Activator.CreateInstance(dictType)!;
+
+            foreach (var kvp in sourceDict)
+            {
+                var key = ConvertString(kvp.Key, keyType);
+                object? value;
+
+                if (kvp.Value == null)
+                {
+                    value = valueType.IsValueType ? Activator.CreateInstance(valueType) : null;
+                }
+                else if (kvp.Value is Dictionary<string, object?> nestedDict)
+                {
+                    // Check for $type in the nested dictionary's value properties
+                    value = CreateInstanceWithPropertyTypes(valueType, nestedDict, rootDeserializer);
+                }
+                else if (kvp.Value is string strValue)
+                {
+                    value = ConvertString(strValue, valueType);
+                }
+                else
+                {
+                    value = Convert.ChangeType(kvp.Value, valueType);
+                }
+
+                targetDict[key!] = value;
+            }
+
+            return targetDict;
         }
 
         private object? ConvertToPropertyType(object? value, Type targetType, ObjectDeserializer rootDeserializer)
@@ -987,6 +1199,14 @@ namespace Datra.Converters
                 return;
             }
 
+            // Handle Dictionary<TKey, TValue> where TValue has polymorphic properties
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var valueType = type.GetGenericArguments()[1];
+                WritePolymorphicDictionary(emitter, (System.Collections.IDictionary)value, valueType, serializer);
+                return;
+            }
+
             emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
 
             // Write $type field first if the actual type differs from declared type
@@ -997,9 +1217,9 @@ namespace Datra.Converters
                 emitter.Emit(new Scalar(null, _typeResolver.GetTypeName(actualType)));
             }
 
-            // Write all writable properties
+            // Write all writable properties (excluding indexers)
             var properties = actualType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.CanWrite);
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
 
             foreach (var property in properties)
             {
@@ -1052,6 +1272,54 @@ namespace Datra.Converters
             emitter.Emit(new SequenceEnd());
         }
 
+        private void WritePolymorphicDictionary(IEmitter emitter, System.Collections.IDictionary dict, Type valueType, ObjectSerializer serializer)
+        {
+            emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
+
+            foreach (System.Collections.DictionaryEntry entry in dict)
+            {
+                // Write key
+                emitter.Emit(new Scalar(null, entry.Key?.ToString() ?? ""));
+
+                // Write value
+                if (entry.Value == null)
+                {
+                    emitter.Emit(new Scalar(null, "null"));
+                    continue;
+                }
+
+                // Write value as an object with properties (and handle nested polymorphism)
+                WritePolymorphicDictionaryValue(emitter, entry.Value, valueType, serializer);
+            }
+
+            emitter.Emit(new MappingEnd());
+        }
+
+        private void WritePolymorphicDictionaryValue(IEmitter emitter, object value, Type declaredType, ObjectSerializer serializer)
+        {
+            var actualType = value.GetType();
+
+            emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
+
+            // Write all writable properties (excluding indexers)
+            var properties = actualType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+            foreach (var property in properties)
+            {
+                var propValue = property.GetValue(value);
+
+                // Skip null values
+                if (propValue == null)
+                    continue;
+
+                emitter.Emit(new Scalar(null, property.Name));
+                WritePropertyValue(emitter, propValue, property.PropertyType, serializer);
+            }
+
+            emitter.Emit(new MappingEnd());
+        }
+
         private void WritePolymorphicElement(IEmitter emitter, object value, Type declaredType, ObjectSerializer serializer)
         {
             var actualType = value.GetType();
@@ -1065,9 +1333,9 @@ namespace Datra.Converters
                 emitter.Emit(new Scalar(null, _typeResolver.GetTypeName(actualType)));
             }
 
-            // Write all writable properties
+            // Write all writable properties (excluding indexers)
             var properties = actualType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && p.CanWrite);
+                .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
 
             foreach (var property in properties)
             {
@@ -1108,6 +1376,44 @@ namespace Datra.Converters
                     WritePolymorphicArray(emitter, (Array)value, elementType, serializer);
                     return;
                 }
+            }
+
+            // Handle nested polymorphic dictionaries
+            if (declaredType.IsGenericType && declaredType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var valueType = declaredType.GetGenericArguments()[1];
+                if (IsPolymorphicType(valueType) || HasPolymorphicProperties(valueType))
+                {
+                    WritePolymorphicDictionary(emitter, (System.Collections.IDictionary)value, valueType, serializer);
+                    return;
+                }
+            }
+
+            // Handle polymorphic property values (like ICondition)
+            if (IsPolymorphicType(declaredType))
+            {
+                emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
+
+                // Write $type field
+                emitter.Emit(new Scalar(null, TypeFieldName));
+                emitter.Emit(new Scalar(null, _typeResolver.GetTypeName(actualType)));
+
+                // Write all writable properties
+                var properties = actualType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0);
+
+                foreach (var property in properties)
+                {
+                    var propValue = property.GetValue(value);
+                    if (propValue == null)
+                        continue;
+
+                    emitter.Emit(new Scalar(null, property.Name));
+                    WritePropertyValue(emitter, propValue, property.PropertyType, serializer);
+                }
+
+                emitter.Emit(new MappingEnd());
+                return;
             }
 
             // Use default serializer for non-polymorphic types
