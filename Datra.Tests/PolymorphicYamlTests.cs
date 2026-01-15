@@ -559,5 +559,117 @@ namespace Datra.Tests
         }
 
         #endregion
+
+        #region LocaleRef/NestedLocaleRef Tests
+
+        /// <summary>
+        /// Test class with LocaleRef property
+        /// </summary>
+        public class TestNodeWithLocaleRef
+        {
+            public string Id { get; set; } = string.Empty;
+            public Datra.DataTypes.LocaleRef DisplayName { get; set; }
+            public Datra.DataTypes.LocaleRef Description { get; set; }
+        }
+
+        /// <summary>
+        /// Test class with NestedLocaleRef property (simulating Node.Name)
+        /// </summary>
+        public class TestNodeWithNestedLocaleRef
+        {
+            public string Id { get; set; } = string.Empty;
+            public Datra.Localization.NestedLocaleRef Name => _name;
+            private static readonly Datra.Localization.NestedLocaleRef _name =
+                Datra.Localization.NestedLocaleRef.Create("Nodes", "Name");
+        }
+
+        [Fact]
+        public void LocaleRef_ShouldSerializeAsString()
+        {
+            // Arrange
+            var node = new TestNodeWithLocaleRef
+            {
+                Id = "test_node",
+                DisplayName = new Datra.DataTypes.LocaleRef { Key = "UI.Test.Name" },
+                Description = new Datra.DataTypes.LocaleRef { Key = "UI.Test.Desc" }
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(node);
+            _output.WriteLine("Serialized LocaleRef:");
+            _output.WriteLine(yaml);
+
+            // Assert - LocaleRef should be serialized as simple string, not object
+            Assert.Contains("DisplayName: UI.Test.Name", yaml);
+            Assert.Contains("Description: UI.Test.Desc", yaml);
+            Assert.DoesNotContain("Key:", yaml);
+            Assert.DoesNotContain("HasValue:", yaml);
+        }
+
+        [Fact]
+        public void LocaleRef_ShouldRoundTripCorrectly()
+        {
+            // Arrange
+            var original = new TestNodeWithLocaleRef
+            {
+                Id = "roundtrip_test",
+                DisplayName = new Datra.DataTypes.LocaleRef { Key = "Item.Sword.Name" },
+                Description = new Datra.DataTypes.LocaleRef { Key = "Item.Sword.Desc" }
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(original);
+            var deserialized = _serializer.DeserializeSingle<TestNodeWithLocaleRef>(yaml);
+
+            // Assert
+            Assert.Equal(original.Id, deserialized.Id);
+            Assert.Equal(original.DisplayName.Key, deserialized.DisplayName.Key);
+            Assert.Equal(original.Description.Key, deserialized.Description.Key);
+            _output.WriteLine("LocaleRef round-trip passed!");
+        }
+
+        [Fact]
+        public void LocaleRef_Empty_ShouldSerializeAsEmptyString()
+        {
+            // Arrange
+            var node = new TestNodeWithLocaleRef
+            {
+                Id = "empty_locale",
+                DisplayName = default,
+                Description = default
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(node);
+            _output.WriteLine("Serialized empty LocaleRef:");
+            _output.WriteLine(yaml);
+
+            // Assert - Empty LocaleRef should be empty string
+            Assert.DoesNotContain("Key:", yaml);
+        }
+
+        [Fact]
+        public void NestedLocaleRef_ShouldSerializeAsEmptyString()
+        {
+            // Arrange
+            var node = new TestNodeWithNestedLocaleRef
+            {
+                Id = "nested_test"
+            };
+
+            // Act
+            var yaml = _serializer.SerializeSingle(node);
+            _output.WriteLine("Serialized NestedLocaleRef:");
+            _output.WriteLine(yaml);
+
+            // Assert - NestedLocaleRef should NOT expose internal properties
+            Assert.DoesNotContain("PathTemplate:", yaml);
+            Assert.DoesNotContain("Segments:", yaml);
+            Assert.DoesNotContain("HasValue:", yaml);
+            Assert.DoesNotContain("PropertyName:", yaml);
+            Assert.DoesNotContain("Depth:", yaml);
+        }
+
+        #endregion
     }
 }

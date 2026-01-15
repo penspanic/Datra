@@ -38,6 +38,7 @@ namespace Datra.Serializers
                 : new HashSet<Type>();
 
             var dataRefConverter = new DataRefYamlConverter();
+            var localeRefConverter = new LocaleRefYamlConverter();
             var polymorphicConverter = new PolymorphicYamlTypeConverter(_typeResolver, _polymorphicBaseTypes);
 
             _deserializer = new DeserializerBuilder()
@@ -45,12 +46,15 @@ namespace Datra.Serializers
                 .IgnoreUnmatchedProperties()
                 .WithTypeConverter(polymorphicConverter)
                 .WithTypeConverter(dataRefConverter)
+                .WithTypeConverter(localeRefConverter)
                 .Build();
 
             _serializer = new SerializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)
+                .WithTypeInspector(inner => new WritablePropertiesTypeInspector(inner))
                 .WithTypeConverter(polymorphicConverter)
                 .WithTypeConverter(dataRefConverter)
+                .WithTypeConverter(localeRefConverter)
                 .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
                 .Build();
         }
