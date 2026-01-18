@@ -90,9 +90,11 @@ namespace Datra.DataTypes
             {
                 Id = metadata.Guid,
                 FilePath = filePath,
+                Metadata = metadata,
                 Category = metadata.Category,
                 Tags = metadata.Tags ?? (IReadOnlyList<string>)new List<string>(),
-                LastModified = metadata.ModifiedAt
+                LastModified = metadata.ModifiedAt,
+                FileSize = metadata.Size
             };
         }
 
@@ -105,9 +107,11 @@ namespace Datra.DataTypes
             {
                 Id = asset.Id,
                 FilePath = asset.FilePath,
+                Metadata = asset.Metadata,
                 Category = asset.Metadata.Category,
                 Tags = asset.Metadata.Tags ?? (IReadOnlyList<string>)new List<string>(),
-                LastModified = asset.Metadata.ModifiedAt
+                LastModified = asset.Metadata.ModifiedAt,
+                FileSize = asset.Metadata.Size
             };
         }
     }
