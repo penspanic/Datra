@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using YamlDotNet.Serialization;
-using YamlDotNet.Serialization.NamingConventions;
 using Datra.Interfaces;
-using Datra.Converters;
 
 namespace Datra.Serializers
 {
@@ -16,7 +14,6 @@ namespace Datra.Serializers
     {
         private readonly IDeserializer _deserializer;
         private readonly ISerializer _serializer;
-        private readonly PortableTypeResolver _typeResolver;
         private readonly HashSet<Type> _polymorphicBaseTypes;
 
         /// <summary>
@@ -32,31 +29,12 @@ namespace Datra.Serializers
         /// <param name="polymorphicBaseTypes">Base types that should be serialized with $type field for polymorphism.</param>
         public YamlDataSerializer(IEnumerable<Type>? polymorphicBaseTypes)
         {
-            _typeResolver = new PortableTypeResolver();
             _polymorphicBaseTypes = polymorphicBaseTypes != null
                 ? new HashSet<Type>(polymorphicBaseTypes)
                 : new HashSet<Type>();
 
-            var dataRefConverter = new DataRefYamlConverter();
-            var localeRefConverter = new LocaleRefYamlConverter();
-            var polymorphicConverter = new PolymorphicYamlTypeConverter(_typeResolver, _polymorphicBaseTypes);
-
-            _deserializer = new DeserializerBuilder()
-                .WithNamingConvention(PascalCaseNamingConvention.Instance)
-                .IgnoreUnmatchedProperties()
-                .WithTypeConverter(polymorphicConverter)
-                .WithTypeConverter(dataRefConverter)
-                .WithTypeConverter(localeRefConverter)
-                .Build();
-
-            _serializer = new SerializerBuilder()
-                .WithNamingConvention(PascalCaseNamingConvention.Instance)
-                .WithTypeInspector(inner => new WritablePropertiesTypeInspector(inner))
-                .WithTypeConverter(polymorphicConverter)
-                .WithTypeConverter(dataRefConverter)
-                .WithTypeConverter(localeRefConverter)
-                .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
-                .Build();
+            _deserializer = DatraYamlSettings.CreateDeserializer(_polymorphicBaseTypes);
+            _serializer = DatraYamlSettings.CreateSerializer(_polymorphicBaseTypes);
         }
 
         /// <summary>
