@@ -26,7 +26,7 @@ namespace Datra.Editor.DataSources
     {
         private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
 
-        private readonly IKeyValueDataRepository<TKey, TData> _repository;
+        private readonly ITableRepository<TKey, TData> _repository;
 
         // Baseline snapshot (taken at initialization, represents saved state)
         private readonly Dictionary<TKey, TData> _baseline = new();
@@ -48,7 +48,7 @@ namespace Datra.Editor.DataSources
             public object? CurrentValue { get; set; }
         }
 
-        public EditableKeyValueDataSource(IKeyValueDataRepository<TKey, TData> repository)
+        public EditableKeyValueDataSource(ITableRepository<TKey, TData> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             InitializeBaseline();
@@ -65,7 +65,7 @@ namespace Datra.Editor.DataSources
             _modifiedKeys.Clear();
             _propertyChanges.Clear();
 
-            foreach (var kvp in _repository.GetAll())
+            foreach (var kvp in _repository.LoadedItems)
             {
                 _baseline[kvp.Key] = DeepClone(kvp.Value);
             }
@@ -462,7 +462,7 @@ namespace Datra.Editor.DataSources
                 if (_workingCopies.TryGetValue(key, out var modifiedItem))
                 {
                     // Get the actual repository item and update its properties
-                    var repoItem = _repository.TryGetById(key);
+                    var repoItem = _repository.TryGetLoaded(key);
                     if (repoItem != null)
                     {
                         CopyProperties(modifiedItem, repoItem);

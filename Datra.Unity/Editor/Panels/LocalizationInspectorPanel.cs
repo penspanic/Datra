@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -39,7 +40,7 @@ namespace Datra.Unity.Editor.Panels
 
         public void SetLocalizationContext(
             LocalizationContext context,
-            Datra.Interfaces.IDataRepository repository,
+            IEditableRepository repository,
             Datra.Interfaces.IDataContext dataContext,
             IEditableLocalizationDataSource dataSource)
         {

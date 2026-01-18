@@ -42,7 +42,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act
-            var allQuests = context.Quest.Values.ToList();
+            var allQuests = context.Quest.LoadedItems.Values.ToList();
 
             // Assert
             Assert.NotEmpty(allQuests);
@@ -81,14 +81,14 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act
-            context.Quest.TryGetValue("quest_main_002", out var quest);
+            var quest = context.Quest.TryGetLoaded("quest_main_002");
 
             // Assert
             Assert.NotNull(quest);
             Assert.Equal(2, quest.Objectives.Count);
 
             // First objective should be CollectObjective
-            var collectObj = quest.Objectives[0] as CollectObjective;
+            var collectObj = quest!.Objectives[0] as CollectObjective;
             Assert.NotNull(collectObj);
             Assert.Equal(2001, collectObj.TargetItemId);
             Assert.Equal(10, collectObj.RequiredAmount);
@@ -112,11 +112,11 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act
-            context.Quest.TryGetValue("quest_main_002", out var quest);
+            var quest = context.Quest.TryGetLoaded("quest_main_002");
 
             // Assert
             Assert.NotNull(quest);
-            Assert.NotNull(quest.RewardItems);
+            Assert.NotNull(quest!.RewardItems);
             Assert.Equal(2, quest.RewardItems.Count);
             Assert.True(quest.RewardItems.ContainsKey(1002));
             Assert.True(quest.RewardItems.ContainsKey(2001));
@@ -270,7 +270,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act
-            var allQuests = context.Quest.Values.ToList();
+            var allQuests = context.Quest.LoadedItems.Values.ToList();
 
             // Assert
             Assert.Equal(4, allQuests.Count); // 4 quests in sample data

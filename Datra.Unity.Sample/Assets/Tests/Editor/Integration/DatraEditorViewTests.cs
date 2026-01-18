@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using Datra;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using NUnit.Framework;
@@ -17,7 +18,7 @@ namespace Datra.Unity.Tests.Integration
     {
         #region Helper Methods
 
-        private bool IsAssetRepository(IDataRepository repository)
+        private bool IsAssetRepository(IEditableRepository repository)
         {
             if (repository == null) return false;
             var interfaces = repository.GetType().GetInterfaces();
@@ -26,7 +27,7 @@ namespace Datra.Unity.Tests.Integration
                 i.GetGenericTypeDefinition() == typeof(IAssetRepository<>));
         }
 
-        private bool IsTableRepository(DataTypeInfo dataTypeInfo, IDataRepository repository)
+        private bool IsTableRepository(DataTypeInfo dataTypeInfo, IEditableRepository repository)
         {
             return dataTypeInfo.RepositoryKind == RepositoryKind.Table;
         }
@@ -150,8 +151,10 @@ namespace Datra.Unity.Tests.Integration
 
             // Get expected row count from repository
             var repo = window.Repositories[itemDataType.DataType];
-            var getAllMethod = repo.GetType().GetMethod("GetAll");
-            var data = getAllMethod?.Invoke(repo, null) as System.Collections.IEnumerable;
+            var loadedItemsProperty = repo.GetType().GetProperty("LoadedItems");
+            var loadedItems = loadedItemsProperty?.GetValue(repo);
+            var valuesProperty = loadedItems?.GetType().GetProperty("Values");
+            var data = valuesProperty?.GetValue(loadedItems) as System.Collections.IEnumerable;
             int expectedCount = 0;
             if (data != null)
             {
@@ -169,14 +172,16 @@ namespace Datra.Unity.Tests.Integration
             // Check if repository has data
             var repoForDebug = window.Repositories[itemDataType.DataType];
             Debug.Log($"Repository type: {repoForDebug?.GetType().Name}");
-            var getAllDebug = repoForDebug?.GetType().GetMethod("GetAll");
-            Debug.Log($"GetAll method found: {getAllDebug != null}");
-            if (getAllDebug != null)
+            var loadedItemsDebug = repoForDebug?.GetType().GetProperty("LoadedItems");
+            Debug.Log($"LoadedItems property found: {loadedItemsDebug != null}");
+            if (loadedItemsDebug != null)
             {
-                var dataDebug = getAllDebug.Invoke(repoForDebug, null) as System.Collections.IEnumerable;
+                var loadedDebug = loadedItemsDebug.GetValue(repoForDebug);
+                var valuesDebug = loadedDebug?.GetType().GetProperty("Values");
+                var dataDebug = valuesDebug?.GetValue(loadedDebug) as System.Collections.IEnumerable;
                 int countDebug = 0;
                 if (dataDebug != null) foreach (var _ in dataDebug) countDebug++;
-                Debug.Log($"Repository GetAll returned {countDebug} items");
+                Debug.Log($"Repository LoadedItems.Values returned {countDebug} items");
             }
 
             // Assert - Check for table content

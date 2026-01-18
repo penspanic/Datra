@@ -50,8 +50,8 @@ namespace Datra.Tests
 
             // Verify data from ShopContext
             Assert.True(shopContext.ShopItem.Count > 0);
-            Assert.Equal("Small HP Potion", shopContext.ShopItem["potion_hp_small"].Name);
-            Assert.Equal(100, shopContext.ShopItem["potion_hp_small"].Price);
+            Assert.Equal("Small HP Potion", shopContext.ShopItem.LoadedItems["potion_hp_small"].Name);
+            Assert.Equal(100, shopContext.ShopItem.LoadedItems["potion_hp_small"].Price);
         }
 
         private static string FindShopDataPath()

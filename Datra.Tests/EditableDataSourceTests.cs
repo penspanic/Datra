@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -26,7 +25,7 @@ namespace Datra.Tests
             public int Value { get; set; }
         }
 
-        private class MockKeyValueRepository : IKeyValueDataRepository<string, TestData>
+        private class MockKeyValueRepository : ITableRepository<string, TestData>
         {
             private readonly Dictionary<string, TestData> _data = new();
             public bool SaveWasCalled { get; private set; }
@@ -37,48 +36,62 @@ namespace Datra.Tests
                 _data[id] = new TestData { Id = id, Name = name, Value = value };
             }
 
-            // IKeyValueDataRepository implementation
-            public IReadOnlyDictionary<string, TestData> GetAll() => _data;
-            public TestData GetById(string id) => _data[id];
-            public TestData? TryGetById(string id) => _data.TryGetValue(id, out var v) ? v : null;
-            public bool Contains(string id) => _data.ContainsKey(id);
-            public int Count => _data.Count;
-            public void Add(TestData item) => _data[item.Id] = item;
-            public bool Remove(string key) => _data.Remove(key);
-            public bool UpdateKey(string oldKey, string newKey)
-            {
-                if (!_data.TryGetValue(oldKey, out var item)) return false;
-                _data.Remove(oldKey);
-                item.Id = newKey;
-                _data[newKey] = item;
-                return true;
-            }
-            public void Clear() => _data.Clear();
+            // IRepository
+            public bool IsInitialized => true;
+            public Task InitializeAsync() => Task.CompletedTask;
 
-            // IDataRepository implementation
-            public Task LoadAsync() => Task.CompletedTask;
+            // ITableRepository - Metadata
+            public int Count => _data.Count;
+            public bool Contains(string key) => _data.ContainsKey(key);
+            public IEnumerable<string> Keys => _data.Keys;
+
+            // ITableRepository - Read (async)
+            public Task<TestData?> GetAsync(string key) => Task.FromResult(_data.TryGetValue(key, out var v) ? v : null);
+            public Task<IReadOnlyDictionary<string, TestData>> GetAllAsync() => Task.FromResult<IReadOnlyDictionary<string, TestData>>(_data);
+            public Task<IEnumerable<TestData>> FindAsync(Func<TestData, bool> predicate) =>
+                Task.FromResult(_data.Values.Where(predicate));
+
+            // ITableRepository - Loaded data (sync)
+            public TestData? TryGetLoaded(string key) => _data.TryGetValue(key, out var v) ? v : null;
+            public IReadOnlyDictionary<string, TestData> LoadedItems => _data;
+
+            // ITableRepository - Write
+            public void Add(TestData data) => _data[data.Id] = data;
+            public void Add(string key, TestData data) => _data[key] = data;
+            public void Update(string key, TestData data) => _data[key] = data;
+            public void Remove(string key) => _data.Remove(key);
+
+            // ITableRepository - Working Copy
+            public TestData GetWorkingCopy(string key) => _data[key];
+            public void MarkAsModified(string key) { }
+
+            // IChangeTracking
+            public bool HasChanges => false;
+            public void Revert() { }
             public Task SaveAsync()
             {
                 SaveWasCalled = true;
                 SaveCallCount++;
                 return Task.CompletedTask;
             }
-            public string GetLoadedFilePath() => "mock://test.csv";
-            public IEnumerable<object> EnumerateItems() => _data.Values.Cast<object>();
-            public int ItemCount => _data.Count;
+            public event Action<bool>? OnModifiedStateChanged;
 
-            // IDataRepository<string, TestData> implementation
-            public IEnumerable<TestData> Find(Func<TestData, bool> predicate) => _data.Values.Where(predicate);
+            // IChangeTracking<string>
+            public ChangeState GetState(string key) => ChangeState.Unchanged;
+            public IEnumerable<string> GetChangedKeys() => Enumerable.Empty<string>();
+            public IEnumerable<string> GetAddedKeys() => Enumerable.Empty<string>();
+            public IEnumerable<string> GetModifiedKeys() => Enumerable.Empty<string>();
+            public IEnumerable<string> GetDeletedKeys() => Enumerable.Empty<string>();
+            public TData? GetBaseline<TData>(string key) where TData : class => null;
+            public bool IsPropertyModified(string key, string propertyName) => false;
+            public IEnumerable<string> GetModifiedProperties(string key) => Enumerable.Empty<string>();
+            public object? GetPropertyBaseline(string key, string propertyName) => null;
+            public void TrackPropertyChange(string key, string propertyName, object? newValue) { }
+            public void Revert(string key) { }
+            public void RevertProperty(string key, string propertyName) { }
 
-            // IReadOnlyDictionary implementation
-            public bool ContainsKey(string key) => _data.ContainsKey(key);
-            public bool TryGetValue(string key, out TestData value) => _data.TryGetValue(key, out value!);
-            public TestData this[string key] => _data[key];
-            public IEnumerable<string> Keys => _data.Keys;
-            public IEnumerable<TestData> Values => _data.Values;
-            int IReadOnlyCollection<KeyValuePair<string, TestData>>.Count => _data.Count;
-            public IEnumerator<KeyValuePair<string, TestData>> GetEnumerator() => _data.GetEnumerator();
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+            // Suppress unused event warning
+            protected void FireModifiedStateChanged(bool value) => OnModifiedStateChanged?.Invoke(value);
         }
 
         #endregion

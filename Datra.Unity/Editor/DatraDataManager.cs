@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace Datra.Unity.Editor
     {
         // Core data
         private readonly IDataContext _dataContext;
-        private readonly Dictionary<Type, IDataRepository> _repositories;
+        private readonly Dictionary<Type, IEditableRepository> _repositories;
         private readonly Dictionary<Type, IEditableDataSource> _dataSources;
         private readonly EditableLocalizationDataSource _localizationDataSource;
 
@@ -54,12 +55,12 @@ namespace Datra.Unity.Editor
         public IDataContext DataContext => _dataContext;
         public LocalizationContext LocalizationContext => _localizationDataSource?.Context;
         public IEditableLocalizationDataSource LocalizationDataSource => _localizationDataSource;
-        public IReadOnlyDictionary<Type, IDataRepository> Repositories => _repositories;
+        public IReadOnlyDictionary<Type, IEditableRepository> Repositories => _repositories;
         public IReadOnlyDictionary<Type, IEditableDataSource> DataSources => _dataSources;
 
         public DatraDataManager(
             IDataContext dataContext,
-            Dictionary<Type, IDataRepository> repositories,
+            Dictionary<Type, IEditableRepository> repositories,
             Dictionary<Type, IEditableDataSource> dataSources,
             EditableLocalizationDataSource localizationDataSource)
         {
@@ -105,7 +106,7 @@ namespace Datra.Unity.Editor
         }
 
         // Repository access
-        public IDataRepository GetRepository(Type type)
+        public IEditableRepository GetRepository(Type type)
         {
             _repositories.TryGetValue(type, out var repository);
             return repository;

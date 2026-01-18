@@ -22,13 +22,14 @@ namespace Datra.Tests
         public void Should_ParseIntArray_FromCsv()
         {
             // Act
-            if (!_context.Character.TryGetValue("hero_001", out var character))
+            var character = _context.Character.TryGetLoaded("hero_001");
+            if (character == null)
             {
                 Assert.Fail("Character data not found");
                 return;
             }
-            
-            
+
+
             // Assert
             Assert.NotNull(character);
             Assert.NotNull(character.UpgradeCosts);
@@ -44,12 +45,13 @@ namespace Datra.Tests
         public void Should_ParseIntDataRefArray_FromCsv()
         {
             // Act
-            if (!_context.RefTest.TryGetValue("test_01", out var refData))
+            var refData = _context.RefTest.TryGetLoaded("test_01");
+            if (refData == null)
             {
                 Assert.Fail("RefTest data not found");
                 return;
             }
-            
+
             // Assert
             Assert.NotNull(refData);
             Assert.NotNull(refData.ItemRefs);
@@ -63,12 +65,13 @@ namespace Datra.Tests
         public void Should_HandleEmptyArray_FromCsv()
         {
             // Act
-            if (!_context.RefTest.TryGetValue("test_05", out var refData))
+            var refData = _context.RefTest.TryGetLoaded("test_05");
+            if (refData == null)
             {
                 Assert.Fail("RefTest data not found");
                 return;
             }
-            
+
             // Assert
             Assert.NotNull(refData);
             Assert.NotNull(refData.ItemRefs);
@@ -138,12 +141,13 @@ namespace Datra.Tests
         public void Should_ParseEnumValue_FromCsv()
         {
             // Act
-            if (!_context.Character.TryGetValue("hero_001", out var character))
+            var character = _context.Character.TryGetLoaded("hero_001");
+            if (character == null)
             {
                 Assert.Fail("Character data not found");
                 return;
             }
-            
+
             // Assert
             Assert.NotNull(character);
             Assert.Equal(CharacterGrade.Common, character.Grade);
@@ -207,12 +211,13 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
         public void Should_ParseEnumArray_FromCsv()
         {
             // Act
-            if (!_context.Character.TryGetValue("hero_001", out var character))
+            var character = _context.Character.TryGetLoaded("hero_001");
+            if (character == null)
             {
                 Assert.Fail("Character data not found");
                 return;
             }
-            
+
             // Assert
             Assert.NotNull(character);
             Assert.NotNull(character.Stats);
@@ -226,25 +231,28 @@ test_legendary,LegendaryHero,15,800,400,30,25,25,Paladin,Legendary,Attack|Defens
         public void Should_ParseDifferentEnumArrays_FromCsv()
         {
             // Act
-            
-            if (!_context.Character.TryGetValue("hero_001", out var arthur))
+
+            var arthur = _context.Character.TryGetLoaded("hero_001");
+            if (arthur == null)
             {
                 Assert.Fail("Character data not found for hero_001");
                 return;
             }
 
-            if (!_context.Character.TryGetValue("hero_003", out var lena))
+            var lena = _context.Character.TryGetLoaded("hero_003");
+            if (lena == null)
             {
                 Assert.Fail("Character data not found for hero_003");
                 return;
             }
 
-            if (!_context.Character.TryGetValue("hero_004", out var thor))
+            var thor = _context.Character.TryGetLoaded("hero_004");
+            if (thor == null)
             {
                 Assert.Fail("Character data not found for hero_004");
                 return;
             }
-            
+
             // Assert
             Assert.NotNull(arthur.Stats);
             Assert.Equal(3, arthur.Stats.Length);

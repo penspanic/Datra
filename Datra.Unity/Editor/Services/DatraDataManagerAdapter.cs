@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,7 +31,7 @@ namespace Datra.Unity.Editor.Services
         #region IDataEditorService Implementation
 
         public IDataContext DataContext => _manager.DataContext;
-        public IReadOnlyDictionary<Type, IDataRepository> Repositories => _manager.Repositories;
+        public IReadOnlyDictionary<Type, IEditableRepository> Repositories => _manager.Repositories;
 
         public event Action<Type> OnDataChanged;
         public event Action<Type, bool> OnModifiedStateChanged;
@@ -40,7 +41,7 @@ namespace Datra.Unity.Editor.Services
             return DataContext?.GetDataTypeInfos()?.ToList() ?? new List<DataTypeInfo>();
         }
 
-        public IDataRepository GetRepository(Type dataType)
+        public IEditableRepository GetRepository(Type dataType)
         {
             return _manager.GetRepository(dataType);
         }

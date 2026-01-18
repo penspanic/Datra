@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,12 +18,12 @@ namespace Datra.Unity.Editor.Services
     {
         private readonly IDataContext _dataContext;
         private readonly LocalizationContext _localizationContext;
-        private readonly Dictionary<Type, IDataRepository> _repositories;
+        private readonly Dictionary<Type, IEditableRepository> _repositories;
 
         public FixedLocaleKeyAnalyzer(
             IDataContext dataContext,
             LocalizationContext localizationContext,
-            Dictionary<Type, IDataRepository> repositories)
+            Dictionary<Type, IEditableRepository> repositories)
         {
             _dataContext = dataContext ?? throw new ArgumentNullException(nameof(dataContext));
             _localizationContext = localizationContext ?? throw new ArgumentNullException(nameof(localizationContext));

@@ -5,6 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Datra;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 
@@ -127,7 +128,7 @@ namespace Datra.Unity.Editor.UI
                 if (propType.IsGenericType)
                 {
                     var genericDef = propType.GetGenericTypeDefinition();
-                    if (genericDef == typeof(IDataRepository<,>))
+                    if (genericDef == typeof(ITableRepository<,>))
                     {
                         var genericArgs = propType.GetGenericArguments();
                         if (genericArgs[1] == _referencedType)

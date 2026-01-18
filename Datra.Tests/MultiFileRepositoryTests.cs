@@ -52,7 +52,7 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert
             Assert.Equal(3, repository.Count);
@@ -60,8 +60,8 @@ namespace Datra.Tests
             Assert.True(repository.Contains("item2"));
             Assert.True(repository.Contains("item3"));
 
-            Assert.Equal("Sword", repository["item1"].Name);
-            Assert.Equal(150, repository["item2"].Value);
+            Assert.Equal("Sword", repository.LoadedItems["item1"].Name);
+            Assert.Equal(150, repository.LoadedItems["item2"].Value);
         }
 
         [Fact]
@@ -80,7 +80,7 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert
             Assert.Equal(0, repository.Count);
@@ -107,7 +107,7 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert
             Assert.Equal(2, repository.Count);
@@ -126,7 +126,7 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert
             Assert.Equal(0, repository.Count);
@@ -151,7 +151,7 @@ namespace Datra.Tests
 
             // Assert
             Assert.Equal(1, repository.Count);
-            Assert.Equal("New", repository["new_item"].Name);
+            Assert.Equal("New", repository.LoadedItems["new_item"].Name);
         }
 
         [Fact]
@@ -169,7 +169,7 @@ namespace Datra.Tests
             repository.Add(new TestItem { Id = "test", Name = "Test", Value = 1 });
 
             // Act
-            var result = repository.TryGetById("test");
+            var result = repository.TryGetLoaded("test");
 
             // Assert
             Assert.NotNull(result);
@@ -189,7 +189,7 @@ namespace Datra.Tests
             );
 
             // Act
-            var result = repository.TryGetById("nonexistent");
+            var result = repository.TryGetLoaded("nonexistent");
 
             // Assert
             Assert.Null(result);
@@ -218,14 +218,14 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert - only .yaml files, not .yml
             Assert.Equal(2, repository.Count);
             Assert.True(repository.Contains("item1"));
             Assert.True(repository.Contains("item2"));
-            Assert.Equal("Sword", repository["item1"].Name);
-            Assert.Equal(150, repository["item2"].Value);
+            Assert.Equal("Sword", repository.LoadedItems["item1"].Name);
+            Assert.Equal(150, repository.LoadedItems["item2"].Value);
         }
 
         [Fact]
@@ -247,12 +247,12 @@ namespace Datra.Tests
             );
 
             // Act
-            await repository.LoadAsync();
+            await repository.InitializeAsync();
 
             // Assert
             Assert.Equal(2, repository.Count);
-            Assert.Equal("Axe", repository["item1"].Name);
-            Assert.Equal(175, repository["item2"].Value);
+            Assert.Equal("Axe", repository.LoadedItems["item1"].Name);
+            Assert.Equal(175, repository.LoadedItems["item2"].Value);
         }
 
         [Fact]
@@ -274,7 +274,7 @@ namespace Datra.Tests
                 (data, serializer) => serializer.DeserializeSingle<TestItem>(data)
             );
 
-            await yamlRepository.LoadAsync();
+            await yamlRepository.InitializeAsync();
 
             // Assert - only YAML file loaded
             Assert.Equal(1, yamlRepository.Count);

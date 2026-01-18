@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -33,7 +34,7 @@ namespace Datra.Unity.Editor.Controllers
         private SplitViewWrapper cachedSplitView;
 
         private Type dataType;
-        private IDataRepository repository;
+        private IEditableRepository repository;
         private IDataContext dataContext;
         private bool isReadOnly;
         private IEditableDataSource dataSource;
@@ -44,7 +45,7 @@ namespace Datra.Unity.Editor.Controllers
 
         // Events
         public event Action<ViewMode> OnViewModeChanged;
-        public event Action<Type, IDataRepository> OnSaveRequested;
+        public event Action<Type, IEditableRepository> OnSaveRequested;
         public event Action<Type, bool> OnDataModified;  // Type, isModified
         
         // Properties
@@ -58,7 +59,7 @@ namespace Datra.Unity.Editor.Controllers
         
         public void SetData(
             Type type,
-            IDataRepository repo,
+            IEditableRepository repo,
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
@@ -237,7 +238,7 @@ namespace Datra.Unity.Editor.Controllers
             contentContainer.Clear();
         }
         
-        private void HandleSaveRequest(Type type, IDataRepository repo)
+        private void HandleSaveRequest(Type type, IEditableRepository repo)
         {
             OnSaveRequested?.Invoke(type, repo);
         }

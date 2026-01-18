@@ -96,8 +96,8 @@ namespace Datra.Tests
             // Should still load valid record (test_001)
             var loggingData = context.LoggingTest;
             Assert.NotNull(loggingData);
-            Assert.True(loggingData.ContainsKey("test_001"));
-            var validRecord = loggingData["test_001"];
+            Assert.True(loggingData.Contains("test_001"));
+            var validRecord = loggingData.LoadedItems["test_001"];
             Assert.Equal("Fire Ball", validRecord.Name);
             Assert.Equal(5, validRecord.Level);
         }

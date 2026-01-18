@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -44,7 +45,7 @@ namespace Datra.Unity.Editor
         
         // Data Management
         private IDataContext dataContext;
-        private Dictionary<Type, IDataRepository> repositories = new();
+        private Dictionary<Type, IEditableRepository> repositories = new();
         private Dictionary<Type, DataTypeInfo> dataTypeInfoMap = new();
         private DatraDataManager dataManager;
         private LocalizationContext localizationContext;
@@ -60,7 +61,7 @@ namespace Datra.Unity.Editor
 
         // Public accessors for navigation panel
         public IDataContext DataContext => dataContext;
-        public IReadOnlyDictionary<Type, IDataRepository> Repositories => repositories;
+        public IReadOnlyDictionary<Type, IEditableRepository> Repositories => repositories;
         public IReadOnlyDictionary<Type, DataTypeInfo> DataTypeInfoMap => dataTypeInfoMap;
 
         // Public accessor for ViewModel (enables testing and external access)
@@ -400,9 +401,9 @@ namespace Datra.Unity.Editor
             {
                 var repoType = repository.GetType();
 
-                // Check for ISingleDataRepository<TData>
+                // Check for ISingleRepository<TData>
                 var singleRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.ISingleDataRepository<>));
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISingleRepository<>));
 
                 if (singleRepoInterface != null)
                 {
@@ -419,9 +420,9 @@ namespace Datra.Unity.Editor
                     return;
                 }
 
-                // Check for IKeyValueDataRepository<TKey, TValue>
+                // Check for ITableRepository<TKey, TValue>
                 var keyValueRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IKeyValueDataRepository<,>));
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableRepository<,>));
 
                 if (keyValueRepoInterface != null)
                 {
@@ -440,13 +441,13 @@ namespace Datra.Unity.Editor
                     return;
                 }
 
-                // Check for IEditableAssetRepository<T>
-                var editableAssetRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IEditableAssetRepository<>));
+                // Check for IAssetRepository<T>
+                var assetRepoInterface = repoType.GetInterfaces()
+                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAssetRepository<>));
 
-                if (editableAssetRepoInterface != null)
+                if (assetRepoInterface != null)
                 {
-                    var assetDataType = editableAssetRepoInterface.GetGenericArguments()[0];
+                    var assetDataType = assetRepoInterface.GetGenericArguments()[0];
 
                     // Create EditableAssetDataSource<T>
                     var dataSourceType = typeof(EditableAssetDataSource<>).MakeGenericType(assetDataType);
@@ -457,15 +458,6 @@ namespace Datra.Unity.Editor
                         dataSources[dataType] = dataSource;
                     }
                     return;
-                }
-
-                // Fallback: Check for IAssetRepository<T> (may not be editable)
-                var assetRepoInterface = repoType.GetInterfaces()
-                    .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Datra.Interfaces.IAssetRepository<>));
-
-                if (assetRepoInterface != null)
-                {
-                    Debug.LogWarning($"Repository for {dataType.Name} implements IAssetRepository but not IEditableAssetRepository. Editing may not work correctly.");
                 }
             }
             catch (Exception e)
@@ -530,7 +522,7 @@ namespace Datra.Unity.Editor
                 var property = properties.FirstOrDefault(p => p.Name == dataTypeInfo.PropertyName);
                 if (property != null)
                 {
-                    var repository = property.GetValue(dataContext) as IDataRepository;
+                    var repository = property.GetValue(dataContext) as IEditableRepository;
                     if (repository != null)
                     {
                         repositories[dataTypeInfo.DataType] = repository;
@@ -557,7 +549,7 @@ namespace Datra.Unity.Editor
                 ShowLocalizationInspector();
 
                 // Get LocalizationRepository from repositories
-                IDataRepository localizationRepository = null;
+                IEditableRepository localizationRepository = null;
                 repositories.TryGetValue(typeof(LocalizationContext), out localizationRepository);
 
                 // Set context with unified data source pattern
@@ -609,7 +601,7 @@ namespace Datra.Unity.Editor
             }
         }
         
-        public void AddDataTab(Type dataType, IDataRepository repository, IDataContext context)
+        public void AddDataTab(Type dataType, IEditableRepository repository, IDataContext context)
         {
             // Delegate to ViewModel - it will fire events that we handle
             viewModel?.OpenTab(dataType);
@@ -740,7 +732,7 @@ namespace Datra.Unity.Editor
             }
         }
         
-        private async void OnInspectorSaveRequested(Type dataType, IDataRepository repository)
+        private async void OnInspectorSaveRequested(Type dataType, IEditableRepository repository)
         {
             if (viewModel?.DataService == null) return;
 

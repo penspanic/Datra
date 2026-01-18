@@ -128,7 +128,7 @@ namespace Datra.Services
             if (_keyRepository == null || string.IsNullOrEmpty(key))
                 return null;
 
-            return _keyRepository.GetValueOrDefault(key);
+            return _keyRepository.TryGetLoaded(key);
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Datra.Services
         private async Task LoadMasterKeysAsync()
         {
             if (_keyRepository != null)
-                await _keyRepository.LoadAsync();
+                await _keyRepository.InitializeAsync();
         }
 
         /// <summary>

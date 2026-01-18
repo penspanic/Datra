@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,7 +19,7 @@ namespace Datra.Unity.Editor.Windows
     public class DatraDataWindow : EditorWindow
     {
         private Type dataType;
-        private IDataRepository repository;
+        private IEditableRepository repository;
         private IDataContext dataContext;
         private IEditableDataSource dataSource;
         private string windowTitle;
@@ -30,7 +31,7 @@ namespace Datra.Unity.Editor.Windows
         private DatraViewModeController.ViewMode? initialViewMode;
         private bool hasModifications = false;
 
-        public static DatraDataWindow CreateWindow(Type dataType, IDataRepository repository, IDataContext dataContext, IEditableDataSource dataSource, string title = null)
+        public static DatraDataWindow CreateWindow(Type dataType, IEditableRepository repository, IDataContext dataContext, IEditableDataSource dataSource, string title = null)
         {
             var window = CreateInstance<DatraDataWindow>();
             window.dataType = dataType;
@@ -194,7 +195,7 @@ namespace Datra.Unity.Editor.Windows
             }
         }
         
-        public void SetData(Type type, IDataRepository repo, IDataContext context, IEditableDataSource source = null)
+        public void SetData(Type type, IEditableRepository repo, IDataContext context, IEditableDataSource source = null)
         {
             dataType = type;
             repository = repo;
@@ -260,7 +261,7 @@ namespace Datra.Unity.Editor.Windows
             Debug.Log($"Export as {format} - Not implemented yet");
         }
         
-        private async void HandleSaveRequest(Type type, IDataRepository repo)
+        private async void HandleSaveRequest(Type type, IEditableRepository repo)
         {
             try
             {

@@ -49,11 +49,11 @@ namespace Datra.Tests
             
             // Get the first character ID from loaded data
             var contextCharacter = context.Character;
-            var firstCharacter = contextCharacter.Values.FirstOrDefault();
+            var firstCharacter = contextCharacter.LoadedItems.Values.FirstOrDefault();
             Assert.NotNull(firstCharacter);
             
             // Get the first item ID from loaded data
-            var firstItem = context.Item.Values.ToList().FirstOrDefault();
+            var firstItem = context.Item.LoadedItems.Values.ToList().FirstOrDefault();
             Assert.NotNull(firstItem);
             
             // Create ref test data pointing to the first character and item

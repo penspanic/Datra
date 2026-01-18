@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra;
 using Datra.Interfaces;
 using Datra.Localization;
 using Datra.Services;
@@ -9,15 +10,18 @@ using Datra.Services;
 namespace Datra.Unity.Editor.Utilities
 {
     /// <summary>
-    /// Wrapper for LocalizationContext to implement IDataRepository interface.
+    /// Wrapper for LocalizationContext to implement IEditableRepository interface.
     /// This allows localization to use the same save/load infrastructure as other data types.
     /// </summary>
-    public class LocalizationRepository : IDataRepository
+    public class LocalizationRepository : IEditableRepository
     {
         private readonly LocalizationContext _localizationContext;
         private readonly string _localizationDataPath;
+        private bool _isInitialized;
 
         public LocalizationContext Context => _localizationContext;
+        public bool IsInitialized => _isInitialized;
+        public string? LoadedFilePath => GetLoadedFilePath();
 
         public LocalizationRepository(LocalizationContext localizationContext, string localizationDataPath = "Localizations")
         {
@@ -26,12 +30,13 @@ namespace Datra.Unity.Editor.Utilities
         }
 
         /// <summary>
-        /// Load is not needed as LocalizationContext is already loaded
+        /// Initialize is not needed as LocalizationContext is already loaded
         /// </summary>
-        public Task LoadAsync()
+        public Task InitializeAsync()
         {
             // LocalizationContext is already loaded when it's created
             // No additional loading needed
+            _isInitialized = true;
             return Task.CompletedTask;
         }
 
@@ -70,7 +75,7 @@ namespace Datra.Unity.Editor.Utilities
             var keyRepo = _localizationContext.KeyRepository;
             if (keyRepo != null)
             {
-                return keyRepo.GetAll().Values.Cast<object>();
+                return keyRepo.LoadedItems.Values.Cast<object>();
             }
             return Enumerable.Empty<object>();
         }

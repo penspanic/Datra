@@ -1,11 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
-using Datra.Interfaces;
 using Xunit;
 
 namespace Datra.Tests
@@ -25,30 +23,53 @@ namespace Datra.Tests
             public bool IsActive { get; set; }
         }
 
-        private class MockSingleDataRepository : ISingleDataRepository<TestSingleData>
+        private class MockSingleDataRepository : ISingleRepository<TestSingleData>
         {
             private TestSingleData? _data;
+            private TestSingleData? _baseline;
             public bool SaveWasCalled { get; private set; }
 
-            public bool IsLoaded => _data != null;
-            public TestSingleData Get() => _data ?? throw new InvalidOperationException("Not loaded");
-            public void Set(TestSingleData data) => _data = data;
-            public Task LoadAsync()
+            // IRepository
+            public bool IsInitialized => _data != null;
+            public Task InitializeAsync()
             {
                 _data = new TestSingleData { Name = "Default", Value = 100, IsActive = true };
+                _baseline = new TestSingleData { Name = "Default", Value = 100, IsActive = true };
                 return Task.CompletedTask;
             }
+
+            // ISingleRepository
+            public TestSingleData? Current => _data;
+            public TestSingleData? Baseline => _baseline;
+            public Task<TestSingleData?> GetAsync() => Task.FromResult(_data);
+            public void Set(TestSingleData data) => _data = data;
+
+            // IChangeTracking
+            public bool HasChanges => false;
+            public void Revert() { }
             public Task SaveAsync()
             {
                 SaveWasCalled = true;
                 return Task.CompletedTask;
             }
-            public string GetLoadedFilePath() => "mock://single.json";
-            public IEnumerable<object> EnumerateItems() => _data != null ? new[] { _data } : Array.Empty<object>();
-            public int ItemCount => _data != null ? 1 : 0;
+            public event Action<bool>? OnModifiedStateChanged;
+
+            // Property tracking (not used in these tests, minimal implementation)
+            public bool IsPropertyModified(string propertyName) => false;
+            public IEnumerable<string> GetModifiedProperties() => Array.Empty<string>();
+            public object? GetPropertyBaseline(string propertyName) => null;
+            public void TrackPropertyChange(string propertyName, object? newValue) { }
+            public void RevertProperty(string propertyName) { }
 
             // Helper method for test setup
-            public void SetData(TestSingleData data) => _data = data;
+            public void SetData(TestSingleData data)
+            {
+                _data = data;
+                _baseline = new TestSingleData { Name = data.Name, Value = data.Value, IsActive = data.IsActive };
+            }
+
+            // Suppress unused event warning
+            protected void FireModifiedStateChanged(bool value) => OnModifiedStateChanged?.Invoke(value);
         }
 
         #endregion

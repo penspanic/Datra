@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Linq;
 using System.Reflection;
@@ -17,7 +18,7 @@ namespace Datra.Unity.Editor.Panels
     public class DataInspectorPanel : BaseInspectorPanel
     {
         private Type currentType;
-        private IDataRepository currentRepository;
+        private IEditableRepository currentRepository;
         private IDataContext currentDataContext;
         private IEditableDataSource currentDataSource;
 
@@ -30,7 +31,7 @@ namespace Datra.Unity.Editor.Panels
 
         // Properties
         public Type CurrentType => currentType;
-        public IDataRepository CurrentRepository => currentRepository;
+        public IEditableRepository CurrentRepository => currentRepository;
         
         public DataInspectorPanel() : base()
         {
@@ -96,7 +97,7 @@ namespace Datra.Unity.Editor.Panels
             }
         }
         
-        public void SetDataContext(IDataContext dataContext, IDataRepository repository, Type dataType, IEditableDataSource dataSource)
+        public void SetDataContext(IDataContext dataContext, IEditableRepository repository, Type dataType, IEditableDataSource dataSource)
         {
             currentDataContext = dataContext;
             currentRepository = repository;

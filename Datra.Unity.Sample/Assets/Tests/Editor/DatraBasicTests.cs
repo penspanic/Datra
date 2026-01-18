@@ -111,7 +111,7 @@ namespace Datra.Unity.Tests
             // Assert - verify nested type is properly deserialized
             Assert.Greater(context.Character.Count, 0);
 
-            var enumerator = context.Character.Values.GetEnumerator();
+            var enumerator = context.Character.LoadedItems.Values.GetEnumerator();
             enumerator.MoveNext();
             var character = enumerator.Current;
 
@@ -210,8 +210,8 @@ namespace Datra.Unity.Tests
             }
 
             // Assert - check quest_main_001 has correct objective types
-            Assert.IsTrue(context.Quest.TryGetValue("quest_main_001", out var quest),
-                "Should find quest_main_001");
+            var quest = context.Quest.TryGetLoaded("quest_main_001");
+            Assert.IsNotNull(quest, "Should find quest_main_001");
 
             Assert.IsNotNull(quest.Objectives, "Objectives should not be null");
             Assert.AreEqual(2, quest.Objectives.Count, "Should have 2 objectives");
@@ -259,7 +259,7 @@ namespace Datra.Unity.Tests
             bool hasTalkObjective = false;
             bool hasLocationObjective = false;
 
-            foreach (var quest in context.Quest.Values)
+            foreach (var quest in context.Quest.LoadedItems.Values)
             {
                 foreach (var obj in quest.Objectives)
                 {

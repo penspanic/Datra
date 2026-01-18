@@ -29,7 +29,7 @@ namespace Datra.Editor.Tests
 
     #region Mock Repositories
 
-    public class MockKeyValueRepository<TKey, TData> : IKeyValueDataRepository<TKey, TData>
+    public class MockKeyValueRepository<TKey, TData> : ITableRepository<TKey, TData>
         where TKey : notnull
         where TData : class, ITableData<TKey>
     {
@@ -47,81 +47,118 @@ namespace Datra.Editor.Tests
             }
         }
 
-        public IReadOnlyDictionary<TKey, TData> GetAll() => _data;
-        public TData GetById(TKey id) => _data[id];
-        public TData? TryGetById(TKey id) => _data.TryGetValue(id, out var v) ? v : null;
-        public bool Contains(TKey id) => _data.ContainsKey(id);
-        public int Count => _data.Count;
-        public int ItemCount => _data.Count;
+        // IRepository
+        public bool IsInitialized => true;
+        public Task InitializeAsync() => Task.CompletedTask;
 
+        // ITableRepository - Metadata
+        public int Count => _data.Count;
+        public bool Contains(TKey key) => _data.ContainsKey(key);
+        public IEnumerable<TKey> Keys => _data.Keys;
+
+        // ITableRepository - Read (async)
+        public Task<TData?> GetAsync(TKey key) => Task.FromResult(_data.TryGetValue(key, out var v) ? v : null);
+        public Task<IReadOnlyDictionary<TKey, TData>> GetAllAsync() => Task.FromResult<IReadOnlyDictionary<TKey, TData>>(_data);
+        public Task<IEnumerable<TData>> FindAsync(Func<TData, bool> predicate) =>
+            Task.FromResult(_data.Values.Where(predicate));
+
+        // ITableRepository - Loaded data (sync)
+        public TData? TryGetLoaded(TKey key) => _data.TryGetValue(key, out var v) ? v : null;
+        public IReadOnlyDictionary<TKey, TData> LoadedItems => _data;
+
+        // ITableRepository - Write
         public void Add(TData data)
         {
             _data[data.Id] = data;
             AddedItems.Add(data);
         }
-
-        public bool Remove(TKey key)
+        public void Add(TKey key, TData data) => _data[key] = data;
+        public void Update(TKey key, TData data) => _data[key] = data;
+        public void Remove(TKey key)
         {
             RemovedKeys.Add(key);
-            return _data.Remove(key);
+            _data.Remove(key);
         }
 
-        public bool UpdateKey(TKey oldKey, TKey newKey)
-        {
-            if (!_data.TryGetValue(oldKey, out var item)) return false;
-            _data.Remove(oldKey);
-            _data[newKey] = item;
-            return true;
-        }
+        // ITableRepository - Working Copy
+        public TData GetWorkingCopy(TKey key) => _data[key];
+        public void MarkAsModified(TKey key) { }
 
-        public void Clear() => _data.Clear();
-
-        public Task LoadAsync() => Task.CompletedTask;
-
+        // IChangeTracking
+        public bool HasChanges => false;
+        public void Revert() { }
         public Task SaveAsync()
         {
             SaveCount++;
             return Task.CompletedTask;
         }
+        public event Action<bool>? OnModifiedStateChanged;
 
-        public string GetLoadedFilePath() => "mock://path";
+        // IChangeTracking<TKey>
+        public ChangeState GetState(TKey key) => ChangeState.Unchanged;
+        public IEnumerable<TKey> GetChangedKeys() => Enumerable.Empty<TKey>();
+        public IEnumerable<TKey> GetAddedKeys() => Enumerable.Empty<TKey>();
+        public IEnumerable<TKey> GetModifiedKeys() => Enumerable.Empty<TKey>();
+        public IEnumerable<TKey> GetDeletedKeys() => Enumerable.Empty<TKey>();
+        public T? GetBaseline<T>(TKey key) where T : class => null;
+        public bool IsPropertyModified(TKey key, string propertyName) => false;
+        public IEnumerable<string> GetModifiedProperties(TKey key) => Enumerable.Empty<string>();
+        public object? GetPropertyBaseline(TKey key, string propertyName) => null;
+        public void TrackPropertyChange(TKey key, string propertyName, object? newValue) { }
+        public void Revert(TKey key) { }
+        public void RevertProperty(TKey key, string propertyName) { }
 
+        // For test verification
         public IEnumerable<object> EnumerateItems() => _data.Values;
 
-        public IEnumerable<TData> Find(Func<TData, bool> predicate) => _data.Values.Where(predicate);
-
-        // IReadOnlyDictionary implementation
-        public TData this[TKey key] => _data[key];
-        public IEnumerable<TKey> Keys => _data.Keys;
-        public IEnumerable<TData> Values => _data.Values;
-        public bool ContainsKey(TKey key) => _data.ContainsKey(key);
-        public bool TryGetValue(TKey key, out TData value) => _data.TryGetValue(key, out value!);
-        public IEnumerator<KeyValuePair<TKey, TData>> GetEnumerator() => _data.GetEnumerator();
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        // Suppress unused event warning
+        protected void FireModifiedStateChanged(bool value) => OnModifiedStateChanged?.Invoke(value);
     }
 
-    public class MockSingleRepository<TData> : ISingleDataRepository<TData>
+    public class MockSingleRepository<TData> : ISingleRepository<TData>
         where TData : class
     {
         private TData? _data;
+        private TData? _baseline;
         public int SaveCount { get; private set; }
 
-        public void SetData(TData data) => _data = data;
-        public TData Get() => _data ?? throw new InvalidOperationException("Not loaded");
+        public void SetData(TData data)
+        {
+            _data = data;
+            _baseline = data;
+        }
+
+        // IRepository
+        public bool IsInitialized => _data != null;
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        // ISingleRepository
+        public TData? Current => _data;
+        public TData? Baseline => _baseline;
+        public Task<TData?> GetAsync() => Task.FromResult(_data);
         public void Set(TData data) => _data = data;
-        public bool IsLoaded => _data != null;
 
-        public Task LoadAsync() => Task.CompletedTask;
+        public TData Get() => _data ?? throw new InvalidOperationException("Not loaded");
 
+        // IChangeTracking
+        public bool HasChanges => false;
+        public void Revert() { }
         public Task SaveAsync()
         {
             SaveCount++;
             return Task.CompletedTask;
         }
+        public event Action<bool>? OnModifiedStateChanged;
 
-        public string GetLoadedFilePath() => "mock://single";
-        public IEnumerable<object> EnumerateItems() => _data != null ? new[] { _data } : Array.Empty<object>();
-        public int ItemCount => _data != null ? 1 : 0;
+        // Property tracking
+        public bool IsPropertyModified(string propertyName) => false;
+        public IEnumerable<string> GetModifiedProperties() => Array.Empty<string>();
+        public object? GetPropertyBaseline(string propertyName) => null;
+        public void TrackPropertyChange(string propertyName, object? newValue) { }
+        public void RevertProperty(string propertyName) { }
+
+        // Suppress unused event warning
+        protected void FireModifiedStateChanged(bool value) => OnModifiedStateChanged?.Invoke(value);
     }
 
     #endregion

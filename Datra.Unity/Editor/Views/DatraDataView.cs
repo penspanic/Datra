@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +21,7 @@ namespace Datra.Unity.Editor.Views
     {
         // Core properties
         protected Type dataType;
-        protected IDataRepository repository;  // Keep for compatibility (file path, etc.)
+        protected IEditableRepository repository;  // Keep for compatibility (file path, etc.)
         protected object dataContext;
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
@@ -48,14 +49,14 @@ namespace Datra.Unity.Editor.Views
         
         // Events
         public event Action<Type, bool> OnDataModified;  // Type, isModified
-        public event Action<Type, IDataRepository> OnSaveRequested;
+        public event Action<Type, IEditableRepository> OnSaveRequested;
         public event Action<object> OnItemDeleted;
         public event Action OnAddNewItem;
 
         protected void InvokeOnItemDeleted(object item) => OnItemDeleted?.Invoke(item);
         protected void InvokeOnAddNewItem() => OnAddNewItem?.Invoke();
         protected void InvokeOnDataModified(Type type, bool isModified) => OnDataModified?.Invoke(type, isModified);
-        protected void InvokeOnSaveRequested(Type type, IDataRepository repo) => OnSaveRequested?.Invoke(type, repo);
+        protected void InvokeOnSaveRequested(Type type, IEditableRepository repo) => OnSaveRequested?.Invoke(type, repo);
         
         // Properties
         public Type DataType => dataType;
@@ -141,7 +142,7 @@ namespace Datra.Unity.Editor.Views
         
         public virtual void SetData(
             Type type,
-            IDataRepository repo,
+            IEditableRepository repo,
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,
@@ -372,13 +373,13 @@ namespace Datra.Unity.Editor.Views
         }
 
         /// <summary>
-        /// Check if the repository is an IEditableAssetRepository
+        /// Check if the repository is an IAssetRepository
         /// </summary>
         protected bool IsEditableAssetRepository()
         {
             if (repository == null) return false;
             return repository.GetType().GetInterfaces().Any(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEditableAssetRepository<>));
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAssetRepository<>));
         }
 
         /// <summary>

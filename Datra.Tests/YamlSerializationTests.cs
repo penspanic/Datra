@@ -31,7 +31,7 @@ namespace Datra.Tests
         public void Should_LoadTableData_FromYaml()
         {
             // Act
-            var enemies = _context.Enemy.Values.ToList();
+            var enemies = _context.Enemy.LoadedItems.Values.ToList();
 
             // Assert
             Assert.NotEmpty(enemies);
@@ -43,7 +43,7 @@ namespace Datra.Tests
         public void Should_ParseBasicTypes_FromYaml()
         {
             // Act
-            _context.Enemy.TryGetValue("goblin_001", out var goblin);
+            var goblin = _context.Enemy.TryGetLoaded("goblin_001");
 
             // Assert
             Assert.NotNull(goblin);
@@ -62,9 +62,9 @@ namespace Datra.Tests
         public void Should_ParseEnum_FromYaml()
         {
             // Act
-            _context.Enemy.TryGetValue("goblin_001", out var goblin);
-            _context.Enemy.TryGetValue("fire_elemental_001", out var elemental);
-            _context.Enemy.TryGetValue("dragon_boss", out var dragon);
+            var goblin = _context.Enemy.TryGetLoaded("goblin_001");
+            var elemental = _context.Enemy.TryGetLoaded("fire_elemental_001");
+            var dragon = _context.Enemy.TryGetLoaded("dragon_boss");
 
             // Assert
             Assert.Equal(EnemyType.Normal, goblin.Type);
@@ -81,7 +81,7 @@ namespace Datra.Tests
         public void Should_ParseArrays_FromYaml()
         {
             // Act
-            _context.Enemy.TryGetValue("dragon_boss", out var dragon);
+            var dragon = _context.Enemy.TryGetLoaded("dragon_boss");
 
             // Assert
             Assert.NotNull(dragon.Abilities);
@@ -99,8 +99,8 @@ namespace Datra.Tests
         public void Should_ParseDataRef_FromYaml()
         {
             // Act
-            _context.Enemy.TryGetValue("goblin_001", out var goblin);
-            _context.Enemy.TryGetValue("dragon_boss", out var dragon);
+            var goblin = _context.Enemy.TryGetLoaded("goblin_001");
+            var dragon = _context.Enemy.TryGetLoaded("dragon_boss");
 
             // Assert
             Assert.Equal(2001, goblin.GuaranteedDrop.Value);
@@ -111,8 +111,8 @@ namespace Datra.Tests
         public void Should_ParseBooleans_FromYaml()
         {
             // Act
-            _context.Enemy.TryGetValue("goblin_001", out var goblin);
-            _context.Enemy.TryGetValue("fire_elemental_001", out var elemental);
+            var goblin = _context.Enemy.TryGetLoaded("goblin_001");
+            var elemental = _context.Enemy.TryGetLoaded("fire_elemental_001");
 
             // Assert
             Assert.False(goblin.IsFlyable);
@@ -139,7 +139,7 @@ namespace Datra.Tests
         public void Should_SerializeYaml_WithGeneratedMethod()
         {
             // Arrange
-            var enemies = _context.Enemy.Values.ToDictionary(e => e.Id);
+            var enemies = _context.Enemy.LoadedItems.Values.ToDictionary(e => e.Id);
 
             // Act - using generated SerializeYaml method
             var yaml = EnemyDataSerializer.SerializeYaml(enemies);
@@ -158,7 +158,7 @@ namespace Datra.Tests
         public void Should_RoundTrip_TableData_Yaml()
         {
             // Arrange
-            var original = _context.Enemy.Values.ToDictionary(e => e.Id);
+            var original = _context.Enemy.LoadedItems.Values.ToDictionary(e => e.Id);
 
             // Act
             var yaml = EnemyDataSerializer.SerializeYaml(original);
@@ -185,7 +185,7 @@ namespace Datra.Tests
         public void Should_LoadSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.NotNull(settings);
@@ -197,7 +197,7 @@ namespace Datra.Tests
         public void Should_ParseBasicTypes_InSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.Equal(100, settings.MaxPlayers);
@@ -212,7 +212,7 @@ namespace Datra.Tests
         public void Should_ParseEnum_InSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.Equal(ServerRegion.Asia, settings.Region);
@@ -222,7 +222,7 @@ namespace Datra.Tests
         public void Should_ParseEnumArray_InSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.NotNull(settings.AllowedRegions);
@@ -236,7 +236,7 @@ namespace Datra.Tests
         public void Should_ParseStringArray_InSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.NotNull(settings.AdminIds);
@@ -250,7 +250,7 @@ namespace Datra.Tests
         public void Should_ParseDataRef_InSingleData_FromYaml()
         {
             // Act
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Assert
             Assert.Equal("hero_001", settings.DefaultCharacter.Value);
@@ -276,7 +276,7 @@ namespace Datra.Tests
         public void Should_SerializeYaml_SingleData_WithGeneratedMethod()
         {
             // Arrange
-            var settings = _context.ServerSettings.Get();
+            var settings = _context.ServerSettings.Current;
 
             // Act - using generated SerializeYaml method
             var yaml = ServerSettingsDataSerializer.SerializeYaml(settings);
@@ -295,7 +295,7 @@ namespace Datra.Tests
         public void Should_RoundTrip_SingleData_Yaml()
         {
             // Arrange
-            var original = _context.ServerSettings.Get();
+            var original = _context.ServerSettings.Current;
 
             // Act
             var yaml = ServerSettingsDataSerializer.SerializeYaml(original);

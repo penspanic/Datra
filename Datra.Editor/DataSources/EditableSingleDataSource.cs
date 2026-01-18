@@ -27,7 +27,7 @@ namespace Datra.Editor.DataSources
         /// </summary>
         public const string SingleKey = "__single__";
 
-        private readonly ISingleDataRepository<TData> _repository;
+        private readonly ISingleRepository<TData> _repository;
 
         // Baseline snapshot
         private TData? _baseline;
@@ -46,7 +46,7 @@ namespace Datra.Editor.DataSources
 
         public event Action<bool>? OnModifiedStateChanged;
 
-        public EditableSingleDataSource(ISingleDataRepository<TData> repository)
+        public EditableSingleDataSource(ISingleRepository<TData> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             InitializeBaseline();
@@ -59,9 +59,9 @@ namespace Datra.Editor.DataSources
             _propertyChanges.Clear();
             _workingCopy = null;
 
-            if (_repository.IsLoaded)
+            if (_repository.IsInitialized && _repository.Current != null)
             {
-                _baseline = DeepClone(_repository.Get());
+                _baseline = DeepClone(_repository.Current);
             }
             else
             {
@@ -377,10 +377,10 @@ namespace Datra.Editor.DataSources
 
         public async Task SaveAsync()
         {
-            if (_workingCopy != null)
+            if (_workingCopy != null && _repository.Current != null)
             {
                 // Copy properties from working copy to repository's data
-                var repoData = _repository.Get();
+                var repoData = _repository.Current;
                 CopyProperties(_workingCopy, repoData);
             }
 

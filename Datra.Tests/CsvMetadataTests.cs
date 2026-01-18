@@ -27,7 +27,8 @@ namespace Datra.Tests
         public void Should_PreserveMetadataColumns_WhenReadingCsv()
         {
             // Act - Load MetadataTestData from CSV
-            if (!_context.MetadataTest.TryGetValue("test_001", out var testData))
+            var testData = _context.MetadataTest.TryGetLoaded("test_001");
+            if (testData == null)
             {
                 Assert.Fail("MetadataTestData not found");
                 return;
@@ -96,7 +97,8 @@ namespace Datra.Tests
         public void Should_RestoreMetadataColumns_WhenSerializingToCsv()
         {
             // Arrange - Get loaded data
-            if (!_context.MetadataTest.TryGetValue("test_001", out var originalData))
+            var originalData = _context.MetadataTest.TryGetLoaded("test_001");
+            if (originalData == null)
             {
                 Assert.Fail("MetadataTestData not found");
                 return;
@@ -104,7 +106,7 @@ namespace Datra.Tests
 
             // Act - Serialize back to CSV
             var dataDict = new Dictionary<string, MetadataTestData>();
-            foreach (var kvp in _context.MetadataTest)
+            foreach (var kvp in _context.MetadataTest.LoadedItems)
             {
                 dataDict[kvp.Key] = kvp.Value;
             }
@@ -136,10 +138,10 @@ namespace Datra.Tests
         {
             // Arrange - Get all test data
             var originalData = _context.MetadataTest;
-            Assert.NotEmpty(originalData);
+            Assert.NotEmpty(originalData.LoadedItems);
 
             // Check original data first - should have 10 total columns (4 regular + 6 metadata)
-            foreach (var kvp in originalData)
+            foreach (var kvp in originalData.LoadedItems)
             {
                 var metadataKeys = string.Join(", ", kvp.Value.CsvMetadata.Keys.OrderBy(k => k));
                 var expectedCount = 10; // Total columns in CSV: Id, ~, Name, ~Comment, ~, Value, ~Note, ~, Description, ~
@@ -164,7 +166,7 @@ namespace Datra.Tests
 
             // Act - Serialize and deserialize
             var dataDict = new Dictionary<string, MetadataTestData>();
-            foreach (var kvp in originalData)
+            foreach (var kvp in originalData.LoadedItems)
             {
                 dataDict[kvp.Key] = kvp.Value;
             }
@@ -180,7 +182,7 @@ namespace Datra.Tests
             var deserializedData = MetadataTestDataSerializer.DeserializeCsv(csvContent);
 
             // Assert - Check that metadata is preserved after round trip
-            foreach (var kvp in originalData)
+            foreach (var kvp in originalData.LoadedItems)
             {
                 var original = kvp.Value;
                 var deserialized = deserializedData[kvp.Key];
@@ -210,7 +212,7 @@ namespace Datra.Tests
         {
             // Arrange - Get test data and create modified dictionary
             var originalData = _context.NewPropertyTest;
-            Assert.NotEmpty(originalData);
+            Assert.NotEmpty(originalData.LoadedItems);
 
             // Store original CSV content for restoration
             var csvPath = Path.Combine(_testDataPath, "NewPropertyTestData.csv");
@@ -220,7 +222,7 @@ namespace Datra.Tests
             {
                 // Create a new dictionary with modified data
                 var modifiedData = new Dictionary<string, Datra.SampleData.Models.NewPropertyTestData>();
-                foreach (var kvp in originalData)
+                foreach (var kvp in originalData.LoadedItems)
                 {
                     // Create new instance with modified values
                     var newData = new Datra.SampleData.Models.NewPropertyTestData

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Datra;
 using Datra.SampleData.Generated;
 using Datra.SampleData.Models;
 using Datra.Serializers;
@@ -57,7 +58,7 @@ namespace Datra.Unity.Sample
         {
             Debug.Log("=== Character Data ===");
 
-            var allCharacters = context.Character.Values.ToList();
+            var allCharacters = context.Character.LoadedItems.Values.ToList();
             Debug.Log($"Total characters: {allCharacters.Count}");
 
             // Output first character info
@@ -76,11 +77,11 @@ namespace Datra.Unity.Sample
         {
             Debug.Log("=== Item Data ===");
 
-            var allItems = context.Item.Values.ToList();
+            var allItems = context.Item.LoadedItems.Values.ToList();
             Debug.Log($"Total items: {allItems.Count}");
 
-            // Get specific item by GetById
-            var item = context.Item.GetValueOrDefault(1001);
+            // Get specific item by TryGetLoaded
+            var item = context.Item.TryGetLoaded(1001);
             if (item != null)
             {
                 Debug.Log($"Item #1001: {item.Name}");
@@ -97,7 +98,7 @@ namespace Datra.Unity.Sample
         {
             Debug.Log("=== Game Config ===");
 
-            var config = context.GameConfig.Get();
+            var config = context.GameConfig.Current;
             if (config != null)
             {
                 Debug.Log($"Max Level: {config.MaxLevel}");

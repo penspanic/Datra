@@ -246,17 +246,17 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Assert - Skills should be loaded from YAML
-            Assert.NotEmpty(context.Skill);
+            Assert.NotEmpty(context.Skill.LoadedItems);
             Assert.Equal(7, context.Skill.Count);
 
             // Verify polymorphic effects loaded correctly
-            var fireball = context.Skill["skill_fireball"];
+            var fireball = context.Skill.LoadedItems["skill_fireball"];
             Assert.NotNull(fireball);
             Assert.Single(fireball.Effects);
             Assert.IsType<DamageEffect>(fireball.Effects[0]);
 
             _output.WriteLine($"Loaded {context.Skill.Count} skills via DataContext");
-            foreach (var kvp in context.Skill)
+            foreach (var kvp in context.Skill.LoadedItems)
             {
                 _output.WriteLine($"  {kvp.Key}: {kvp.Value.Effects.Count} effects");
             }

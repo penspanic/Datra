@@ -254,7 +254,7 @@ namespace Datra.Generators.Generators
         private void GenerateLoadAllAsync(CodeBuilder builder, List<DataModelInfo> dataModels)
         {
             builder.BeginMethod("public override async Task LoadAllAsync()");
-            
+
             // Initialize LocalizationContext first only if enabled
             if (_enableLocalization)
             {
@@ -269,35 +269,39 @@ namespace Datra.Generators.Generators
                 builder.AppendLine("await Localization.InitializeAsync();");
                 builder.AddBlankLine();
             }
-            
-            // Define local generic function to load and update
-            builder.AppendLine("// Local function to load repository and update DataTypeInfo");
-            builder.AppendLine("async Task LoadAndUpdateAsync<TRepo>(TRepo repo, string propertyName) where TRepo : IDataRepository");
-            builder.BeginBlock();
-            builder.AppendLine("if (repo == null) throw new Exception(\"Repo is null! type: {typeof(TRepo)}\");");
-            builder.AddBlankLine();
-            builder.AppendLine("await repo.LoadAsync();");
-            builder.AddBlankLine();
-            builder.AppendLine("// Get loaded file path and update DataTypeInfo");
-            builder.AppendLine("var loadedPath = repo.GetLoadedFilePath();");
-            builder.AppendLine("if (string.IsNullOrEmpty(loadedPath)) throw new Exception(\"loadedPath is null or empty! type: {typeof(TRepo)}\");");
-            builder.AppendLine("UpdateDataTypeInfoAfterLoad(propertyName, loadedPath);");
-            builder.EndBlock();
-            builder.AddBlankLine();
-            
+
             // Create tasks for loading all repositories
             builder.AppendLine("// Load all repositories in parallel");
             builder.AppendLine("var tasks = new List<Task>();");
             builder.AddBlankLine();
-            
+
             foreach (var model in dataModels)
             {
-                builder.AppendLine($"tasks.Add(LoadAndUpdateAsync({model.PropertyName}, \"{model.PropertyName}\"));");
+                builder.AppendLine($"tasks.Add({model.PropertyName}.InitializeAsync());");
             }
-            
+
             builder.AddBlankLine();
             builder.AppendLine("await Task.WhenAll(tasks);");
-            
+            builder.AddBlankLine();
+
+            // Update DataTypeInfo after load (using concrete types for loaded path)
+            builder.AppendLine("// Update DataTypeInfo with loaded file paths");
+            foreach (var model in dataModels)
+            {
+                var concreteType = model.IsAssetData
+                    ? $"AssetRepository<{model.TypeName}>"
+                    : model.IsTableData
+                        ? (model.IsMultiFile
+                            ? $"MultiFileKeyValueDataRepository<{model.KeyType}, {model.TypeName}>"
+                            : $"KeyValueDataRepository<{model.KeyType}, {model.TypeName}>")
+                        : $"SingleDataRepository<{model.TypeName}>";
+
+                var pathProperty = model.IsAssetData ? "LoadedFolderPath" : "LoadedFilePath";
+
+                builder.AppendLine($"if ({model.PropertyName} is {concreteType} _{model.PropertyName})");
+                builder.AppendLine($"    UpdateDataTypeInfoAfterLoad(\"{model.PropertyName}\", _{model.PropertyName}.{pathProperty});");
+            }
+
             builder.EndMethod();
         }
 
@@ -311,11 +315,11 @@ namespace Datra.Generators.Generators
                 }
                 else if (model.IsTableData)
                 {
-                    builder.AppendLine($"public IDataRepository<{model.KeyType}, {model.TypeName}> {model.PropertyName} {{ get; private set; }}");
+                    builder.AppendLine($"public ITableRepository<{model.KeyType}, {model.TypeName}> {model.PropertyName} {{ get; private set; }}");
                 }
                 else
                 {
-                    builder.AppendLine($"public ISingleDataRepository<{model.TypeName}> {model.PropertyName} {{ get; private set; }}");
+                    builder.AppendLine($"public ISingleRepository<{model.TypeName}> {model.PropertyName} {{ get; private set; }}");
                 }
             }
         }

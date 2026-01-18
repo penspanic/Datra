@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -380,12 +381,12 @@ namespace Datra.Unity.Editor.ViewModels
     public class TabViewModel
     {
         public Type DataType { get; }
-        public IDataRepository Repository { get; }
+        public IEditableRepository Repository { get; }
         public IDataContext DataContext { get; }
         public string DisplayName => DataType?.Name ?? "Unknown";
         public bool IsModified { get; set; }
 
-        public TabViewModel(Type dataType, IDataRepository repository, IDataContext dataContext)
+        public TabViewModel(Type dataType, IEditableRepository repository, IDataContext dataContext)
         {
             DataType = dataType;
             Repository = repository;

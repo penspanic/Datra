@@ -25,7 +25,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act
-            var quest = context.Quest.Values.First(q => q.Id == "quest_main_001");
+            var quest = context.Quest.LoadedItems.Values.First(q => q.Id == "quest_main_001");
 
             // Assert - Fixed locale keys (note: property names are lowercase)
             Assert.Equal("QuestData.quest_main_001.Name", quest.Name.Key);
@@ -43,7 +43,7 @@ namespace Datra.Tests
             var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
 
-            var quest = context.Quest.Values.First(q => q.Id == "quest_main_001");
+            var quest = context.Quest.LoadedItems.Values.First(q => q.Id == "quest_main_001");
 
             // Act - Get locale keys for each objective using ILocaleEvaluator
             var obj0Key = quest.GetObjectiveDescription(quest.Objectives[0]);
@@ -66,7 +66,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act & Assert - Verify all quests have valid nested locale keys
-            foreach (var quest in context.Quest.Values)
+            foreach (var quest in context.Quest.LoadedItems.Values)
             {
                 _output.WriteLine($"\nQuest: {quest.Id}");
                 _output.WriteLine($"  Name Key: {quest.Name.Key}");
@@ -95,7 +95,7 @@ namespace Datra.Tests
             var context = TestDataHelper.CreateGameDataContext();
             await context.LoadAllAsync();
 
-            var quest = context.Quest.Values.First(q => q.Id == "quest_main_002");
+            var quest = context.Quest.LoadedItems.Values.First(q => q.Id == "quest_main_002");
             var objective = quest.Objectives[1]; // Second objective
 
             // Act - Use ILocaleEvaluator interface directly
@@ -117,9 +117,9 @@ namespace Datra.Tests
             await context.LoadAllAsync();
 
             // Act & Assert - Check different quest types
-            var mainQuest = context.Quest.Values.First(q => q.Type == QuestType.Main);
-            var sideQuest = context.Quest.Values.First(q => q.Type == QuestType.Side);
-            var dailyQuest = context.Quest.Values.First(q => q.Type == QuestType.Daily);
+            var mainQuest = context.Quest.LoadedItems.Values.First(q => q.Type == QuestType.Main);
+            var sideQuest = context.Quest.LoadedItems.Values.First(q => q.Type == QuestType.Side);
+            var dailyQuest = context.Quest.LoadedItems.Values.First(q => q.Type == QuestType.Daily);
 
             _output.WriteLine($"Main Quest: {mainQuest.Id}");
             Assert.StartsWith("QuestData.quest_main_", mainQuest.Name.Key);

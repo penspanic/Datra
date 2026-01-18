@@ -31,7 +31,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act - Get an item
-            var item = context.Item.Values.FirstOrDefault();
+            var item = context.Item.LoadedItems.Values.FirstOrDefault();
             
             // Assert
             Assert.NotNull(item);
@@ -55,7 +55,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act - Get a character
-            var character = context.Character.Values.FirstOrDefault();
+            var character = context.Character.LoadedItems.Values.FirstOrDefault();
             
             // Assert
             Assert.NotNull(character);
@@ -79,7 +79,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act - Get an item and its ref
-            var item = context.Item.Values.FirstOrDefault();
+            var item = context.Item.LoadedItems.Values.FirstOrDefault();
             Assert.NotNull(item);
             
             var itemRef = item.Ref;
@@ -102,7 +102,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act - Get all items
-            var items = context.Item.Values.ToList();
+            var items = context.Item.LoadedItems.Values.ToList();
             Assert.True(items.Count > 1, "Need at least 2 items for this test");
             
             // Check that each item has a unique ref
@@ -127,7 +127,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act - Get a character and its ref
-            var character = context.Character.Values.FirstOrDefault();
+            var character = context.Character.LoadedItems.Values.FirstOrDefault();
             Assert.NotNull(character);
             
             var characterRef = character.Ref;

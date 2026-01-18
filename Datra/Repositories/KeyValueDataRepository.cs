@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,182 +9,128 @@ using Datra.Serializers;
 namespace Datra.Repositories
 {
     /// <summary>
-    /// Repository implementation for key-value table data
+    /// IRawDataProvider 기반 KeyValue Repository 구현
+    /// EditableTableRepository 확장
     /// </summary>
-    public class KeyValueDataRepository<TKey, TData> : IKeyValueDataRepository<TKey, TData>
+    public class KeyValueDataRepository<TKey, TData> : EditableTableRepository<TKey, TData>, IEditableRepository
+        where TKey : notnull
         where TData : class, ITableData<TKey>
     {
-        private Dictionary<TKey, TData> _data = null!;
-        private readonly string _filePath = null!;
-        private readonly IRawDataProvider _rawDataProvider = null!;
-        private readonly DataSerializerFactory _serializerFactory = null!;
-        private readonly Func<string, IDataSerializer, Dictionary<TKey, TData>> _deserializeFunc = null!;
-        private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string> _serializeFunc = null!;
-        private readonly Func<string, Dictionary<TKey, TData>> _csvDeserializeFunc = null!;
-        private readonly Func<Dictionary<TKey, TData>, string> _csvSerializeFunc = null!;
-        private string _loadedFilePath = null!;
+        private readonly string _filePath;
+        private readonly IRawDataProvider _rawDataProvider;
+        private readonly DataSerializerFactory? _serializerFactory;
+        private readonly Func<string, IDataSerializer, Dictionary<TKey, TData>>? _deserializeFunc;
+        private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string>? _serializeFunc;
+        private readonly Func<string, Dictionary<TKey, TData>>? _csvDeserializeFunc;
+        private readonly Func<Dictionary<TKey, TData>, string>? _csvSerializeFunc;
 
-        public KeyValueDataRepository(Dictionary<TKey, TData> data)
-        {
-            _data = data ?? new Dictionary<TKey, TData>();
-        }
+        /// <summary>
+        /// 로드된 파일 경로
+        /// </summary>
+        public string LoadedFilePath { get; private set; } = string.Empty;
 
+        string? IEditableRepository.LoadedFilePath => LoadedFilePath;
+
+        /// <summary>
+        /// 항목 수 (IEditableRepository 구현)
+        /// </summary>
+        public int ItemCount => Count;
+
+        /// <summary>
+        /// 모든 항목 열거 (IEditableRepository 구현)
+        /// </summary>
+        public IEnumerable<object> EnumerateItems() => LoadedItems.Values.Cast<object>();
+
+        /// <summary>
+        /// JSON/YAML 직렬화용 생성자
+        /// </summary>
         public KeyValueDataRepository(
             string filePath,
             IRawDataProvider rawDataProvider,
             DataSerializerFactory serializerFactory,
             Func<string, IDataSerializer, Dictionary<TKey, TData>> deserializeFunc,
-            Func<Dictionary<TKey, TData>, IDataSerializer, string> serializeFunc)
+            Func<Dictionary<TKey, TData>, IDataSerializer, string>? serializeFunc = null)
         {
             _filePath = filePath;
             _rawDataProvider = rawDataProvider;
             _serializerFactory = serializerFactory;
             _deserializeFunc = deserializeFunc;
             _serializeFunc = serializeFunc;
-            _data = new Dictionary<TKey, TData>();
         }
 
-        // CSV-specific constructor (no loader needed)
+        /// <summary>
+        /// CSV 직렬화용 생성자
+        /// </summary>
         public KeyValueDataRepository(
             string filePath,
             IRawDataProvider rawDataProvider,
             Func<string, Dictionary<TKey, TData>> csvDeserializeFunc,
-            Func<Dictionary<TKey, TData>, string> csvSerializeFunc)
+            Func<Dictionary<TKey, TData>, string>? csvSerializeFunc = null)
         {
             _filePath = filePath;
             _rawDataProvider = rawDataProvider;
             _csvDeserializeFunc = csvDeserializeFunc;
             _csvSerializeFunc = csvSerializeFunc;
-            _data = new Dictionary<TKey, TData>();
-            _serializerFactory = null!;
-            _deserializeFunc = null!;
-            _serializeFunc = null!;
         }
 
-        public IReadOnlyDictionary<TKey, TData> GetAll() => _data;
+        protected override TKey ExtractKey(TData data) => data.Id;
 
-        public TData GetById(TKey id)
+        protected override async IAsyncEnumerable<(TKey key, TData data)> LoadAllDataAsync()
         {
-            if (_data.TryGetValue(id, out var data))
-            {
-                return data;
-            }
-
-            throw new KeyNotFoundException($"Data with ID '{id}' not found.");
-        }
-
-        public TData? TryGetById(TKey id)
-        {
-            return _data.TryGetValue(id, out var data) ? data : null;
-        }
-
-        public IEnumerable<TData> Find(Func<TData, bool> predicate)
-        {
-            return _data.Values.Where(predicate);
-        }
-
-        public bool Contains(TKey id)
-        {
-            return _data.ContainsKey(id);
-        }
-
-        public int Count => _data.Count;
-
-        public string GetLoadedFilePath() => _loadedFilePath;
-
-        public async Task LoadAsync()
-        {
-            if (_rawDataProvider == null)
-                throw new InvalidOperationException("Repository was not initialized with load functionality.");
-
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
-            _loadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+            LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
 
-            // Use CSV-specific deserializer if available
+            Dictionary<TKey, TData> data;
+
             if (_csvDeserializeFunc != null)
             {
-                _data = _csvDeserializeFunc(rawData);
+                data = _csvDeserializeFunc(rawData);
             }
-            else if (_deserializeFunc != null)
+            else if (_deserializeFunc != null && _serializerFactory != null)
             {
                 var serializer = _serializerFactory.GetSerializer(_filePath);
-                _data = _deserializeFunc(rawData, serializer);
+                data = _deserializeFunc(rawData, serializer);
             }
             else
             {
                 throw new InvalidOperationException("No deserialize function available.");
             }
-        }
 
-        public void Add(TData data)
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            var key = data.Id;
-
-            // Validate key is not empty
-            if (key == null || (key is string strKey && string.IsNullOrWhiteSpace(strKey)))
-                throw new InvalidOperationException("Item ID cannot be empty.");
-
-            if (_data.ContainsKey(key))
-                throw new InvalidOperationException($"Item with ID '{key}' already exists.");
-
-            _data[key] = data;
-        }
-
-        public bool Remove(TKey key)
-        {
-            return _data.Remove(key);
-        }
-
-        public bool UpdateKey(TKey oldKey, TKey newKey)
-        {
-            // Validate new key is not empty
-            if (newKey == null || (newKey is string strKey && string.IsNullOrWhiteSpace(strKey)))
-                throw new InvalidOperationException("Item ID cannot be empty.");
-
-            if (!_data.TryGetValue(oldKey, out var data))
-                return false;
-
-            if (_data.ContainsKey(newKey) && !oldKey!.Equals(newKey))
-                throw new InvalidOperationException($"Item with ID '{newKey}' already exists.");
-
-            // If the Id property has a setter, update it
-            var idProperty = typeof(TData).GetProperty("Id");
-            if (idProperty != null && idProperty.CanWrite)
+            foreach (var kvp in data)
             {
-                _data.Remove(oldKey);
-                idProperty.SetValue(data, newKey);
-                _data[newKey] = data;
-                return true;
+                yield return (kvp.Key, kvp.Value);
             }
-
-            // If Id is read-only, we can't update the key
-            return false;
         }
 
-        public void Clear()
+        protected override Task<TData?> LoadDataAsync(TKey key)
         {
-            _data.Clear();
+            // 개별 로드는 지원하지 않음 (전체 로드 후 메모리에서 조회)
+            return Task.FromResult<TData?>(null);
         }
 
-        public async Task SaveAsync()
+        protected override async Task SaveAllDataAsync(
+            IEnumerable<(TKey key, TData data)> addedItems,
+            IEnumerable<(TKey key, TData data)> modifiedItems,
+            IEnumerable<TKey> deletedKeys)
         {
-            if (_rawDataProvider == null)
-                throw new InvalidOperationException("Repository was not initialized with save functionality.");
+            // 전체 데이터를 다시 직렬화하여 저장
+            var allData = new Dictionary<TKey, TData>();
+
+            foreach (var kvp in LoadedItems)
+            {
+                allData[kvp.Key] = kvp.Value;
+            }
 
             string rawData;
 
-            // Use CSV-specific serializer if available
             if (_csvSerializeFunc != null)
             {
-                rawData = _csvSerializeFunc(_data);
+                rawData = _csvSerializeFunc(allData);
             }
-            else if (_serializeFunc != null)
+            else if (_serializeFunc != null && _serializerFactory != null)
             {
                 var serializer = _serializerFactory.GetSerializer(_filePath);
-                rawData = _serializeFunc(_data, serializer);
+                rawData = _serializeFunc(allData, serializer);
             }
             else
             {
@@ -194,34 +139,5 @@ namespace Datra.Repositories
 
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
-
-        public IEnumerator<KeyValuePair<TKey, TData>> GetEnumerator()
-        {
-            return _data.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
-        public bool ContainsKey(TKey key)
-        {
-            return _data.ContainsKey(key);
-        }
-
-        public bool TryGetValue(TKey key, out TData value)
-        {
-            return _data.TryGetValue(key, out value);
-        }
-
-        public TData this[TKey key] => GetById(key);
-
-        public IEnumerable<TKey> Keys => _data.Keys;
-        public IEnumerable<TData> Values => _data.Values;
-
-        public IEnumerable<object> EnumerateItems() => _data.Values.Cast<object>();
-
-        public int ItemCount => _data.Count;
     }
 }

@@ -51,7 +51,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var allCharacters = context.Character.Values.ToList();
+            var allCharacters = context.Character.LoadedItems.Values.ToList();
             var firstChar = allCharacters.FirstOrDefault();
             
             // Assert
@@ -75,8 +75,8 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var allItems = context.Item.Values.ToList();
-            context.Item.TryGetValue(1001, out var item);
+            var allItems = context.Item.LoadedItems.Values.ToList();
+            var item = context.Item.TryGetLoaded(1001);
             
             // Assert
             Assert.NotEmpty(allItems);
@@ -102,7 +102,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            var config = context.GameConfig.Get();
+            var config = context.GameConfig.Current;
             
             // Assert
             Assert.NotNull(config);
@@ -123,7 +123,7 @@ namespace Datra.Tests
             await context.LoadAllAsync();
             
             // Act
-            context.Item.TryGetValue(99999, out var item); // Non-existent ID
+            var item = context.Item.TryGetLoaded(99999); // Non-existent ID
             
             // Assert
             Assert.Null(item);

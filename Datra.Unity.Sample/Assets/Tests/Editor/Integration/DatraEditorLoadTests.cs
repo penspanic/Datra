@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using Datra;
 using Datra.Interfaces;
 using Datra.Unity.Editor.Utilities;
 using NUnit.Framework;
@@ -18,7 +19,7 @@ namespace Datra.Unity.Tests.Integration
         /// <summary>
         /// Check if a repository is an IAssetRepository
         /// </summary>
-        private bool IsAssetRepository(IDataRepository repository)
+        private bool IsAssetRepository(IEditableRepository repository)
         {
             if (repository == null) return false;
             var interfaces = repository.GetType().GetInterfaces();
@@ -30,7 +31,7 @@ namespace Datra.Unity.Tests.Integration
         /// <summary>
         /// Check if a repository is a table (key-value) repository (not single, not asset)
         /// </summary>
-        private bool IsTableRepository(DataTypeInfo dataTypeInfo, IDataRepository repository)
+        private bool IsTableRepository(DataTypeInfo dataTypeInfo, IEditableRepository repository)
         {
             return dataTypeInfo.RepositoryKind == RepositoryKind.Table;
         }
@@ -142,10 +143,10 @@ namespace Datra.Unity.Tests.Integration
             var repository = window.Repositories[gameConfigType.DataType];
             Assert.IsNotNull(repository, "GameConfigData repository should exist");
 
-            var getMethod = repository.GetType().GetMethod("Get");
-            Assert.IsNotNull(getMethod, "Single repository should have Get method");
+            var currentProperty = repository.GetType().GetProperty("Current");
+            Assert.IsNotNull(currentProperty, "Single repository should have Current property");
 
-            var data = getMethod.Invoke(repository, null);
+            var data = currentProperty.GetValue(repository);
             Assert.IsNotNull(data, "GameConfigData should have data loaded");
 
             Debug.Log($"GameConfigData loaded: {data}");
@@ -171,11 +172,17 @@ namespace Datra.Unity.Tests.Integration
             var repository = window.Repositories[tableType.DataType];
             Assert.IsNotNull(repository, $"{tableType.DataType.Name} repository should exist");
 
-            var getAllMethod = repository.GetType().GetMethod("GetAll");
-            Assert.IsNotNull(getAllMethod, "Table repository should have GetAll method");
+            var loadedItemsProperty = repository.GetType().GetProperty("LoadedItems");
+            Assert.IsNotNull(loadedItemsProperty, "Table repository should have LoadedItems property");
 
-            var data = getAllMethod.Invoke(repository, null) as System.Collections.IEnumerable;
-            Assert.IsNotNull(data, $"{tableType.DataType.Name} should have data loaded");
+            var loadedItems = loadedItemsProperty.GetValue(repository);
+            Assert.IsNotNull(loadedItems, $"{tableType.DataType.Name} should have data loaded");
+
+            var valuesProperty = loadedItems.GetType().GetProperty("Values");
+            Assert.IsNotNull(valuesProperty, "LoadedItems should have Values property");
+
+            var data = valuesProperty.GetValue(loadedItems) as System.Collections.IEnumerable;
+            Assert.IsNotNull(data, $"{tableType.DataType.Name} should have data values");
 
             int count = 0;
             foreach (var item in data)
@@ -205,7 +212,7 @@ namespace Datra.Unity.Tests.Integration
             var repository = window.Repositories[assetType.DataType];
             Assert.IsNotNull(repository, "ScriptAssetData repository should exist");
 
-            // IAssetRepository implements IReadOnlyDictionary, check Count
+            // IAssetRepository has Count property (Summaries count)
             var countProperty = repository.GetType().GetProperty("Count");
             Assert.IsNotNull(countProperty, "Asset repository should have Count property");
 
@@ -214,18 +221,18 @@ namespace Datra.Unity.Tests.Integration
 
             Debug.Log($"ScriptAssetData loaded: {count} assets");
 
-            // Also verify we can iterate through Values
-            var valuesProperty = repository.GetType().GetProperty("Values");
-            Assert.IsNotNull(valuesProperty, "Asset repository should have Values property");
+            // IAssetRepository has Summaries property for iteration
+            var summariesProperty = repository.GetType().GetProperty("Summaries");
+            Assert.IsNotNull(summariesProperty, "Asset repository should have Summaries property");
 
-            var values = valuesProperty.GetValue(repository) as System.Collections.IEnumerable;
-            Assert.IsNotNull(values, "Should be able to get Values from asset repository");
+            var summaries = summariesProperty.GetValue(repository) as System.Collections.IEnumerable;
+            Assert.IsNotNull(summaries, "Should be able to get Summaries from asset repository");
 
             int iteratedCount = 0;
-            foreach (var asset in values)
+            foreach (var summary in summaries)
             {
                 iteratedCount++;
-                Debug.Log($"  Asset: {asset}");
+                Debug.Log($"  Asset Summary: {summary}");
             }
 
             Assert.AreEqual(count, iteratedCount, "Iterated count should match Count property");

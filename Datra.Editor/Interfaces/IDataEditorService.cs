@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Datra;
 using Datra.Interfaces;
 
 namespace Datra.Editor.Interfaces
@@ -20,7 +21,7 @@ namespace Datra.Editor.Interfaces
         /// <summary>
         /// All registered repositories by data type (may be empty for non-Datra implementations)
         /// </summary>
-        IReadOnlyDictionary<Type, IDataRepository> Repositories { get; }
+        IReadOnlyDictionary<Type, IEditableRepository> Repositories { get; }
 
         /// <summary>
         /// Get metadata for all registered data types
@@ -30,7 +31,7 @@ namespace Datra.Editor.Interfaces
         /// <summary>
         /// Get repository for a specific data type
         /// </summary>
-        IDataRepository? GetRepository(Type dataType);
+        IEditableRepository? GetRepository(Type dataType);
 
         /// <summary>
         /// Save data for a specific type

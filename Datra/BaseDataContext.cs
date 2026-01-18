@@ -41,8 +41,9 @@ namespace Datra
         /// <summary>
         /// Register a repository for a specific data type
         /// </summary>
-        protected void RegisterRepository<TKey, TData>(string propertyName, IDataRepository<TKey, TData> repository) 
-            where TData : class, ITableData<TKey>
+        protected void RegisterRepository<TKey, TData>(string propertyName, ITableRepository<TKey, TData> repository)
+            where TKey : notnull
+            where TData : class
         {
             Repositories[propertyName] = repository;
             Repositories[typeof(TData).FullName] = repository;
@@ -68,7 +69,7 @@ namespace Datra
         /// <summary>
         /// Register a single data repository
         /// </summary>
-        protected void RegisterSingleRepository<TData>(string propertyName, ISingleDataRepository<TData> repository)
+        protected void RegisterSingleRepository<TData>(string propertyName, ISingleRepository<TData> repository)
             where TData : class
         {
             Repositories[propertyName] = repository;
@@ -139,8 +140,8 @@ namespace Datra
             if (!type.IsGenericType) return false;
 
             var genericType = type.GetGenericTypeDefinition();
-            return genericType == typeof(IDataRepository<,>) ||
-                   genericType == typeof(ISingleDataRepository<>) ||
+            return genericType == typeof(ITableRepository<,>) ||
+                   genericType == typeof(ISingleRepository<>) ||
                    genericType == typeof(IAssetRepository<>);
         }
         

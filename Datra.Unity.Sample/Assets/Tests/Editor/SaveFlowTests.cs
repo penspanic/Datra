@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Datra;
 using Datra.Editor.Interfaces;
-using Datra.Interfaces;
 using Datra.Unity.Editor.Controllers;
 using Datra.Unity.Editor.Panels;
 using Datra.Unity.Editor.Views;
@@ -26,7 +26,7 @@ namespace Datra.Unity.Tests
             // Arrange
             var view = new TestableDataView();
             Type receivedType = null;
-            IDataRepository receivedRepo = null;
+            IEditableRepository receivedRepo = null;
 
             view.OnSaveRequested += (type, repo) =>
             {
@@ -156,7 +156,7 @@ namespace Datra.Unity.Tests
                 SaveChanges();
             }
 
-            public void SetTestData(Type type, IDataRepository repo)
+            public void SetTestData(Type type, IEditableRepository repo)
             {
                 // Use reflection to set protected fields
                 var dataTypeField = typeof(DatraDataView).GetField("dataType",
@@ -179,16 +179,18 @@ namespace Datra.Unity.Tests
         /// <summary>
         /// Mock repository for testing
         /// </summary>
-        private class MockRepository : IDataRepository
+        private class MockRepository : IEditableRepository
         {
             public bool SaveWasCalled { get; private set; }
-            public bool LoadWasCalled { get; private set; }
+            public bool InitializeWasCalled { get; private set; }
 
-            public Task LoadAsync()
+            public Task InitializeAsync()
             {
-                LoadWasCalled = true;
+                InitializeWasCalled = true;
                 return Task.CompletedTask;
             }
+
+            public bool IsInitialized => true;
 
             public Task SaveAsync()
             {
@@ -203,7 +205,7 @@ namespace Datra.Unity.Tests
 
             public int ItemCount => 0;
 
-            public string GetLoadedFilePath() => string.Empty;
+            public string? LoadedFilePath => string.Empty;
         }
 
         /// <summary>

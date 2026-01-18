@@ -4,131 +4,138 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Datra.DataTypes;
 
-namespace Datra.Interfaces
+namespace Datra
 {
     /// <summary>
-    /// Repository interface for file-based asset data.
-    /// Assets are identified by stable GUIDs from .datrameta files.
+    /// 파일 기반 Asset 데이터용 Repository
+    /// Summary 패턴: 초기화 시 메타데이터만 로드, 실제 데이터는 lazy load
+    /// 변경 추적 통합
     /// </summary>
-    /// <typeparam name="T">The asset data type</typeparam>
-    public interface IAssetRepository<T> : IDataRepository, IReadOnlyDictionary<AssetId, Asset<T>>
+    /// <typeparam name="T">Asset 데이터 타입</typeparam>
+    public interface IAssetRepository<T> : IRepository, IChangeTracking<AssetId>
         where T : class
     {
-        /// <summary>
-        /// Get asset by its stable GUID
-        /// </summary>
-        Asset<T> GetById(AssetId id);
+        // === Summary (동기 - 역직렬화 없음) ===
 
         /// <summary>
-        /// Try to get asset by its stable GUID
+        /// 총 Asset 수
         /// </summary>
-        Asset<T>? TryGetById(AssetId id);
+        int Count { get; }
 
         /// <summary>
-        /// Get asset by its file path (relative to asset folder)
+        /// 모든 Asset의 Summary 목록
         /// </summary>
-        Asset<T>? GetByPath(string filePath);
+        IEnumerable<AssetSummary> Summaries { get; }
 
         /// <summary>
-        /// Find assets matching the predicate
+        /// 특정 Asset의 Summary 조회
         /// </summary>
-        IEnumerable<Asset<T>> Find(Func<Asset<T>, bool> predicate);
+        AssetSummary? GetSummary(AssetId id);
 
         /// <summary>
-        /// Find assets by tag
+        /// 경로로 Summary 조회
         /// </summary>
-        IEnumerable<Asset<T>> FindByTag(string tag);
+        AssetSummary? GetSummaryByPath(string path);
 
         /// <summary>
-        /// Find assets by category
+        /// 이름으로 Summary 조회 (확장자 제외)
         /// </summary>
-        IEnumerable<Asset<T>> FindByCategory(string category);
+        AssetSummary? GetSummaryByName(string name);
 
         /// <summary>
-        /// Get all asset data (without metadata wrapper)
-        /// </summary>
-        IEnumerable<T> GetAllData();
-
-        /// <summary>
-        /// Check if an asset with the given GUID exists
+        /// Asset 존재 여부 (ID)
         /// </summary>
         bool Contains(AssetId id);
 
         /// <summary>
-        /// Check if an asset at the given path exists
+        /// Asset 존재 여부 (경로)
         /// </summary>
-        bool ContainsPath(string filePath);
+        bool ContainsPath(string path);
+
+        // === 읽기 (비동기 - lazy load) ===
 
         /// <summary>
-        /// Number of loaded assets
+        /// Asset 로드 (비동기)
         /// </summary>
-        new int Count { get; }
-    }
+        Task<Asset<T>?> GetAsync(AssetId id);
 
-    /// <summary>
-    /// Editable version of IAssetRepository for editor scenarios
-    /// </summary>
-    /// <typeparam name="T">The asset data type</typeparam>
-    public interface IEditableAssetRepository<T> : IAssetRepository<T>
-        where T : class
-    {
         /// <summary>
-        /// Add a new asset
+        /// 경로로 Asset 로드 (비동기)
         /// </summary>
-        /// <param name="data">The asset data</param>
-        /// <param name="filePath">Relative file path for the new asset</param>
-        /// <returns>The created asset with generated metadata</returns>
+        Task<Asset<T>?> GetByPathAsync(string path);
+
+        /// <summary>
+        /// 이름으로 Asset 로드 (비동기)
+        /// </summary>
+        Task<Asset<T>?> GetByNameAsync(string name);
+
+        /// <summary>
+        /// 조건에 맞는 Asset 검색 (Summary 기준, 비동기)
+        /// </summary>
+        Task<IEnumerable<Asset<T>>> FindAsync(Func<AssetSummary, bool> predicate);
+
+        // === 이미 로드된 데이터 (동기) ===
+
+        /// <summary>
+        /// 이미 로드된 Asset 조회 (없으면 null)
+        /// </summary>
+        Asset<T>? TryGetLoaded(AssetId id);
+
+        /// <summary>
+        /// Asset이 로드되었는지 확인
+        /// </summary>
+        bool IsLoaded(AssetId id);
+
+        /// <summary>
+        /// 로드된 모든 Asset
+        /// </summary>
+        IReadOnlyDictionary<AssetId, Asset<T>> LoadedAssets { get; }
+
+        // === 쓰기 ===
+
+        /// <summary>
+        /// 새 Asset 추가
+        /// </summary>
         Asset<T> Add(T data, string filePath);
 
         /// <summary>
-        /// Add a new asset with custom metadata
+        /// 커스텀 메타데이터로 새 Asset 추가
         /// </summary>
         Asset<T> Add(T data, AssetMetadata metadata, string filePath);
 
         /// <summary>
-        /// Update an existing asset's data
+        /// Asset 데이터 업데이트
         /// </summary>
         void Update(AssetId id, T data);
 
         /// <summary>
-        /// Update an existing asset's metadata
+        /// Asset 메타데이터 업데이트
         /// </summary>
-        void UpdateMetadata(AssetId id, Action<AssetMetadata> updateAction);
+        void UpdateMetadata(AssetId id, Action<AssetMetadata> action);
 
         /// <summary>
-        /// Remove an asset by GUID
+        /// Asset 삭제
         /// </summary>
         bool Remove(AssetId id);
 
-        /// <summary>
-        /// Remove an asset by file path
-        /// </summary>
-        bool RemoveByPath(string filePath);
+        // === Working Copy ===
 
         /// <summary>
-        /// Rename/move an asset to a new path (GUID remains stable)
+        /// 편집용 Working Copy 가져오기
+        /// 로드되지 않은 경우 로드 후 복제
         /// </summary>
-        bool Move(AssetId id, string newFilePath);
+        Asset<T> GetWorkingCopy(AssetId id);
 
         /// <summary>
-        /// Save a specific asset
-        /// </summary>
-        Task SaveAssetAsync(AssetId id);
-
-        /// <summary>
-        /// Save all modified assets
-        /// </summary>
-        new Task SaveAsync();
-
-        /// <summary>
-        /// Create a new .datrameta file for an asset that doesn't have one
-        /// </summary>
-        AssetMetadata CreateMetaFile(string assetFilePath);
-
-        /// <summary>
-        /// Mark an asset as modified (for in-place property edits).
-        /// This ensures the asset will be saved when SaveAsync() is called.
+        /// Asset을 수정됨으로 표시 (in-place 편집 시)
         /// </summary>
         void MarkAsModified(AssetId id);
+
+        // === 개별 저장 ===
+
+        /// <summary>
+        /// 특정 Asset만 저장
+        /// </summary>
+        Task SaveAsync(AssetId id);
     }
 }

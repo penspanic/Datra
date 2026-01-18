@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using Datra;
 using Datra.DataTypes;
 using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
@@ -65,11 +66,23 @@ namespace Datra.Unity.Tests
             }
 
             // Act - Create editable data source for AssetRepository
-            // Cast to IEditableAssetRepository (AssetRepository implements both interfaces)
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            // Cast to IAssetRepository (AssetRepository implements both interfaces)
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
+            // Create data source and initialize (loads all assets)
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            if (initTask.IsFaulted)
+            {
+                Assert.Fail($"InitializeAsync failed: {initTask.Exception?.InnerException?.Message ?? initTask.Exception?.Message}");
+            }
 
             // Assert
             Assert.IsFalse(dataSource.HasModifications, "Should have no modifications initially");
@@ -97,10 +110,18 @@ namespace Datra.Unity.Tests
             }
 
             // Create editable data source
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+
+            // Initialize to load all assets
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
+
             var initialCount = dataSource.EnumerateItems().Count();
 
             // Act - Add a new asset
@@ -135,10 +156,18 @@ namespace Datra.Unity.Tests
             }
 
             // Create editable data source
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+
+            // Initialize to load all assets
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
+
             var initialCount = dataSource.EnumerateItems().Count();
 
             // Get first asset's ID
@@ -157,24 +186,25 @@ namespace Datra.Unity.Tests
         }
 
         [Test]
-        public void IAssetRepository_ImplementsIReadOnlyDictionary()
+        public void IAssetRepository_HasLoadedAssetsProperty()
         {
-            // Verify that IAssetRepository<T> implements IReadOnlyDictionary
+            // Verify that IAssetRepository<T> has LoadedAssets property that returns IReadOnlyDictionary
             var repoType = typeof(IAssetRepository<ScriptAssetData>);
-            var interfaces = repoType.GetInterfaces();
+            var loadedAssetsProp = repoType.GetProperty("LoadedAssets");
 
-            var readOnlyDictInterface = interfaces.FirstOrDefault(i =>
-                i.IsGenericType &&
-                i.GetGenericTypeDefinition() == typeof(System.Collections.Generic.IReadOnlyDictionary<,>));
+            Assert.IsNotNull(loadedAssetsProp,
+                "IAssetRepository<T> should have LoadedAssets property");
 
-            Assert.IsNotNull(readOnlyDictInterface,
-                "IAssetRepository<T> should implement IReadOnlyDictionary<AssetId, Asset<T>>");
+            var propType = loadedAssetsProp.PropertyType;
+            Assert.IsTrue(propType.IsGenericType, "LoadedAssets should be a generic type");
+            Assert.AreEqual(typeof(System.Collections.Generic.IReadOnlyDictionary<,>), propType.GetGenericTypeDefinition(),
+                "LoadedAssets should be IReadOnlyDictionary<AssetId, Asset<T>>");
 
-            var genericArgs = readOnlyDictInterface.GetGenericArguments();
+            var genericArgs = propType.GetGenericArguments();
             Assert.AreEqual(typeof(AssetId), genericArgs[0], "Key type should be AssetId");
             Assert.AreEqual(typeof(Asset<ScriptAssetData>), genericArgs[1], "Value type should be Asset<T>");
 
-            Debug.Log($"IAssetRepository<T> correctly implements {readOnlyDictInterface.Name}");
+            Debug.Log($"IAssetRepository<T> correctly has LoadedAssets property of type {propType.Name}");
         }
     }
 }

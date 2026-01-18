@@ -24,7 +24,7 @@ namespace Datra.Tests
         public void Should_LoadSingleData_FromJson()
         {
             // Act
-            var gameConfig = _context.GameConfig.Get();
+            var gameConfig = _context.GameConfig.Current;
             
             // Assert
             Assert.NotNull(gameConfig);
@@ -37,7 +37,7 @@ namespace Datra.Tests
         public void Should_ParseEnum_InSingleData()
         {
             // Act
-            var gameConfig = _context.GameConfig.Get();
+            var gameConfig = _context.GameConfig.Current;
             
             // Assert
             Assert.Equal(GameMode.Normal, gameConfig.DefaultMode);
@@ -47,7 +47,7 @@ namespace Datra.Tests
         public void Should_ParseEnumArray_InSingleData()
         {
             // Act
-            var gameConfig = _context.GameConfig.Get();
+            var gameConfig = _context.GameConfig.Current;
             
             // Assert
             Assert.NotNull(gameConfig.AvailableModes);
@@ -68,7 +68,7 @@ namespace Datra.Tests
         public void Should_ParseDataRef_InSingleData()
         {
             // Act
-            var gameConfig = _context.GameConfig.Get();
+            var gameConfig = _context.GameConfig.Current;
             
             // Assert
             // DataRef is a value type, no need for null check
@@ -81,7 +81,7 @@ namespace Datra.Tests
         public void Should_ParseDataRefArray_InSingleData()
         {
             // Act
-            var gameConfig = _context.GameConfig.Get();
+            var gameConfig = _context.GameConfig.Current;
             
             // Assert
             Assert.NotNull(gameConfig.UnlockableCharacters);
@@ -143,7 +143,7 @@ namespace Datra.Tests
         public void Should_RoundTrip_SingleData()
         {
             // Arrange
-            var original = _context.GameConfig.Get();
+            var original = _context.GameConfig.Current;
             
             // Act
             string serialized = GameConfigDataSerializer.SerializeSingle(original, new JsonDataSerializer());

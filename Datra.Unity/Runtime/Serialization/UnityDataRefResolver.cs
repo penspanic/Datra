@@ -4,6 +4,9 @@ using UnityEngine;
 using Datra.DataTypes;
 using Datra.Interfaces;
 
+// ReSharper disable once RedundantUsingDirective
+using Datra;
+
 namespace Datra.Unity.Serialization
 {
     /// <summary>
@@ -90,13 +93,13 @@ namespace Datra.Unity.Serialization
             return result;
         }
         
-        private IDataRepository<TKey, TData> GetRepository<TKey, TData>() where TData : class, ITableData<TKey>
+        private ITableRepository<TKey, TData> GetRepository<TKey, TData>() where TData : class, ITableData<TKey>
         {
             var type = typeof(TData);
             
             if (_repositoryCache.TryGetValue(type, out var cached))
             {
-                return cached as IDataRepository<TKey, TData>;
+                return cached as ITableRepository<TKey, TData>;
             }
             
             // Use reflection to find the repository in the DataContext
@@ -110,7 +113,7 @@ namespace Datra.Unity.Serialization
                 if (repositories != null && repositories.TryGetValue(type.FullName, out var repository))
                 {
                     _repositoryCache[type] = repository;
-                    return repository as IDataRepository<TKey, TData>;
+                    return repository as ITableRepository<TKey, TData>;
                 }
             }
             

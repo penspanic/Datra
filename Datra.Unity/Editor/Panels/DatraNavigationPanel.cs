@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -614,7 +615,7 @@ namespace Datra.Unity.Editor.Panels
             return null;
         }
         
-        private IDataRepository GetRepositoryForType(DatraEditorWindow window, Type dataType)
+        private IEditableRepository GetRepositoryForType(DatraEditorWindow window, Type dataType)
         {
             if (window.Repositories != null && window.Repositories.TryGetValue(dataType, out var repository))
             {

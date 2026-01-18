@@ -30,10 +30,10 @@ namespace Datra.DataTypes
             if (!dataContext.Repositories.TryGetValue(typeof(T).FullName, out var repositoryObj))
                 throw new InvalidOperationException($"Repository for type {typeof(T).FullName} not found in DataContext.");
 
-            if (repositoryObj is not IDataRepository<int, T> repository)
-                throw new InvalidCastException($"Repository for type {typeof(T).FullName} is not of the expected type IRepository<int, T>.");
+            if (repositoryObj is not ITableRepository<int, T> repository)
+                throw new InvalidCastException($"Repository for type {typeof(T).FullName} is not of the expected type ITableRepository<int, T>.");
 
-            return repository.GetValueOrDefault(Value);
+            return repository.TryGetLoaded(Value);
         }
     }
 }

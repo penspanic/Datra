@@ -1,6 +1,5 @@
 #nullable enable
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,20 +12,14 @@ using Datra.Serializers;
 namespace Datra.Repositories
 {
     /// <summary>
-    /// Repository implementation for file-based asset data.
-    /// Each asset has a companion .datrameta file containing stable GUID and metadata.
-    /// Meta files are always auto-generated if missing.
-    /// Note: Uses .datrameta extension to avoid conflicts with Unity's .meta files.
+    /// IRawDataProvider 기반 Asset Repository 구현
+    /// EditableAssetRepository 확장
+    /// 각 Asset은 .datrameta 파일에 안정적인 GUID와 메타데이터를 포함
     /// </summary>
-    public class AssetRepository<T> : IEditableAssetRepository<T>
+    public class AssetRepository<T> : EditableAssetRepository<T>, IEditableRepository
         where T : class
     {
         private static string MetaExtension => AssetDataAttribute.MetaExtension;
-
-        private readonly Dictionary<AssetId, Asset<T>> _dataById = new();
-        private readonly Dictionary<string, Asset<T>> _dataByPath = new();
-        private readonly HashSet<AssetId> _modifiedAssets = new();
-        private readonly HashSet<string> _pendingFileDeletions = new();
 
         private readonly string _folderPath;
         private readonly string _filePattern;
@@ -35,7 +28,22 @@ namespace Datra.Repositories
         private readonly Func<string, IDataSerializer, T> _deserializeFunc;
         private readonly Func<T, IDataSerializer, string>? _serializeFunc;
 
-        private string _loadedFilePath = string.Empty;
+        /// <summary>
+        /// 로드된 폴더 경로
+        /// </summary>
+        public string LoadedFolderPath { get; private set; } = string.Empty;
+
+        string? IEditableRepository.LoadedFilePath => LoadedFolderPath;
+
+        /// <summary>
+        /// 항목 수 (IEditableRepository 구현)
+        /// </summary>
+        public int ItemCount => Count;
+
+        /// <summary>
+        /// 모든 항목 열거 (IEditableRepository 구현)
+        /// </summary>
+        public IEnumerable<object> EnumerateItems() => LoadedAssets.Values.Select(a => (object)a);
 
         public AssetRepository(
             string folderPath,
@@ -53,164 +61,53 @@ namespace Datra.Repositories
             _serializeFunc = serializeFunc;
         }
 
-        #region IAssetRepository Implementation
-
-        public Asset<T> GetById(AssetId id)
+        protected override async Task<IEnumerable<AssetSummary>> LoadSummariesAsync()
         {
-            if (_dataById.TryGetValue(id, out var asset))
-                return asset;
-            throw new KeyNotFoundException($"Asset with ID '{id}' not found.");
-        }
+            var summaries = new List<AssetSummary>();
+            var files = await _rawDataProvider.LoadMultipleTextAsync(_folderPath, _filePattern);
+            LoadedFolderPath = _rawDataProvider.ResolveFilePath(_folderPath);
 
-        public Asset<T>? TryGetById(AssetId id)
-        {
-            return _dataById.TryGetValue(id, out var asset) ? asset : null;
-        }
+            var metaSerializer = _serializerFactory.GetSerializer(".json");
 
-        public Asset<T>? GetByPath(string filePath)
-        {
-            var normalizedPath = NormalizePath(filePath);
-            return _dataByPath.TryGetValue(normalizedPath, out var asset) ? asset : null;
-        }
-
-        public IEnumerable<Asset<T>> Find(Func<Asset<T>, bool> predicate)
-        {
-            return _dataById.Values.Where(predicate);
-        }
-
-        public IEnumerable<Asset<T>> FindByTag(string tag)
-        {
-            return _dataById.Values.Where(a =>
-                a.Metadata.Tags != null && a.Metadata.Tags.Contains(tag, StringComparer.OrdinalIgnoreCase));
-        }
-
-        public IEnumerable<Asset<T>> FindByCategory(string category)
-        {
-            return _dataById.Values.Where(a =>
-                string.Equals(a.Metadata.Category, category, StringComparison.OrdinalIgnoreCase));
-        }
-
-        public IEnumerable<T> GetAllData()
-        {
-            return _dataById.Values.Select(a => a.Data);
-        }
-
-        public bool Contains(AssetId id) => _dataById.ContainsKey(id);
-
-        public bool ContainsPath(string filePath) => _dataByPath.ContainsKey(NormalizePath(filePath));
-
-        public int Count => _dataById.Count;
-
-        public string GetLoadedFilePath() => _loadedFilePath;
-
-        #endregion
-
-        #region IEditableAssetRepository Implementation
-
-        public Asset<T> Add(T data, string filePath)
-        {
-            var metadata = AssetMetadata.CreateNew();
-            return Add(data, metadata, filePath);
-        }
-
-        public Asset<T> Add(T data, AssetMetadata metadata, string filePath)
-        {
-            var normalizedPath = NormalizePath(filePath);
-
-            if (_dataByPath.ContainsKey(normalizedPath))
-                throw new InvalidOperationException($"Asset at path '{filePath}' already exists.");
-
-            if (_dataById.ContainsKey(metadata.Guid))
-                throw new InvalidOperationException($"Asset with ID '{metadata.Guid}' already exists.");
-
-            var asset = new Asset<T>(metadata.Guid, metadata, data, normalizedPath);
-            _dataById[metadata.Guid] = asset;
-            _dataByPath[normalizedPath] = asset;
-            _modifiedAssets.Add(metadata.Guid);
-
-            return asset;
-        }
-
-        public void Update(AssetId id, T data)
-        {
-            if (!_dataById.TryGetValue(id, out var existing))
-                throw new KeyNotFoundException($"Asset with ID '{id}' not found.");
-
-            existing.Data = data;
-            existing.Metadata.ModifiedAt = DateTime.UtcNow;
-            _modifiedAssets.Add(id);
-        }
-
-        public void UpdateMetadata(AssetId id, Action<AssetMetadata> updateAction)
-        {
-            if (!_dataById.TryGetValue(id, out var existing))
-                throw new KeyNotFoundException($"Asset with ID '{id}' not found.");
-
-            updateAction(existing.Metadata);
-            existing.Metadata.ModifiedAt = DateTime.UtcNow;
-            _modifiedAssets.Add(id);
-        }
-
-        public void MarkAsModified(AssetId id)
-        {
-            if (!_dataById.ContainsKey(id))
-                return;
-
-            _modifiedAssets.Add(id);
-        }
-
-        public bool Remove(AssetId id)
-        {
-            if (!_dataById.TryGetValue(id, out var asset))
-                return false;
-
-            // Track file for deletion on save (capture path before removing from dictionaries)
-            // Only track if file was loaded from disk (not a newly added asset)
-            if (!_modifiedAssets.Contains(id) || _rawDataProvider.Exists(Path.Combine(_folderPath, asset.FilePath)))
+            foreach (var (filePath, _) in files)
             {
-                _pendingFileDeletions.Add(asset.FilePath);
+                // Skip .meta files
+                if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var metadata = await LoadOrCreateMetadataAsync(filePath, metaSerializer);
+                var relativePath = GetRelativePath(filePath);
+                var summary = new AssetSummary(metadata.Guid, metadata, relativePath);
+                summaries.Add(summary);
             }
 
-            _dataById.Remove(id);
-            _dataByPath.Remove(asset.FilePath);
-            _modifiedAssets.Remove(id);
-            return true;
+            return summaries;
         }
 
-        public bool RemoveByPath(string filePath)
+        protected override async Task<Asset<T>?> LoadAssetAsync(AssetId id)
         {
-            var normalizedPath = NormalizePath(filePath);
-            if (!_dataByPath.TryGetValue(normalizedPath, out var asset))
-                return false;
+            var summary = GetSummary(id);
+            if (summary == null)
+                return null;
 
-            return Remove(asset.Id);
+            // Use relative path to avoid double-combining with basePath in provider
+            var relativePath = Path.Combine(_folderPath, summary.FilePath).Replace("\\", "/");
+            var serializer = _serializerFactory.GetSerializer(_filePattern);
+
+            try
+            {
+                var content = await _rawDataProvider.LoadTextAsync(relativePath);
+                var data = _deserializeFunc(content, serializer);
+                return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
-        public bool Move(AssetId id, string newFilePath)
+        protected override async Task SaveAssetAsync(Asset<T> asset)
         {
-            if (!_dataById.TryGetValue(id, out var asset))
-                return false;
-
-            var normalizedNewPath = NormalizePath(newFilePath);
-            if (_dataByPath.ContainsKey(normalizedNewPath))
-                throw new InvalidOperationException($"Asset at path '{newFilePath}' already exists.");
-
-            _dataByPath.Remove(asset.FilePath);
-
-            // Create new asset with updated path (Asset is a class, so we update in place)
-            var newAsset = new Asset<T>(asset.Id, asset.Metadata, asset.Data, normalizedNewPath);
-            _dataById[id] = newAsset;
-            _dataByPath[normalizedNewPath] = newAsset;
-
-            _modifiedAssets.Add(id);
-            return true;
-        }
-
-        public async Task SaveAssetAsync(AssetId id)
-        {
-            if (!_dataById.TryGetValue(id, out var asset))
-                throw new KeyNotFoundException($"Asset with ID '{id}' not found.");
-
             if (_serializeFunc == null)
                 throw new InvalidOperationException("Serialize function not provided.");
 
@@ -226,115 +123,19 @@ namespace Datra.Repositories
             var metaContent = metaSerializer.SerializeSingle(asset.Metadata);
             var metaPath = dataPath + MetaExtension;
             await _rawDataProvider.SaveTextAsync(metaPath, metaContent);
-
-            _modifiedAssets.Remove(id);
         }
 
-        public async Task SaveAsync()
+        protected override async Task DeleteAssetAsync(AssetId id)
         {
-            // Save modified assets
-            foreach (var id in _modifiedAssets.ToList())
-            {
-                await SaveAssetAsync(id);
-            }
+            var summary = GetSummary(id);
+            if (summary == null)
+                return;
 
-            // Delete pending files
-            foreach (var filePath in _pendingFileDeletions.ToList())
-            {
-                await DeleteAssetFilesAsync(filePath);
-            }
-            _pendingFileDeletions.Clear();
-        }
-
-        /// <summary>
-        /// Deletes an asset's data file and its companion .datrameta file
-        /// </summary>
-        private async Task DeleteAssetFilesAsync(string relativeFilePath)
-        {
-            var dataPath = Path.Combine(_folderPath, relativeFilePath);
+            var dataPath = Path.Combine(_folderPath, summary.FilePath);
             var metaPath = dataPath + MetaExtension;
 
-            // Delete data file
             await _rawDataProvider.DeleteAsync(dataPath);
-
-            // Delete meta file
             await _rawDataProvider.DeleteAsync(metaPath);
-        }
-
-        public AssetMetadata CreateMetaFile(string assetFilePath)
-        {
-            var normalizedPath = NormalizePath(assetFilePath);
-            var metadata = AssetMetadata.CreateNew();
-
-            // Extract display name from file name
-            var fileName = Path.GetFileNameWithoutExtension(assetFilePath);
-            metadata.DisplayName = fileName;
-
-            return metadata;
-        }
-
-        #endregion
-
-        #region Loading
-
-        public async Task LoadAsync()
-        {
-            var files = await _rawDataProvider.LoadMultipleTextAsync(_folderPath, _filePattern);
-            _loadedFilePath = _rawDataProvider.ResolveFilePath(_folderPath);
-
-            var serializer = _serializerFactory.GetSerializer(_filePattern);
-            var metaSerializer = _serializerFactory.GetSerializer(".json");
-
-            _dataById.Clear();
-            _dataByPath.Clear();
-            _modifiedAssets.Clear();
-            _pendingFileDeletions.Clear();
-
-            // Phase 1: Filter and deserialize data (synchronous, fast)
-            var dataEntries = new List<(string filePath, T data)>();
-            foreach (var (filePath, content) in files)
-            {
-                // Skip .meta files
-                if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                try
-                {
-                    var data = _deserializeFunc(content, serializer);
-                    if (data != null)
-                        dataEntries.Add((filePath, data));
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException(
-                        $"Failed to deserialize asset '{filePath}': {ex.Message}", ex);
-                }
-            }
-
-            // Phase 2: Load metadata in parallel (async, was the bottleneck)
-            var loadTasks = dataEntries.Select(async entry =>
-            {
-                try
-                {
-                    var metadata = await LoadOrCreateMetadataAsync(entry.filePath, metaSerializer);
-                    var relativePath = GetRelativePath(entry.filePath);
-                    return new Asset<T>(metadata.Guid, metadata, entry.data, relativePath);
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException(
-                        $"Failed to load metadata for asset '{entry.filePath}': {ex.Message}", ex);
-                }
-            }).ToList();
-
-            var assets = await Task.WhenAll(loadTasks);
-
-            // Phase 3: Add to dictionaries (synchronous)
-            foreach (var asset in assets)
-            {
-                _dataById[asset.Id] = asset;
-                _dataByPath[asset.FilePath] = asset;
-            }
         }
 
         private async Task<AssetMetadata> LoadOrCreateMetadataAsync(string dataFilePath, IDataSerializer metaSerializer)
@@ -343,7 +144,6 @@ namespace Datra.Repositories
 
             try
             {
-                // Try to load existing meta file
                 var metaContent = await _rawDataProvider.LoadTextAsync(metaPath);
                 if (!string.IsNullOrEmpty(metaContent))
                 {
@@ -357,23 +157,29 @@ namespace Datra.Repositories
                 // Meta file doesn't exist or is invalid
             }
 
-            // Create new metadata (always auto-generate)
+            // Create new metadata
+            var newMetadata = CreateMetadata(dataFilePath);
+
+            // Save the new meta file
+            try
             {
-                var metadata = CreateMetaFile(dataFilePath);
-
-                // Save the new meta file
-                try
-                {
-                    var metaContent = metaSerializer.SerializeSingle(metadata);
-                    await _rawDataProvider.SaveTextAsync(metaPath, metaContent);
-                }
-                catch
-                {
-                    // Ignore save errors - might be read-only
-                }
-
-                return metadata;
+                var metaContent = metaSerializer.SerializeSingle(newMetadata);
+                await _rawDataProvider.SaveTextAsync(metaPath, metaContent);
             }
+            catch
+            {
+                // Ignore save errors - might be read-only
+            }
+
+            return newMetadata;
+        }
+
+        private AssetMetadata CreateMetadata(string assetFilePath)
+        {
+            var metadata = AssetMetadata.CreateNew();
+            var fileName = Path.GetFileNameWithoutExtension(assetFilePath);
+            metadata.DisplayName = fileName;
+            return metadata;
         }
 
         private string GetRelativePath(string fullPath)
@@ -386,48 +192,5 @@ namespace Datra.Repositories
             }
             return Path.GetFileName(fullPath);
         }
-
-        private static string NormalizePath(string path)
-        {
-            return path.Replace('\\', '/').TrimStart('/');
-        }
-
-        #endregion
-
-        #region IReadOnlyDictionary Implementation
-
-        public Asset<T> this[AssetId key] => GetById(key);
-
-        public IEnumerable<AssetId> Keys => _dataById.Keys;
-
-        public IEnumerable<Asset<T>> Values => _dataById.Values;
-
-        public bool ContainsKey(AssetId key) => _dataById.ContainsKey(key);
-
-        public bool TryGetValue(AssetId key, out Asset<T> value)
-        {
-            return _dataById.TryGetValue(key, out value!);
-        }
-
-        public IEnumerator<KeyValuePair<AssetId, Asset<T>>> GetEnumerator()
-        {
-            return _dataById.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        #endregion
-
-        #region IDataRepository Common Methods
-
-        /// <summary>
-        /// Enumerate all Asset wrappers (not raw data).
-        /// Returns Asset&lt;T&gt; objects so views can access both Id and Data.
-        /// </summary>
-        public IEnumerable<object> EnumerateItems() => _dataById.Values.Cast<object>();
-
-        public int ItemCount => _dataById.Count;
-
-        #endregion
     }
 }

@@ -3,8 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Datra.Editor.Interfaces;
+using Datra;
 using Datra.Interfaces;
+using Datra.Editor.Interfaces;
 using Datra.Localization;
 using Datra.Services;
 using Datra.Unity.Editor.Services;
@@ -27,11 +28,11 @@ namespace Datra.Unity.Tests
         /// </summary>
         private class MockDataEditorService : IDataEditorService
         {
-            public IDataContext DataContext => null;
-            public IReadOnlyDictionary<Type, IDataRepository> Repositories { get; } = new Dictionary<Type, IDataRepository>();
+            public IDataContext? DataContext => null;
+            public IReadOnlyDictionary<Type, IEditableRepository> Repositories { get; } = new Dictionary<Type, IEditableRepository>();
 
-            public event Action<Type> OnDataChanged;
-            public event Action<Type, bool> OnModifiedStateChanged;
+            public event Action<Type>? OnDataChanged;
+            public event Action<Type, bool>? OnModifiedStateChanged;
 
             public bool SaveWasCalled { get; private set; }
             public bool SaveAllWasCalled { get; private set; }
@@ -48,7 +49,7 @@ namespace Datra.Unity.Tests
             }
 
             public IReadOnlyList<DataTypeInfo> GetDataTypeInfos() => _dataTypeInfos;
-            public IDataRepository GetRepository(Type dataType) => null;
+            public IEditableRepository? GetRepository(Type dataType) => null;
 
             public Task<bool> SaveAsync(Type dataType, bool forceSave = false)
             {

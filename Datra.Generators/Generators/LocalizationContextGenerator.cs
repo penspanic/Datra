@@ -45,8 +45,8 @@ namespace Datra.Generators.Generators
             // Private fields
             builder.AppendLine("private readonly IRawDataProvider _rawDataProvider;");
             builder.AppendLine("private readonly DataSerializerFactory _serializerFactory;");
-            builder.AppendLine("private readonly Dictionary<string, IDataRepository<string, LocalizationData>> _languageRepositories;");
-            builder.AppendLine("private IDataRepository<string, LocalizationKeyData> _keyRepository;");
+            builder.AppendLine("private readonly Dictionary<string, ITableRepository<string, LocalizationData>> _languageRepositories;");
+            builder.AppendLine("private ITableRepository<string, LocalizationKeyData> _keyRepository;");
             builder.AppendLine("private Dictionary<string, LocalizationData> _currentLanguageData;");
             builder.AppendLine("private string _currentLanguage;");
             builder.AddBlankLine();
@@ -90,7 +90,7 @@ namespace Datra.Generators.Generators
             builder.BeginBlock();
             builder.AppendLine("_rawDataProvider = rawDataProvider ?? throw new ArgumentNullException(nameof(rawDataProvider));");
             builder.AppendLine("_serializerFactory = serializerFactory ?? new DataSerializerFactory();");
-            builder.AppendLine("_languageRepositories = new Dictionary<string, IDataRepository<string, LocalizationData>>();");
+            builder.AppendLine("_languageRepositories = new Dictionary<string, ITableRepository<string, LocalizationData>>();");
             builder.AppendLine("_currentLanguageData = new Dictionary<string, LocalizationData>();");
             builder.EndBlock();
         }

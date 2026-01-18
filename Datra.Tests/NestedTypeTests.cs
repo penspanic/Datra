@@ -19,7 +19,7 @@ namespace Datra.Tests
         public void Should_DeserializeNestedType_FromCsv()
         {
             // Arrange & Act - data loaded in constructor
-            var hero1 = _context.Character["hero_001"];
+            var hero1 = _context.Character.LoadedItems["hero_001"];
 
             // Assert - hero_001 has TestPooledPrefab data
             Assert.Equal("Assets/Prefabs/Skills/Slash.prefab", hero1.TestPooledPrefab.Path);
@@ -31,10 +31,10 @@ namespace Datra.Tests
         public void Should_DeserializeNestedType_WithDifferentValues()
         {
             // Arrange & Act
-            var hero2 = _context.Character["hero_002"];
-            var hero3 = _context.Character["hero_003"];
-            var hero4 = _context.Character["hero_004"];
-            var hero5 = _context.Character["hero_005"];
+            var hero2 = _context.Character.LoadedItems["hero_002"];
+            var hero3 = _context.Character.LoadedItems["hero_003"];
+            var hero4 = _context.Character.LoadedItems["hero_004"];
+            var hero5 = _context.Character.LoadedItems["hero_005"];
 
             // Assert hero_002
             Assert.Equal("Assets/Prefabs/Skills/Fireball.prefab", hero2.TestPooledPrefab.Path);
@@ -61,7 +61,7 @@ namespace Datra.Tests
         public void Should_DeserializeNestedType_WithEmptyValues()
         {
             // Arrange & Act - hero_006 has no TestPooledPrefab data
-            var hero6 = _context.Character["hero_006"];
+            var hero6 = _context.Character.LoadedItems["hero_006"];
 
             // Assert - empty/default values
             Assert.Equal(string.Empty, hero6.TestPooledPrefab.Path ?? string.Empty);
@@ -168,7 +168,7 @@ namespace Datra.Tests
         public void Should_PreserveOtherFields_WithNestedType()
         {
             // Arrange & Act
-            var hero1 = _context.Character["hero_001"];
+            var hero1 = _context.Character.LoadedItems["hero_001"];
 
             // Assert - Other fields should still work
             Assert.Equal("hero_001", hero1.Id);

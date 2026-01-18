@@ -23,7 +23,7 @@ namespace Datra.Editor.DataSources
     {
         private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
 
-        private readonly IEditableAssetRepository<T> _repository;
+        private readonly IAssetRepository<T> _repository;
 
         // Baseline snapshot (represents saved state)
         private readonly Dictionary<AssetId, Asset<T>> _baseline = new();
@@ -47,13 +47,29 @@ namespace Datra.Editor.DataSources
 
         public event Action<bool>? OnModifiedStateChanged;
 
-        public EditableAssetDataSource(IEditableAssetRepository<T> repository)
+        public EditableAssetDataSource(IAssetRepository<T> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             InitializeBaseline();
         }
 
         #region Initialization
+
+        /// <summary>
+        /// Initialize the data source by loading all assets.
+        /// Call this after context.LoadAllAsync() to populate the baseline.
+        /// </summary>
+        public async Task InitializeAsync()
+        {
+            // Load all assets from summaries
+            foreach (var summary in _repository.Summaries)
+            {
+                await _repository.GetAsync(summary.Id);
+            }
+
+            // Refresh baseline now that all assets are loaded
+            InitializeBaseline();
+        }
 
         private void InitializeBaseline()
         {
@@ -64,7 +80,7 @@ namespace Datra.Editor.DataSources
             _modifiedKeys.Clear();
             _propertyChanges.Clear();
 
-            foreach (var asset in _repository.Values)
+            foreach (var asset in _repository.LoadedAssets.Values)
             {
                 _baseline[asset.Id] = CloneAsset(asset);
             }
@@ -487,7 +503,7 @@ namespace Datra.Editor.DataSources
                 if (_workingCopies.TryGetValue(key, out var modifiedAsset))
                 {
                     // Get the actual repository asset and update its Data
-                    var repoAsset = _repository.TryGetById(key);
+                    var repoAsset = _repository.TryGetLoaded(key);
                     if (repoAsset != null)
                     {
                         CopyDataProperties(modifiedAsset.Data, repoAsset.Data);

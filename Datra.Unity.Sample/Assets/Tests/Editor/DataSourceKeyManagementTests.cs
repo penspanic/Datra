@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Datra;
+using Datra.Interfaces;
 using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
-using Datra.Interfaces;
 using NUnit.Framework;
 
 namespace Datra.Unity.Tests
@@ -34,72 +36,139 @@ namespace Datra.Unity.Tests
 
         #region Mock Repositories
 
-        private class MockTableRepository : IKeyValueDataRepository<string, TestTableData>
+        private class MockTableRepository : ITableRepository<string, TestTableData>
         {
             private readonly Dictionary<string, TestTableData> _data = new();
+            private readonly Dictionary<string, TestTableData> _baseline = new();
+            private readonly HashSet<string> _addedKeys = new();
+            private readonly HashSet<string> _modifiedKeys = new();
+            private readonly HashSet<string> _deletedKeys = new();
 
             public void AddItem(string id, string name, int value)
             {
-                _data[id] = new TestTableData { Id = id, Name = name, Value = value };
+                var item = new TestTableData { Id = id, Name = name, Value = value };
+                _data[id] = item;
+                _baseline[id] = new TestTableData { Id = id, Name = name, Value = value };
             }
 
-            public IReadOnlyDictionary<string, TestTableData> GetAll() => _data;
-            public TestTableData GetById(string id) => _data[id];
-            public TestTableData TryGetById(string id) => _data.TryGetValue(id, out var v) ? v : null;
-            public bool Contains(string id) => _data.ContainsKey(id);
-            public int Count => _data.Count;
-            public void Add(TestTableData item) => _data[item.Id] = item;
-            public bool Remove(string key) => _data.Remove(key);
-            public bool UpdateKey(string oldKey, string newKey)
+            // IRepository
+            public Task InitializeAsync() => Task.CompletedTask;
+            public bool IsInitialized => true;
+
+            // ITableRepository - Metadata
+            public int Count => _data.Count - _deletedKeys.Count;
+            public bool Contains(string key) => _data.ContainsKey(key) && !_deletedKeys.Contains(key);
+            public IEnumerable<string> Keys => _data.Keys.Where(k => !_deletedKeys.Contains(k));
+
+            // ITableRepository - Reading (async)
+            public Task<TestTableData?> GetAsync(string key) => Task.FromResult(TryGetLoaded(key));
+            public Task<IReadOnlyDictionary<string, TestTableData>> GetAllAsync() => Task.FromResult<IReadOnlyDictionary<string, TestTableData>>(_data);
+            public Task<IEnumerable<TestTableData>> FindAsync(Func<TestTableData, bool> predicate) =>
+                Task.FromResult(_data.Values.Where(predicate));
+
+            // ITableRepository - Loaded data (sync)
+            public TestTableData? TryGetLoaded(string key) => _data.TryGetValue(key, out var v) && !_deletedKeys.Contains(key) ? v : null;
+            public IReadOnlyDictionary<string, TestTableData> LoadedItems => _data;
+
+            // ITableRepository - Writing
+            public void Add(TestTableData data) => Add(data.Id, data);
+            public void Add(string key, TestTableData data)
             {
-                if (!_data.TryGetValue(oldKey, out var item)) return false;
-                _data.Remove(oldKey);
-                item.Id = newKey;
-                _data[newKey] = item;
-                return true;
+                _data[key] = data;
+                _addedKeys.Add(key);
             }
-            public void Clear() => _data.Clear();
+            public void Update(string key, TestTableData data)
+            {
+                _data[key] = data;
+                if (!_addedKeys.Contains(key)) _modifiedKeys.Add(key);
+            }
+            public void Remove(string key) => _deletedKeys.Add(key);
 
-            public Task LoadAsync() => Task.CompletedTask;
+            // ITableRepository - Working Copy
+            public TestTableData GetWorkingCopy(string key) => _data[key];
+            public void MarkAsModified(string key) { if (!_addedKeys.Contains(key)) _modifiedKeys.Add(key); }
+
+            // IChangeTracking
+            public bool HasChanges => _addedKeys.Count > 0 || _modifiedKeys.Count > 0 || _deletedKeys.Count > 0;
+            public void Revert()
+            {
+                foreach (var key in _addedKeys) _data.Remove(key);
+                foreach (var key in _modifiedKeys.Where(k => _baseline.ContainsKey(k)))
+                    _data[key] = new TestTableData { Id = _baseline[key].Id, Name = _baseline[key].Name, Value = _baseline[key].Value };
+                _addedKeys.Clear();
+                _modifiedKeys.Clear();
+                _deletedKeys.Clear();
+            }
             public Task SaveAsync() => Task.CompletedTask;
-            public string GetLoadedFilePath() => "mock://test.csv";
-            public IEnumerable<object> EnumerateItems() => _data.Values;
-            public int ItemCount => _data.Count;
-            public IEnumerable<TestTableData> Find(Func<TestTableData, bool> predicate)
-            {
-                foreach (var item in _data.Values)
-                    if (predicate(item))
-                        yield return item;
-            }
+            public event Action<bool>? OnModifiedStateChanged;
 
-            public bool ContainsKey(string key) => _data.ContainsKey(key);
-            public bool TryGetValue(string key, out TestTableData value) => _data.TryGetValue(key, out value);
-            public TestTableData this[string key] => _data[key];
-            public IEnumerable<string> Keys => _data.Keys;
-            public IEnumerable<TestTableData> Values => _data.Values;
-            int System.Collections.Generic.IReadOnlyCollection<KeyValuePair<string, TestTableData>>.Count => _data.Count;
-            public IEnumerator<KeyValuePair<string, TestTableData>> GetEnumerator() => _data.GetEnumerator();
-            System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+            // IChangeTracking<TKey>
+            public ChangeState GetState(string key)
+            {
+                if (_addedKeys.Contains(key)) return ChangeState.Added;
+                if (_deletedKeys.Contains(key)) return ChangeState.Deleted;
+                if (_modifiedKeys.Contains(key)) return ChangeState.Modified;
+                return ChangeState.Unchanged;
+            }
+            public IEnumerable<string> GetChangedKeys() => _addedKeys.Concat(_modifiedKeys).Concat(_deletedKeys);
+            public IEnumerable<string> GetAddedKeys() => _addedKeys;
+            public IEnumerable<string> GetModifiedKeys() => _modifiedKeys;
+            public IEnumerable<string> GetDeletedKeys() => _deletedKeys;
+            public TData? GetBaseline<TData>(string key) where TData : class =>
+                _baseline.TryGetValue(key, out var v) ? v as TData : null;
+            public bool IsPropertyModified(string key, string propertyName) => _modifiedKeys.Contains(key);
+            public IEnumerable<string> GetModifiedProperties(string key) => _modifiedKeys.Contains(key) ? new[] { "Name", "Value" } : Array.Empty<string>();
+            public object? GetPropertyBaseline(string key, string propertyName) => null;
+            public void TrackPropertyChange(string key, string propertyName, object? newValue) { if (!_addedKeys.Contains(key)) _modifiedKeys.Add(key); }
+            public void Revert(string key)
+            {
+                if (_addedKeys.Contains(key)) { _data.Remove(key); _addedKeys.Remove(key); }
+                else if (_baseline.TryGetValue(key, out var v)) { _data[key] = new TestTableData { Id = v.Id, Name = v.Name, Value = v.Value }; _modifiedKeys.Remove(key); }
+                _deletedKeys.Remove(key);
+            }
+            public void RevertProperty(string key, string propertyName) => Revert(key);
         }
 
-        private class MockSingleRepository : ISingleDataRepository<TestSingleData>
+        private class MockSingleRepository : ISingleRepository<TestSingleData>
         {
-            private TestSingleData _data;
+            private TestSingleData? _data;
+            private TestSingleData? _baseline;
 
-            public void SetInitialData(TestSingleData data) => _data = data;
+            public void SetInitialData(TestSingleData data)
+            {
+                _data = data;
+                _baseline = new TestSingleData { Title = data.Title, Count = data.Count };
+            }
 
-            public bool IsLoaded => _data != null;
-            public TestSingleData Get() => _data ?? throw new InvalidOperationException("Not loaded");
-            public void Set(TestSingleData data) => _data = data;
-            public Task LoadAsync()
+            // IRepository
+            public Task InitializeAsync()
             {
                 _data = new TestSingleData { Title = "Default", Count = 0 };
+                _baseline = new TestSingleData { Title = "Default", Count = 0 };
                 return Task.CompletedTask;
             }
+            public bool IsInitialized => _data != null;
+
+            // ISingleRepository - Reading
+            public Task<TestSingleData?> GetAsync() => Task.FromResult(_data);
+            public TestSingleData? Current => _data;
+
+            // ISingleRepository - Writing
+            public void Set(TestSingleData data) => _data = data;
+
+            // ISingleRepository - Change tracking
+            public TestSingleData? Baseline => _baseline;
+            public bool IsPropertyModified(string propertyName) => false;
+            public IEnumerable<string> GetModifiedProperties() => Array.Empty<string>();
+            public object? GetPropertyBaseline(string propertyName) => null;
+            public void TrackPropertyChange(string propertyName, object? newValue) { }
+            public void RevertProperty(string propertyName) { }
+
+            // IChangeTracking
+            public bool HasChanges => false;
+            public void Revert() { if (_baseline != null) _data = new TestSingleData { Title = _baseline.Title, Count = _baseline.Count }; }
             public Task SaveAsync() => Task.CompletedTask;
-            public string GetLoadedFilePath() => "mock://single.json";
-            public IEnumerable<object> EnumerateItems() => _data != null ? new[] { _data } : Array.Empty<object>();
-            public int ItemCount => _data != null ? 1 : 0;
+            public event Action<bool>? OnModifiedStateChanged;
         }
 
         #endregion

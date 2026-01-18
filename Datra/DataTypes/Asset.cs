@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.IO;
+using Newtonsoft.Json;
 
 namespace Datra.DataTypes
 {
@@ -51,6 +52,7 @@ namespace Datra.DataTypes
             return Id.ToString();
         }
 
+        [JsonConstructor]
         public Asset(AssetId id, AssetMetadata metadata, T data, string filePath)
         {
             Id = id;

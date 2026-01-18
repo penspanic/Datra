@@ -1,3 +1,4 @@
+using Datra;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -130,7 +131,7 @@ namespace Datra.Unity.Editor.Views
 
         public override void SetData(
             Type type,
-            IDataRepository repo,
+            IEditableRepository repo,
             IDataContext context,
             IEditableDataSource source,
             Datra.Services.LocalizationContext localizationCtx = null,

@@ -8,30 +8,24 @@ using Datra.Serializers;
 namespace Datra.Repositories
 {
     /// <summary>
-    /// Repository implementation for single data
+    /// IRawDataProvider 기반 SingleRepository 구현
+    /// EditableSingleRepository 확장
     /// </summary>
-    public class SingleDataRepository<TData> : ISingleDataRepository<TData>
+    public class SingleDataRepository<TData> : EditableSingleRepository<TData>, IEditableRepository
         where TData : class
     {
-        private TData _data = null!;
-        private readonly string _filePath = null!;
-        private readonly IRawDataProvider _rawDataProvider = null!;
-        private readonly DataSerializerFactory _serializerFactory = null!;
-        private readonly Func<string, IDataSerializer, TData> _deserializeFunc = null!;
-        private readonly Func<TData, IDataSerializer, string> _serializeFunc = null!;
-        private string _loadedFilePath = null!;
-
-        public SingleDataRepository(TData data)
-        {
-            _data = data;
-        }
+        private readonly string _filePath;
+        private readonly IRawDataProvider _rawDataProvider;
+        private readonly DataSerializerFactory _serializerFactory;
+        private readonly Func<string, IDataSerializer, TData> _deserializeFunc;
+        private readonly Func<TData, IDataSerializer, string>? _serializeFunc;
 
         public SingleDataRepository(
             string filePath,
             IRawDataProvider rawDataProvider,
             DataSerializerFactory serializerFactory,
             Func<string, IDataSerializer, TData> deserializeFunc,
-            Func<TData, IDataSerializer, string> serializeFunc)
+            Func<TData, IDataSerializer, string>? serializeFunc = null)
         {
             _filePath = filePath;
             _rawDataProvider = rawDataProvider;
@@ -40,57 +34,43 @@ namespace Datra.Repositories
             _serializeFunc = serializeFunc;
         }
 
-        public TData Get()
-        {
-            if (_data == null)
-            {
-                throw new InvalidOperationException("Data has not been loaded.");
-            }
+        /// <summary>
+        /// 로드된 파일 경로
+        /// </summary>
+        public string LoadedFilePath { get; private set; } = string.Empty;
 
-            return _data;
+        string? IEditableRepository.LoadedFilePath => LoadedFilePath;
+
+        /// <summary>
+        /// 항목 수 (IEditableRepository 구현) - Single이므로 0 또는 1
+        /// </summary>
+        public int ItemCount => Current != null ? 1 : 0;
+
+        /// <summary>
+        /// 모든 항목 열거 (IEditableRepository 구현)
+        /// </summary>
+        public IEnumerable<object> EnumerateItems()
+        {
+            if (Current != null)
+                yield return Current;
         }
 
-        public bool IsLoaded => _data != null;
-
-        public string GetLoadedFilePath() => _loadedFilePath;
-
-        internal void SetData(TData data)
+        protected override async Task<TData?> LoadDataAsync()
         {
-            _data = data;
-        }
-
-        public void Set(TData data)
-        {
-            _data = data ?? throw new ArgumentNullException(nameof(data));
-        }
-
-        public async Task LoadAsync()
-        {
-            if (_rawDataProvider == null || _deserializeFunc == null)
-                throw new InvalidOperationException("Repository was not initialized with load functionality.");
-
             var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
-            _loadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+            LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
             var serializer = _serializerFactory.GetSerializer(_filePath);
-            _data = _deserializeFunc(rawData, serializer);
+            return _deserializeFunc(rawData, serializer);
         }
 
-        public async Task SaveAsync()
+        protected override async Task SaveDataAsync(TData data)
         {
-            if (_rawDataProvider == null || _serializeFunc == null)
+            if (_serializeFunc == null)
                 throw new InvalidOperationException("Repository was not initialized with save functionality.");
 
             var serializer = _serializerFactory.GetSerializer(_filePath);
-            var rawData = _serializeFunc(_data, serializer);
+            var rawData = _serializeFunc(data, serializer);
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
         }
-
-        public IEnumerable<object> EnumerateItems()
-        {
-            if (_data != null)
-                yield return _data;
-        }
-
-        public int ItemCount => _data != null ? 1 : 0;
     }
 }

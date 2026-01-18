@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Datra;
 using Datra.DataTypes;
 using Datra.Editor.DataSources;
 using Datra.Editor.Interfaces;
@@ -43,10 +44,17 @@ namespace Datra.Unity.Tests
             }
 
             // Act - Create EditableAssetDataSource for the repository
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
+
+            // Initialize to load all assets
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
 
             // Assert
             Assert.IsNotNull(dataSource, "Should create a valid data source");
@@ -76,11 +84,18 @@ namespace Datra.Unity.Tests
             }
 
             // Create data source
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
             Assert.IsNotNull(dataSource);
+
+            // Initialize to load all assets
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
 
             var initialCount = dataSource.EnumerateItems().Count();
 
@@ -120,8 +135,8 @@ namespace Datra.Unity.Tests
                 Assert.Fail($"LoadAllAsync failed: {loadTask.Exception?.InnerException?.Message ?? loadTask.Exception?.Message}");
             }
 
-            var editableRepo = context.ScriptAsset as IEditableAssetRepository<ScriptAssetData>;
-            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IEditableAssetRepository");
+            var editableRepo = context.ScriptAsset as IAssetRepository<ScriptAssetData>;
+            Assert.IsNotNull(editableRepo, "ScriptAsset should implement IAssetRepository");
 
             if (context.ScriptAsset.Count < 1)
             {
@@ -131,6 +146,13 @@ namespace Datra.Unity.Tests
 
             var dataSource = new EditableAssetDataSource<ScriptAssetData>(editableRepo);
             Assert.IsNotNull(dataSource);
+
+            // Initialize to load all assets
+            var initTask = dataSource.InitializeAsync();
+            while (!initTask.IsCompleted)
+            {
+                yield return null;
+            }
 
             // Get existing asset
             var existingAsset = dataSource.EnumerateItems().First().Value;

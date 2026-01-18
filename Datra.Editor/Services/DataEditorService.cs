@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
 
@@ -15,12 +16,12 @@ namespace Datra.Editor.Services
     public class DataEditorService : IDataEditorService
     {
         private readonly IChangeTrackingService _changeTracker;
-        private readonly Dictionary<Type, IDataRepository> _repositories = new();
+        private readonly Dictionary<Type, IEditableRepository> _repositories = new();
         private readonly Dictionary<Type, DataFilePath> _typeToFilePath = new();
         private readonly Dictionary<DataFilePath, Type> _filePathToType = new();
 
         public IDataContext DataContext { get; }
-        public IReadOnlyDictionary<Type, IDataRepository> Repositories => _repositories;
+        public IReadOnlyDictionary<Type, IEditableRepository> Repositories => _repositories;
 
         public event Action<Type>? OnDataChanged;
         public event Action<Type, bool>? OnModifiedStateChanged;
@@ -43,7 +44,7 @@ namespace Datra.Editor.Services
         /// <summary>
         /// Register a repository for a data type with file path tracking
         /// </summary>
-        public void RegisterRepository(Type dataType, IDataRepository repository, DataFilePath filePath, Func<string> contentProvider)
+        public void RegisterRepository(Type dataType, IEditableRepository repository, DataFilePath filePath, Func<string> contentProvider)
         {
             _repositories[dataType] = repository;
             _typeToFilePath[dataType] = filePath;
@@ -56,7 +57,7 @@ namespace Datra.Editor.Services
             return DataContext.GetDataTypeInfos();
         }
 
-        public IDataRepository? GetRepository(Type dataType)
+        public IEditableRepository? GetRepository(Type dataType)
         {
             return _repositories.TryGetValue(dataType, out var repo) ? repo : null;
         }
@@ -79,7 +80,11 @@ namespace Datra.Editor.Services
 
             try
             {
-                await repository.SaveAsync();
+                // Use IChangeTracking.SaveAsync() if available
+                if (repository is IChangeTracking changeTracking)
+                {
+                    await changeTracking.SaveAsync();
+                }
 
                 // Update baseline after successful save
                 if (_typeToFilePath.TryGetValue(dataType, out var filePath))
@@ -118,7 +123,7 @@ namespace Datra.Editor.Services
 
             try
             {
-                await repository.LoadAsync();
+                await repository.InitializeAsync();
 
                 // Reset baseline after reload
                 if (_typeToFilePath.TryGetValue(dataType, out var filePath))
