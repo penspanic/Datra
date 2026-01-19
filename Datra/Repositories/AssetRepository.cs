@@ -66,25 +66,24 @@ namespace Datra.Repositories
 
         protected override async Task<IEnumerable<AssetSummary>> LoadSummariesAsync()
         {
-            var summaries = new List<AssetSummary>();
             // Use ListFilesAsync instead of LoadMultipleTextAsync to avoid loading file contents
             var files = await _rawDataProvider.ListFilesAsync(_folderPath, _filePattern);
             LoadedFolderPath = _rawDataProvider.ResolveFilePath(_folderPath);
 
             var metaSerializer = _serializerFactory.GetSerializer(".json");
 
-            foreach (var filePath in files)
-            {
-                // Skip .meta files
-                if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
-                    continue;
+            // Filter out .meta files first
+            var dataFiles = files.Where(f => !f.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase)).ToList();
 
+            // Load all metadata in parallel
+            var tasks = dataFiles.Select(async filePath =>
+            {
                 var metadata = await LoadOrCreateMetadataAsync(filePath, metaSerializer);
                 var relativePath = GetRelativePath(filePath);
-                var summary = new AssetSummary(metadata.Guid, metadata, relativePath);
-                summaries.Add(summary);
-            }
+                return new AssetSummary(metadata.Guid, metadata, relativePath);
+            });
 
+            var summaries = await Task.WhenAll(tasks);
             return summaries;
         }
 
