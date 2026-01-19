@@ -150,7 +150,8 @@ namespace Datra.Repositories
 
         private async Task<AssetMetadata> LoadOrCreateMetadataAsync(string dataFilePath, IDataSerializer metaSerializer)
         {
-            var metaPath = dataFilePath + MetaExtension;
+            // Include _folderPath to match Addressables address structure
+            var metaPath = Path.Combine(_folderPath, dataFilePath + MetaExtension).Replace("\\", "/");
 
             try
             {

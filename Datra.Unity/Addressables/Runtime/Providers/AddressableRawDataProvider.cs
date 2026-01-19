@@ -103,6 +103,49 @@ namespace Datra.Unity.Addressables.Runtime.Providers
             return $"Addressables/{path}";
         }
 
+        /// <summary>
+        /// List files by Addressables label.
+        /// Returns the Addressable addresses (with extensions) for proper loading.
+        /// </summary>
+        public async Task<IReadOnlyList<string>> ListFilesAsync(string folderPathOrLabel, string pattern = "*.json")
+        {
+            var result = new List<string>();
+
+            // In Addressables, folderPathOrLabel is treated as a label
+            var label = folderPathOrLabel;
+            if (!string.IsNullOrEmpty(_basePath))
+            {
+                label = CombinePath(_basePath, folderPathOrLabel);
+            }
+
+            // Load resource locations for the label to get actual addresses
+            var handle = global::UnityEngine.AddressableAssets.Addressables.LoadResourceLocationsAsync(label);
+            var locations = await handle.Task;
+
+            if (locations != null)
+            {
+                foreach (var location in locations)
+                {
+                    // PrimaryKey is the Addressable address (e.g., "Oratia/Graphs/prologue001.yaml")
+                    // Extract just the filename part after the label/folder path
+                    var address = location.PrimaryKey;
+                    if (!string.IsNullOrEmpty(address))
+                    {
+                        // Remove the label prefix to get the relative filename
+                        var fileName = address;
+                        if (address.StartsWith(label))
+                        {
+                            fileName = address.Substring(label.Length).TrimStart('/');
+                        }
+                        result.Add(fileName);
+                    }
+                }
+            }
+
+            global::UnityEngine.AddressableAssets.Addressables.Release(handle);
+            return result;
+        }
+
         private string CombinePath(string basePath, string path)
         {
             if (string.IsNullOrEmpty(basePath))
