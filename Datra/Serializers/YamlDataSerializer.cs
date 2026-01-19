@@ -14,53 +14,19 @@ namespace Datra.Serializers
     {
         private readonly IDeserializer _deserializer;
         private readonly ISerializer _serializer;
-        private readonly HashSet<Type> _polymorphicBaseTypes;
 
         /// <summary>
-        /// Creates a new YamlDataSerializer with default settings.
+        /// Creates a new YamlDataSerializer with optional polymorphic type support and custom converters.
         /// </summary>
-        public YamlDataSerializer() : this(null)
+        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Null for no polymorphism.</param>
+        /// <param name="customConverters">Custom type converters to register. These take priority over built-in polymorphic handling.</param>
+        public YamlDataSerializer(
+            IEnumerable<Type>? polymorphicBaseTypes = null,
+            IEnumerable<IYamlTypeConverter>? customConverters = null)
         {
+            _deserializer = DatraYamlSettings.CreateDeserializer(polymorphicBaseTypes, customConverters);
+            _serializer = DatraYamlSettings.CreateSerializer(polymorphicBaseTypes, customConverters);
         }
-
-        /// <summary>
-        /// Creates a new YamlDataSerializer with the specified polymorphic base types.
-        /// </summary>
-        /// <param name="polymorphicBaseTypes">Base types that should be serialized with $type field for polymorphism.</param>
-        public YamlDataSerializer(IEnumerable<Type>? polymorphicBaseTypes)
-        {
-            _polymorphicBaseTypes = polymorphicBaseTypes != null
-                ? new HashSet<Type>(polymorphicBaseTypes)
-                : new HashSet<Type>();
-
-            _deserializer = DatraYamlSettings.CreateDeserializer(_polymorphicBaseTypes);
-            _serializer = DatraYamlSettings.CreateSerializer(_polymorphicBaseTypes);
-        }
-
-        /// <summary>
-        /// Registers a base type for polymorphic serialization.
-        /// Objects of this type or its derived types will include $type field in YAML.
-        /// </summary>
-        /// <typeparam name="T">The base type to register.</typeparam>
-        public void RegisterPolymorphicType<T>()
-        {
-            _polymorphicBaseTypes.Add(typeof(T));
-        }
-
-        /// <summary>
-        /// Registers a base type for polymorphic serialization.
-        /// Objects of this type or its derived types will include $type field in YAML.
-        /// </summary>
-        /// <param name="type">The base type to register.</param>
-        public void RegisterPolymorphicType(Type type)
-        {
-            _polymorphicBaseTypes.Add(type);
-        }
-
-        /// <summary>
-        /// Gets the registered polymorphic base types.
-        /// </summary>
-        public IReadOnlyCollection<Type> PolymorphicBaseTypes => _polymorphicBaseTypes;
 
         public T DeserializeSingle<T>(string text) where T : class, new()
         {

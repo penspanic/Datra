@@ -14,96 +14,66 @@ namespace Datra.Serializers
     public static class DatraYamlSettings
     {
         /// <summary>
-        /// Creates a deserializer with default settings.
-        /// </summary>
-        public static IDeserializer CreateDeserializer()
-        {
-            return CreateDeserializer(null);
-        }
-
-        /// <summary>
-        /// Creates a deserializer with optional polymorphic type support.
+        /// Creates a deserializer with optional polymorphic type support and custom type converters.
         /// </summary>
         /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Null for no polymorphism.</param>
-        public static IDeserializer CreateDeserializer(IEnumerable<Type>? polymorphicBaseTypes)
+        /// <param name="customConverters">Custom type converters to register. These take priority over built-in polymorphic handling.</param>
+        public static IDeserializer CreateDeserializer(
+            IEnumerable<Type>? polymorphicBaseTypes = null,
+            IEnumerable<IYamlTypeConverter>? customConverters = null)
         {
-            HashSet<Type>? typeSet = polymorphicBaseTypes != null
-                ? new HashSet<Type>(polymorphicBaseTypes)
-                : null;
-            return CreateDeserializer(typeSet);
-        }
-
-        /// <summary>
-        /// Creates a deserializer with polymorphic type support using a shared HashSet.
-        /// The HashSet reference is preserved, allowing dynamic type registration.
-        /// </summary>
-        /// <param name="polymorphicBaseTypes">Shared HashSet of base types. Null for no polymorphism.</param>
-        public static IDeserializer CreateDeserializer(HashSet<Type>? polymorphicBaseTypes)
-        {
-            var dataRefConverter = new DataRefYamlConverter();
-            var localeRefConverter = new LocaleRefYamlConverter();
-
             var builder = new DeserializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)
                 .IgnoreUnmatchedProperties()
-                .WithTypeConverter(dataRefConverter)
-                .WithTypeConverter(localeRefConverter);
+                .WithTypeConverter(new DataRefYamlConverter())
+                .WithTypeConverter(new LocaleRefYamlConverter());
 
-            // Add polymorphic support if types are specified
-            if (polymorphicBaseTypes != null)
+            // Register custom converters first (they take priority)
+            if (customConverters != null)
             {
-                var typeResolver = new PortableTypeResolver();
-                var polymorphicConverter = new PolymorphicYamlTypeConverter(typeResolver, polymorphicBaseTypes);
-                builder.WithTypeConverter(polymorphicConverter);
+                foreach (var converter in customConverters)
+                {
+                    builder.WithTypeConverter(converter);
+                }
             }
+
+            // Always add polymorphic support (handles abstract types and interfaces)
+            var typeSet = polymorphicBaseTypes != null ? new HashSet<Type>(polymorphicBaseTypes) : new HashSet<Type>();
+            var typeResolver = new PortableTypeResolver();
+            builder.WithTypeConverter(new PolymorphicYamlTypeConverter(typeResolver, typeSet));
 
             return builder.Build();
         }
 
         /// <summary>
-        /// Creates a serializer with default settings.
-        /// </summary>
-        public static ISerializer CreateSerializer()
-        {
-            return CreateSerializer(null);
-        }
-
-        /// <summary>
-        /// Creates a serializer with optional polymorphic type support.
+        /// Creates a serializer with optional polymorphic type support and custom type converters.
         /// </summary>
         /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Null for no polymorphism.</param>
-        public static ISerializer CreateSerializer(IEnumerable<Type>? polymorphicBaseTypes)
+        /// <param name="customConverters">Custom type converters to register. These take priority over built-in polymorphic handling.</param>
+        public static ISerializer CreateSerializer(
+            IEnumerable<Type>? polymorphicBaseTypes = null,
+            IEnumerable<IYamlTypeConverter>? customConverters = null)
         {
-            HashSet<Type>? typeSet = polymorphicBaseTypes != null
-                ? new HashSet<Type>(polymorphicBaseTypes)
-                : null;
-            return CreateSerializer(typeSet);
-        }
-
-        /// <summary>
-        /// Creates a serializer with polymorphic type support using a shared HashSet.
-        /// The HashSet reference is preserved, allowing dynamic type registration.
-        /// </summary>
-        /// <param name="polymorphicBaseTypes">Shared HashSet of base types. Null for no polymorphism.</param>
-        public static ISerializer CreateSerializer(HashSet<Type>? polymorphicBaseTypes)
-        {
-            var dataRefConverter = new DataRefYamlConverter();
-            var localeRefConverter = new LocaleRefYamlConverter();
-
             var builder = new SerializerBuilder()
                 .WithNamingConvention(PascalCaseNamingConvention.Instance)
                 .WithTypeInspector(inner => new WritablePropertiesTypeInspector(inner))
-                .WithTypeConverter(dataRefConverter)
-                .WithTypeConverter(localeRefConverter)
+                .WithTypeConverter(new DataRefYamlConverter())
+                .WithTypeConverter(new LocaleRefYamlConverter())
                 .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull);
 
-            // Add polymorphic support if types are specified
-            if (polymorphicBaseTypes != null)
+            // Register custom converters first (they take priority)
+            if (customConverters != null)
             {
-                var typeResolver = new PortableTypeResolver();
-                var polymorphicConverter = new PolymorphicYamlTypeConverter(typeResolver, polymorphicBaseTypes);
-                builder.WithTypeConverter(polymorphicConverter);
+                foreach (var converter in customConverters)
+                {
+                    builder.WithTypeConverter(converter);
+                }
             }
+
+            // Always add polymorphic support (handles abstract types and interfaces)
+            var typeSet = polymorphicBaseTypes != null ? new HashSet<Type>(polymorphicBaseTypes) : new HashSet<Type>();
+            var typeResolver = new PortableTypeResolver();
+            builder.WithTypeConverter(new PolymorphicYamlTypeConverter(typeResolver, typeSet));
 
             return builder.Build();
         }

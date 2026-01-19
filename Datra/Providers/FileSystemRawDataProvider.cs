@@ -105,6 +105,19 @@ namespace Datra.Providers
         }
 
         /// <summary>
+        /// List files in a directory without loading their contents.
+        /// More efficient than LoadMultipleTextAsync for lazy loading scenarios.
+        /// </summary>
+        /// <param name="folderPath">Relative folder path from base path</param>
+        /// <param name="pattern">Search pattern (e.g., "*.json")</param>
+        /// <returns>List of relative file paths</returns>
+        public Task<IReadOnlyList<string>> ListFilesAsync(string folderPath, string pattern = "*.json")
+        {
+            var files = ListFiles(folderPath, pattern).ToList();
+            return Task.FromResult<IReadOnlyList<string>>(files);
+        }
+
+        /// <summary>
         /// Delete a file at the specified path
         /// </summary>
         /// <param name="path">Relative path from base path</param>

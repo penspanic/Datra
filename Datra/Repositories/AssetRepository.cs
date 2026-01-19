@@ -64,12 +64,13 @@ namespace Datra.Repositories
         protected override async Task<IEnumerable<AssetSummary>> LoadSummariesAsync()
         {
             var summaries = new List<AssetSummary>();
-            var files = await _rawDataProvider.LoadMultipleTextAsync(_folderPath, _filePattern);
+            // Use ListFilesAsync instead of LoadMultipleTextAsync to avoid loading file contents
+            var files = await _rawDataProvider.ListFilesAsync(_folderPath, _filePattern);
             LoadedFolderPath = _rawDataProvider.ResolveFilePath(_folderPath);
 
             var metaSerializer = _serializerFactory.GetSerializer(".json");
 
-            foreach (var (filePath, _) in files)
+            foreach (var filePath in files)
             {
                 // Skip .meta files
                 if (filePath.EndsWith(MetaExtension, StringComparison.OrdinalIgnoreCase))
@@ -94,16 +95,9 @@ namespace Datra.Repositories
             var relativePath = Path.Combine(_folderPath, summary.FilePath).Replace("\\", "/");
             var serializer = _serializerFactory.GetSerializer(_filePattern);
 
-            try
-            {
-                var content = await _rawDataProvider.LoadTextAsync(relativePath);
-                var data = _deserializeFunc(content, serializer);
-                return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
-            }
-            catch
-            {
-                return null;
-            }
+            var content = await _rawDataProvider.LoadTextAsync(relativePath);
+            var data = _deserializeFunc(content, serializer);
+            return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
         }
 
         protected override async Task SaveAssetAsync(Asset<T> asset)

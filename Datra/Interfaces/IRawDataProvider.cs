@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Datra.Interfaces
@@ -39,6 +40,21 @@ namespace Datra.Interfaces
         Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPathOrLabel, string pattern = "*.json")
         {
             throw new NotSupportedException($"{GetType().Name} does not support multi-file loading. Use a provider that implements LoadMultipleTextAsync.");
+        }
+
+        /// <summary>
+        /// List files in a folder without loading their contents.
+        /// Used by AssetRepository to get file list for lazy loading (Summary only).
+        /// Default implementation falls back to LoadMultipleTextAsync and discards content.
+        /// </summary>
+        /// <param name="folderPathOrLabel">Folder path (FileSystem) or label (Addressables)</param>
+        /// <param name="pattern">File pattern like "*.json" (ignored for Addressables)</param>
+        /// <returns>List of relative file paths</returns>
+        async Task<IReadOnlyList<string>> ListFilesAsync(string folderPathOrLabel, string pattern = "*.json")
+        {
+            // Default: fall back to LoadMultipleTextAsync (inefficient but works)
+            var files = await LoadMultipleTextAsync(folderPathOrLabel, pattern);
+            return files.Keys.ToList();
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Datra.Attributes;
 using Datra.Utilities;
+using YamlDotNet.Serialization;
 
 namespace Datra.Serializers
 {
@@ -27,9 +28,22 @@ namespace Datra.Serializers
         /// </summary>
         /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism</param>
         public DataSerializerFactory(IEnumerable<Type> polymorphicBaseTypes)
+            : this(polymorphicBaseTypes, customYamlConverters: null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a factory with polymorphic type support and custom YAML type converters.
+        /// Custom converters take priority over built-in polymorphic handling.
+        /// </summary>
+        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Can be null.</param>
+        /// <param name="customYamlConverters">Custom YAML type converters for specialized serialization needs.</param>
+        public DataSerializerFactory(
+            IEnumerable<Type>? polymorphicBaseTypes,
+            IEnumerable<IYamlTypeConverter>? customYamlConverters)
         {
             _jsonSerializer = new JsonDataSerializer();
-            _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes);
+            _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters);
         }
 
         /// <summary>
