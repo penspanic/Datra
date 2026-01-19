@@ -533,7 +533,13 @@ namespace Datra.Unity.Editor
                     }
                 }
             }
-            
+
+            // Initialize all data sources (loads assets for AssetRepository-based sources)
+            foreach (var dataSource in dataSources.Values)
+            {
+                dataSource.InitializeAsync().Wait();
+            }
+
             // Update navigation panel with data type infos and localization context
             navigationPanel.SetDataTypeInfos(dataTypeInfos, OnDataTypeSelected, localizationContext);
             navigationPanel.SetLocalizationCallback(OnLocalizationSelected);

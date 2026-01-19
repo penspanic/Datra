@@ -171,7 +171,7 @@ namespace Datra.Unity.Tests
             var initialCount = dataSource.EnumerateItems().Count();
 
             // Get first asset's ID
-            var firstAsset = dataSource.EnumerateItems().First().Value;
+            var firstAsset = (Asset<ScriptAssetData>)dataSource.EnumerateItems().First();
             var assetId = firstAsset.Id;
 
             // Act - Delete the asset

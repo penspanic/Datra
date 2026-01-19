@@ -155,7 +155,7 @@ namespace Datra.Unity.Tests
             }
 
             // Get existing asset
-            var existingAsset = dataSource.EnumerateItems().First().Value;
+            var existingAsset = (Asset<ScriptAssetData>)dataSource.EnumerateItems().First();
             var existingId = existingAsset.Id;
             var initialCount = dataSource.EnumerateItems().Count();
 

@@ -74,6 +74,13 @@ namespace Datra.Editor.Interfaces
         void RefreshBaseline();
 
         /// <summary>
+        /// Initialize the data source asynchronously.
+        /// For asset data sources, this loads all assets from summaries.
+        /// For other data sources, this may be a no-op.
+        /// </summary>
+        Task InitializeAsync();
+
+        /// <summary>
         /// Apply all pending changes to the repository and save
         /// </summary>
         Task SaveAsync();

@@ -149,19 +149,36 @@ namespace Datra
         {
             var dataType = GetDataType(property);
             if (dataType == null) return;
-            
+
             var attribute = GetDataAttribute(dataType);
-            
+
             if (attribute == null) return;
-            
+
+            // Handle AssetData separately - it uses InitializeAsync() for lazy loading
+            if (attribute is AssetDataAttribute)
+            {
+                var existingRepo = property.GetValue(this);
+                if (existingRepo is IRepository repo)
+                {
+                    await repo.InitializeAsync();
+
+                    // Update DataTypeInfo loaded status
+                    if (existingRepo is IEditableRepository editableRepo)
+                    {
+                        UpdateDataTypeInfoAfterLoad(property.Name, editableRepo.LoadedFilePath ?? "");
+                    }
+                }
+                return;
+            }
+
             var filePath = GetFilePath(attribute);
             var format = GetDataFormat(attribute);
-            
+
             var rawData = await _rawDataProvider.LoadTextAsync(filePath);
             var serializer = _serializerFactory.GetSerializer(filePath, format);
-            
+
             object repository;
-            
+
             if (attribute is TableDataAttribute)
             {
                 repository = LoadTableData(dataType, rawData, serializer);
@@ -170,11 +187,11 @@ namespace Datra
             {
                 repository = LoadSingleData(dataType, rawData, serializer);
             }
-            
+
             property.SetValue(this, repository);
             Repositories[property.Name] = repository;
             Repositories[dataType.FullName] = repository;
-            
+
             // Update DataTypeInfo loaded status
             UpdateDataTypeInfoAfterLoad(property.Name, filePath);
         }
@@ -231,7 +248,8 @@ namespace Datra
         private Attribute GetDataAttribute(Type dataType)
         {
             return dataType.GetCustomAttribute<TableDataAttribute>() ??
-                   (Attribute)dataType.GetCustomAttribute<SingleDataAttribute>();
+                   dataType.GetCustomAttribute<SingleDataAttribute>() ??
+                   (Attribute)dataType.GetCustomAttribute<AssetDataAttribute>();
         }
         
         private string GetFilePath(Attribute attribute)

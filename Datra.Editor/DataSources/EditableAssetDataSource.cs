@@ -18,7 +18,7 @@ namespace Datra.Editor.DataSources
     /// Property changes are tracked on the inner Data object, not on Asset&lt;T&gt; wrapper.
     /// </summary>
     /// <typeparam name="T">The asset data type</typeparam>
-    public class EditableAssetDataSource<T> : IEditableDataSource<AssetId, Asset<T>>
+    public class EditableAssetDataSource<T> : EditableDataSourceBase, IEditableDataSource<AssetId, Asset<T>>
         where T : class
     {
         private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
@@ -45,21 +45,19 @@ namespace Datra.Editor.DataSources
             public object? CurrentValue { get; set; }
         }
 
-        public event Action<bool>? OnModifiedStateChanged;
-
         public EditableAssetDataSource(IAssetRepository<T> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            InitializeBaseline();
+            InitializeBaselineInternal();
         }
 
         #region Initialization
 
         /// <summary>
-        /// Initialize the data source by loading all assets.
+        /// Initialize the data source by loading all assets from summaries.
         /// Call this after context.LoadAllAsync() to populate the baseline.
         /// </summary>
-        public async Task InitializeAsync()
+        public override async Task InitializeAsync()
         {
             // Load all assets from summaries
             foreach (var summary in _repository.Summaries)
@@ -68,10 +66,10 @@ namespace Datra.Editor.DataSources
             }
 
             // Refresh baseline now that all assets are loaded
-            InitializeBaseline();
+            RefreshBaselineInternal();
         }
 
-        private void InitializeBaseline()
+        private void InitializeBaselineInternal()
         {
             _baseline.Clear();
             _workingCopies.Clear();
@@ -86,23 +84,14 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        /// <summary>
-        /// Refresh baseline from repository (call after external reload)
-        /// </summary>
-        public void RefreshBaseline()
-        {
-            InitializeBaseline();
-            OnModifiedStateChanged?.Invoke(false);
-        }
-
         #endregion
 
-        #region IEditableDataSource Implementation
+        #region EditableDataSourceBase Implementation
 
-        public bool HasModifications =>
+        public override bool HasModifications =>
             _addedKeys.Count > 0 || _deletedKeys.Count > 0 || _modifiedKeys.Count > 0;
 
-        public int Count
+        public override int Count
         {
             get
             {
@@ -113,15 +102,133 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        IEnumerable<object> IEditableDataSource.EnumerateItems()
+        public override IEnumerable<object> EnumerateItems()
         {
-            foreach (var kvp in EnumerateItems())
+            foreach (var kvp in EnumerateItemsTyped())
             {
                 yield return kvp.Value;
             }
         }
 
-        public IEnumerable<KeyValuePair<AssetId, Asset<T>>> EnumerateItems()
+        public override ItemState GetItemState(object key)
+        {
+            if (key is AssetId typedKey)
+                return GetItemState(typedKey);
+            return ItemState.Unchanged;
+        }
+
+        public override bool IsPropertyModified(object key, string propertyName)
+        {
+            if (key is AssetId typedKey)
+                return IsPropertyModified(typedKey, propertyName);
+            return false;
+        }
+
+        public override IEnumerable<string> GetModifiedProperties(object key)
+        {
+            if (key is AssetId typedKey)
+                return GetModifiedProperties(typedKey);
+            return Enumerable.Empty<string>();
+        }
+
+        public override object? GetPropertyBaselineValue(object key, string propertyName)
+        {
+            if (key is AssetId typedKey)
+                return GetPropertyBaselineValue(typedKey, propertyName);
+            return null;
+        }
+
+        public override object? GetItemKey(object item)
+        {
+            if (item == null) return null;
+
+            if (item is Asset<T> asset)
+                return asset.Id;
+
+            if (item is KeyValuePair<AssetId, Asset<T>> kvp)
+                return kvp.Key;
+
+            var idProp = item.GetType().GetProperty("Id");
+            if (idProp != null && idProp.PropertyType == typeof(AssetId))
+                return idProp.GetValue(item);
+
+            return null;
+        }
+
+        public override void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            if (key is AssetId typedKey)
+            {
+                TrackPropertyChange(typedKey, propertyName, newValue, out isPropertyModified);
+            }
+            else
+            {
+                isPropertyModified = false;
+            }
+        }
+
+        protected override void RevertInternal()
+        {
+            _workingCopies.Clear();
+            _addedKeys.Clear();
+            _deletedKeys.Clear();
+            _modifiedKeys.Clear();
+            _propertyChanges.Clear();
+        }
+
+        protected override async Task SaveInternalAsync()
+        {
+            // Apply deletions
+            foreach (var key in _deletedKeys)
+            {
+                _repository.Remove(key);
+            }
+
+            // Apply additions
+            foreach (var key in _addedKeys)
+            {
+                if (_workingCopies.TryGetValue(key, out var addedAsset))
+                {
+                    _repository.Add(addedAsset.Data, addedAsset.Metadata, addedAsset.FilePath);
+                }
+            }
+
+            // Apply modifications
+            foreach (var key in _modifiedKeys)
+            {
+                if (_addedKeys.Contains(key))
+                    continue;
+
+                if (_workingCopies.TryGetValue(key, out var modifiedAsset))
+                {
+                    var repoAsset = _repository.TryGetLoaded(key);
+                    if (repoAsset != null)
+                    {
+                        CopyDataProperties(modifiedAsset.Data, repoAsset.Data);
+                        _repository.MarkAsModified(key);
+                    }
+                }
+            }
+
+            // Save to storage
+            await _repository.SaveAsync();
+        }
+
+        protected override void RefreshBaselineInternal()
+        {
+            InitializeBaselineInternal();
+        }
+
+        #endregion
+
+        #region IEditableDataSource<AssetId, Asset<T>> Implementation
+
+        IEnumerable<KeyValuePair<AssetId, Asset<T>>> IEditableDataSource<AssetId, Asset<T>>.EnumerateItems()
+        {
+            return EnumerateItemsTyped();
+        }
+
+        private IEnumerable<KeyValuePair<AssetId, Asset<T>>> EnumerateItemsTyped()
         {
             // Items from baseline (excluding deleted, using working copy if modified)
             foreach (var kvp in _baseline)
@@ -176,13 +283,6 @@ namespace Datra.Editor.DataSources
             return _workingCopies.ContainsKey(key) || _baseline.ContainsKey(key);
         }
 
-        ItemState IEditableDataSource.GetItemState(object key)
-        {
-            if (key is AssetId typedKey)
-                return GetItemState(typedKey);
-            return ItemState.Unchanged;
-        }
-
         public ItemState GetItemState(AssetId key)
         {
             if (_deletedKeys.Contains(key))
@@ -199,11 +299,9 @@ namespace Datra.Editor.DataSources
 
         public Asset<T> GetWorkingCopy(AssetId key)
         {
-            // If already have a working copy, return it
             if (_workingCopies.TryGetValue(key, out var existing))
                 return existing;
 
-            // Create working copy from baseline
             if (!_baseline.TryGetValue(key, out var baseline))
                 throw new KeyNotFoundException($"Asset with ID '{key}' not found in baseline.");
 
@@ -236,8 +334,7 @@ namespace Datra.Editor.DataSources
 
             _modifiedKeys.Add(key);
 
-            if (!hadModifications && HasModifications)
-                OnModifiedStateChanged?.Invoke(true);
+            NotifyIfStateChanged(hadModifications);
         }
 
         public void TrackPropertyChange(AssetId key, string propertyName, object? newValue, out bool isPropertyModified)
@@ -250,7 +347,6 @@ namespace Datra.Editor.DataSources
             {
                 if (!_baseline.TryGetValue(key, out var baseline))
                 {
-                    // New item - no baseline to compare
                     if (_addedKeys.Contains(key))
                     {
                         isPropertyModified = true;
@@ -288,7 +384,6 @@ namespace Datra.Editor.DataSources
             {
                 _propertyChanges.Remove(changeKey);
 
-                // Check if there are any other property changes for this key
                 bool hasOtherChanges = _propertyChanges.Keys.Any(k => k.key.Equals(key));
                 if (!hasOtherChanges)
                 {
@@ -307,8 +402,7 @@ namespace Datra.Editor.DataSources
                 prop.SetValue(workingCopy.Data, newValue);
             }
 
-            if (hadModifications != HasModifications)
-                OnModifiedStateChanged?.Invoke(HasModifications);
+            NotifyIfStateChanged(hadModifications);
         }
 
         public void Add(AssetId key, Asset<T> value)
@@ -322,16 +416,12 @@ namespace Datra.Editor.DataSources
             _addedKeys.Add(key);
             _deletedKeys.Remove(key);
 
-            if (!hadModifications)
-                OnModifiedStateChanged?.Invoke(true);
+            NotifyIfStateChanged(hadModifications);
         }
 
         /// <summary>
         /// Add a new asset with auto-generated metadata.
         /// </summary>
-        /// <param name="data">The asset data</param>
-        /// <param name="filePath">Relative file path for the asset</param>
-        /// <returns>The created Asset wrapper</returns>
         public Asset<T> AddNew(T data, string filePath)
         {
             var asset = Asset<T>.Create(data, filePath);
@@ -345,22 +435,19 @@ namespace Datra.Editor.DataSources
 
             if (_addedKeys.Contains(key))
             {
-                // Was added in this session - just remove
                 _addedKeys.Remove(key);
                 _workingCopies.Remove(key);
                 RemovePropertyChangesForKey(key);
             }
             else if (_baseline.ContainsKey(key))
             {
-                // Exists in baseline - mark for deletion
                 _deletedKeys.Add(key);
                 _modifiedKeys.Remove(key);
                 _workingCopies.Remove(key);
                 RemovePropertyChangesForKey(key);
             }
 
-            if (hadModifications != HasModifications)
-                OnModifiedStateChanged?.Invoke(HasModifications);
+            NotifyIfStateChanged(hadModifications);
         }
 
         public Asset<T>? GetBaselineValue(AssetId key)
@@ -368,23 +455,9 @@ namespace Datra.Editor.DataSources
             return _baseline.TryGetValue(key, out var value) ? CloneAsset(value) : null;
         }
 
-        bool IEditableDataSource.IsPropertyModified(object key, string propertyName)
-        {
-            if (key is AssetId typedKey)
-                return IsPropertyModified(typedKey, propertyName);
-            return false;
-        }
-
         public bool IsPropertyModified(AssetId key, string propertyName)
         {
             return _propertyChanges.ContainsKey((key, propertyName));
-        }
-
-        IEnumerable<string> IEditableDataSource.GetModifiedProperties(object key)
-        {
-            if (key is AssetId typedKey)
-                return GetModifiedProperties(typedKey);
-            return Enumerable.Empty<string>();
         }
 
         public IEnumerable<string> GetModifiedProperties(AssetId key)
@@ -394,129 +467,13 @@ namespace Datra.Editor.DataSources
                 .Select(k => k.propertyName);
         }
 
-        object? IEditableDataSource.GetPropertyBaselineValue(object key, string propertyName)
-        {
-            if (key is AssetId typedKey)
-                return GetPropertyBaselineValue(typedKey, propertyName);
-            return null;
-        }
-
         public object? GetPropertyBaselineValue(AssetId key, string propertyName)
         {
             if (!_baseline.TryGetValue(key, out var baselineAsset))
                 return null;
 
-            // Property access is on the inner Data object
             var propInfo = typeof(T).GetProperty(propertyName);
             return propInfo?.GetValue(baselineAsset.Data);
-        }
-
-        /// <summary>
-        /// Get the key from an item. For assets, the key is AssetId.
-        /// </summary>
-        public object? GetItemKey(object item)
-        {
-            if (item == null) return null;
-
-            // Handle Asset<T> directly
-            if (item is Asset<T> asset)
-            {
-                return asset.Id;
-            }
-
-            // Handle KeyValuePair<AssetId, Asset<T>>
-            if (item is KeyValuePair<AssetId, Asset<T>> kvp)
-            {
-                return kvp.Key;
-            }
-
-            // Try to get Id property (for Asset<T> wrapper)
-            var idProp = item.GetType().GetProperty("Id");
-            if (idProp != null && idProp.PropertyType == typeof(AssetId))
-            {
-                return idProp.GetValue(item);
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Track property change (non-generic version for IEditableDataSource).
-        /// </summary>
-        public void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
-        {
-            if (key is AssetId typedKey)
-            {
-                TrackPropertyChange(typedKey, propertyName, newValue, out isPropertyModified);
-            }
-            else
-            {
-                isPropertyModified = false;
-            }
-        }
-
-        #endregion
-
-        #region Revert
-
-        public void Revert()
-        {
-            bool hadModifications = HasModifications;
-
-            _workingCopies.Clear();
-            _addedKeys.Clear();
-            _deletedKeys.Clear();
-            _modifiedKeys.Clear();
-            _propertyChanges.Clear();
-
-            if (hadModifications)
-                OnModifiedStateChanged?.Invoke(false);
-        }
-
-        #endregion
-
-        #region Save
-
-        public async Task SaveAsync()
-        {
-            // Apply deletions
-            foreach (var key in _deletedKeys)
-            {
-                _repository.Remove(key);
-            }
-
-            // Apply additions
-            foreach (var key in _addedKeys)
-            {
-                if (_workingCopies.TryGetValue(key, out var addedAsset))
-                {
-                    _repository.Add(addedAsset.Data, addedAsset.Metadata, addedAsset.FilePath);
-                }
-            }
-
-            // Apply modifications
-            foreach (var key in _modifiedKeys)
-            {
-                if (_addedKeys.Contains(key))
-                    continue;
-
-                if (_workingCopies.TryGetValue(key, out var modifiedAsset))
-                {
-                    // Get the actual repository asset and update its Data
-                    var repoAsset = _repository.TryGetLoaded(key);
-                    if (repoAsset != null)
-                    {
-                        CopyDataProperties(modifiedAsset.Data, repoAsset.Data);
-                        _repository.MarkAsModified(key);
-                    }
-                }
-            }
-
-            // Save to storage
-            await _repository.SaveAsync();
-
-            // Refresh baseline
-            RefreshBaseline();
         }
 
         #endregion
@@ -532,9 +489,6 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        /// <summary>
-        /// Clone an Asset (creates new Asset with same Id/Metadata/FilePath but cloned Data)
-        /// </summary>
         private Asset<T> CloneAsset(Asset<T> asset)
         {
             var clonedData = DeepCloneData(asset.Data);

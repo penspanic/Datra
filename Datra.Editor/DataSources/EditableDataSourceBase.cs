@@ -170,6 +170,16 @@ namespace Datra.Editor.DataSources
             NotifyCleared();
         }
 
+        /// <summary>
+        /// Initialize the data source asynchronously.
+        /// Default implementation does nothing (no-op).
+        /// Override in derived classes that need async initialization (e.g., asset data sources).
+        /// </summary>
+        public virtual Task InitializeAsync()
+        {
+            return Task.CompletedTask;
+        }
+
         #endregion
     }
 }

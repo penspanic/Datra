@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Datra.Editor.Utilities;
 using Datra.Interfaces;
@@ -24,19 +25,21 @@ namespace Datra.Unity.Editor.Providers
         public Task<string> LoadTextAsync(string path)
         {
 #if UNITY_EDITOR
+            var originalPath = path;
             path = PathHelper.CombinePath(_basePath, path);
             var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(path);
             if (textAsset != null)
             {
                 return Task.FromResult(textAsset.text);
             }
-            
+
             // Try loading as raw text file if not a TextAsset
             if (File.Exists(path))
             {
                 return Task.FromResult(File.ReadAllText(path));
             }
-            
+
+            Debug.LogWarning($"[AssetDatabaseRawDataProvider] LoadTextAsync failed: originalPath={originalPath}, combinedPath={path}");
             throw new FileNotFoundException($"Could not find asset at path: {path}");
 #else
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
@@ -114,28 +117,38 @@ namespace Datra.Unity.Editor.Providers
 
             if (!Directory.Exists(absolutePath))
             {
+                Debug.LogWarning($"[AssetDatabaseRawDataProvider] Directory does not exist: {absolutePath}");
                 return Task.FromResult(result);
             }
 
             var files = Directory.GetFiles(absolutePath, pattern, SearchOption.TopDirectoryOnly);
+
             foreach (var file in files)
             {
                 // Convert to Unity asset path format
-                var relativePath = file.Replace("\\", "/");
-                if (relativePath.Contains("/Assets/"))
+                var unityPath = file.Replace("\\", "/");
+                if (unityPath.Contains("/Assets/"))
                 {
-                    var assetsIndex = relativePath.IndexOf("/Assets/");
-                    relativePath = relativePath.Substring(assetsIndex + 1);
+                    var assetsIndex = unityPath.IndexOf("/Assets/");
+                    unityPath = unityPath.Substring(assetsIndex + 1);
                 }
 
-                var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(relativePath);
+                // Convert to relative path (relative to basePath) for dictionary key
+                // This ensures consistency with other providers (FileSystem, Addressable)
+                var keyPath = unityPath;
+                if (!string.IsNullOrEmpty(_basePath) && unityPath.StartsWith(_basePath))
+                {
+                    keyPath = unityPath.Substring(_basePath.Length).TrimStart('/');
+                }
+
+                var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(unityPath);
                 if (textAsset != null)
                 {
-                    result[relativePath] = textAsset.text;
+                    result[keyPath] = textAsset.text;
                 }
                 else if (File.Exists(file))
                 {
-                    result[relativePath] = File.ReadAllText(file);
+                    result[keyPath] = File.ReadAllText(file);
                 }
             }
 

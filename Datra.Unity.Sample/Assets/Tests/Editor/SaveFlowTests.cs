@@ -239,6 +239,11 @@ namespace Datra.Unity.Tests
             {
             }
 
+            public Task InitializeAsync()
+            {
+                return Task.CompletedTask;
+            }
+
             public object GetItemKey(object item) => null;
 
             public void TrackPropertyChange(object key, string propertyName, object newValue, out bool isPropertyModified)

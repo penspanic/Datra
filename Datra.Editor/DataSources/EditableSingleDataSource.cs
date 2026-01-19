@@ -17,7 +17,7 @@ namespace Datra.Editor.DataSources
     /// Provides a transactional editing layer that doesn't modify the repository until Save().
     /// </summary>
     /// <typeparam name="TData">The data type</typeparam>
-    public class EditableSingleDataSource<TData> : IEditableDataSource<string, TData>
+    public class EditableSingleDataSource<TData> : EditableDataSourceBase, IEditableDataSource<string, TData>
         where TData : class
     {
         private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
@@ -44,17 +44,15 @@ namespace Datra.Editor.DataSources
             public object? CurrentValue { get; set; }
         }
 
-        public event Action<bool>? OnModifiedStateChanged;
-
         public EditableSingleDataSource(ISingleRepository<TData> repository)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            InitializeBaseline();
+            InitializeBaselineInternal();
         }
 
         #region Initialization
 
-        private void InitializeBaseline()
+        private void InitializeBaselineInternal()
         {
             _propertyChanges.Clear();
             _workingCopy = null;
@@ -69,61 +67,99 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        /// <summary>
-        /// Refresh baseline from repository (call after external reload)
-        /// </summary>
-        public void RefreshBaseline()
-        {
-            InitializeBaseline();
-            OnModifiedStateChanged?.Invoke(false);
-        }
-
         #endregion
 
-        #region IEditableDataSource Implementation
+        #region EditableDataSourceBase Implementation
 
-        public bool HasModifications => _propertyChanges.Count > 0;
+        public override bool HasModifications => _propertyChanges.Count > 0;
 
-        public int Count => _baseline != null ? 1 : 0;
+        public override int Count => _baseline != null ? 1 : 0;
 
-        IEnumerable<object> IEditableDataSource.EnumerateItems()
+        public override IEnumerable<object> EnumerateItems()
         {
             // Always return working copy to prevent baseline mutation during editing
-            // This matches EditableKeyValueDataSource behavior
             var data = GetOrCreateWorkingCopy();
             if (data != null)
                 yield return data;
         }
 
-        /// <summary>
-        /// Get or create working copy for editing.
-        /// This ensures baseline is never exposed for direct modification.
-        /// </summary>
-        private TData? GetOrCreateWorkingCopy()
+        public override ItemState GetItemState(object key)
         {
-            if (_baseline == null) return null;
-
-            if (_workingCopy == null)
-            {
-                _workingCopy = DeepClone(_baseline);
-            }
-            return _workingCopy;
+            if (key is string strKey && strKey == SingleKey)
+                return GetItemState(strKey);
+            return ItemState.Unchanged;
         }
 
-        public IEnumerable<KeyValuePair<string, TData>> EnumerateItems()
+        public override bool IsPropertyModified(object key, string propertyName)
         {
-            // Always return working copy to prevent baseline mutation during editing
+            if (key is string strKey && strKey == SingleKey)
+                return IsPropertyModified(strKey, propertyName);
+            return false;
+        }
+
+        public override IEnumerable<string> GetModifiedProperties(object key)
+        {
+            if (key is string strKey && strKey == SingleKey)
+                return GetModifiedProperties(strKey);
+            return Enumerable.Empty<string>();
+        }
+
+        public override object? GetPropertyBaselineValue(object key, string propertyName)
+        {
+            if (key is string strKey && strKey == SingleKey)
+                return GetPropertyBaselineValue(strKey, propertyName);
+            return null;
+        }
+
+        public override object? GetItemKey(object item)
+        {
+            if (item == null) return null;
+            return SingleKey;
+        }
+
+        public override void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
+        {
+            if (key is string strKey && (strKey == SingleKey || strKey == "single"))
+            {
+                TrackPropertyChange(SingleKey, propertyName, newValue, out isPropertyModified);
+            }
+            else
+            {
+                isPropertyModified = false;
+            }
+        }
+
+        protected override void RevertInternal()
+        {
+            _workingCopy = null;
+            _propertyChanges.Clear();
+        }
+
+        protected override async Task SaveInternalAsync()
+        {
+            if (_workingCopy != null && _repository.Current != null)
+            {
+                var repoData = _repository.Current;
+                CopyProperties(_workingCopy, repoData);
+            }
+
+            await _repository.SaveAsync();
+        }
+
+        protected override void RefreshBaselineInternal()
+        {
+            InitializeBaselineInternal();
+        }
+
+        #endregion
+
+        #region IEditableDataSource<string, TData> Implementation
+
+        IEnumerable<KeyValuePair<string, TData>> IEditableDataSource<string, TData>.EnumerateItems()
+        {
             var data = GetOrCreateWorkingCopy();
             if (data != null)
                 yield return new KeyValuePair<string, TData>(SingleKey, data);
-        }
-
-        /// <summary>
-        /// Get the current data (working copy if modified, otherwise baseline)
-        /// </summary>
-        public TData? GetCurrentData()
-        {
-            return _workingCopy ?? _baseline;
         }
 
         public TData GetItem(string key)
@@ -153,13 +189,6 @@ namespace Datra.Editor.DataSources
         public bool ContainsKey(string key)
         {
             return key == SingleKey && _baseline != null;
-        }
-
-        ItemState IEditableDataSource.GetItemState(object key)
-        {
-            if (key is string strKey && strKey == SingleKey)
-                return GetItemState(strKey);
-            return ItemState.Unchanged;
         }
 
         public ItemState GetItemState(string key)
@@ -193,7 +222,6 @@ namespace Datra.Editor.DataSources
             if (key != SingleKey || _baseline == null)
                 return;
 
-            // Ensure we have a working copy
             if (_workingCopy == null)
             {
                 _workingCopy = DeepClone(_baseline);
@@ -211,13 +239,11 @@ namespace Datra.Editor.DataSources
             bool hadModifications = HasModifications;
             isPropertyModified = false;
 
-            // Ensure we have a working copy
             if (_workingCopy == null && _baseline != null)
             {
                 _workingCopy = DeepClone(_baseline);
             }
 
-            // Get baseline value
             object? baselineValue = null;
             if (_baseline != null)
             {
@@ -226,7 +252,6 @@ namespace Datra.Editor.DataSources
                     baselineValue = propInfo.GetValue(_baseline);
             }
 
-            // Compare values
             bool isEqual = DeepEqualsValues(baselineValue, newValue);
 
             if (!isEqual)
@@ -242,14 +267,12 @@ namespace Datra.Editor.DataSources
             {
                 _propertyChanges.Remove(propertyName);
 
-                // If no more changes, remove working copy
                 if (_propertyChanges.Count == 0)
                 {
                     _workingCopy = null;
                 }
             }
 
-            // Update working copy property
             if (_workingCopy != null)
             {
                 var prop = typeof(TData).GetProperty(propertyName);
@@ -259,8 +282,7 @@ namespace Datra.Editor.DataSources
                 }
             }
 
-            if (hadModifications != HasModifications)
-                OnModifiedStateChanged?.Invoke(HasModifications);
+            NotifyIfStateChanged(hadModifications);
         }
 
         public void Add(string key, TData value)
@@ -281,13 +303,6 @@ namespace Datra.Editor.DataSources
             return _baseline != null ? DeepClone(_baseline) : null;
         }
 
-        bool IEditableDataSource.IsPropertyModified(object key, string propertyName)
-        {
-            if (key is string strKey && strKey == SingleKey)
-                return IsPropertyModified(strKey, propertyName);
-            return false;
-        }
-
         public bool IsPropertyModified(string key, string propertyName)
         {
             if (key != SingleKey)
@@ -296,26 +311,12 @@ namespace Datra.Editor.DataSources
             return _propertyChanges.ContainsKey(propertyName);
         }
 
-        IEnumerable<string> IEditableDataSource.GetModifiedProperties(object key)
-        {
-            if (key is string strKey && strKey == SingleKey)
-                return GetModifiedProperties(strKey);
-            return Enumerable.Empty<string>();
-        }
-
         public IEnumerable<string> GetModifiedProperties(string key)
         {
             if (key != SingleKey)
                 return Enumerable.Empty<string>();
 
             return _propertyChanges.Keys;
-        }
-
-        object? IEditableDataSource.GetPropertyBaselineValue(object key, string propertyName)
-        {
-            if (key is string strKey && strKey == SingleKey)
-                return GetPropertyBaselineValue(strKey, propertyName);
-            return null;
         }
 
         public object? GetPropertyBaselineValue(string key, string propertyName)
@@ -327,72 +328,25 @@ namespace Datra.Editor.DataSources
             return propInfo?.GetValue(_baseline);
         }
 
-        /// <summary>
-        /// Get the key for an item. For single data, always returns SingleKey.
-        /// Since single data only has one item, we always return the constant key.
-        /// </summary>
-        public object? GetItemKey(object item)
-        {
-            // For single data, there's only one item, so always return SingleKey
-            // We don't need to verify the type - if someone is calling this with an item,
-            // they got it from EnumerateItems() which only returns our single data item.
-            if (item == null) return null;
-            return SingleKey;
-        }
-
-        /// <summary>
-        /// Track property change (non-generic version for IEditableDataSource).
-        /// </summary>
-        public void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)
-        {
-            // For single data, accept both SingleKey and "single" for backward compatibility
-            if (key is string strKey && (strKey == SingleKey || strKey == "single"))
-            {
-                TrackPropertyChange(SingleKey, propertyName, newValue, out isPropertyModified);
-            }
-            else
-            {
-                isPropertyModified = false;
-            }
-        }
-
-        #endregion
-
-        #region Revert
-
-        public void Revert()
-        {
-            bool hadModifications = HasModifications;
-
-            _workingCopy = null;
-            _propertyChanges.Clear();
-
-            if (hadModifications)
-                OnModifiedStateChanged?.Invoke(false);
-        }
-
-        #endregion
-
-        #region Save
-
-        public async Task SaveAsync()
-        {
-            if (_workingCopy != null && _repository.Current != null)
-            {
-                // Copy properties from working copy to repository's data
-                var repoData = _repository.Current;
-                CopyProperties(_workingCopy, repoData);
-            }
-
-            await _repository.SaveAsync();
-
-            // Refresh baseline
-            RefreshBaseline();
-        }
-
         #endregion
 
         #region Helpers
+
+        private TData? GetOrCreateWorkingCopy()
+        {
+            if (_baseline == null) return null;
+
+            if (_workingCopy == null)
+            {
+                _workingCopy = DeepClone(_baseline);
+            }
+            return _workingCopy;
+        }
+
+        public TData? GetCurrentData()
+        {
+            return _workingCopy ?? _baseline;
+        }
 
         private TData DeepClone(TData value)
         {
