@@ -27,6 +27,7 @@ namespace Datra.Repositories
         private readonly DataSerializerFactory _serializerFactory;
         private readonly Func<string, IDataSerializer, T> _deserializeFunc;
         private readonly Func<T, IDataSerializer, string>? _serializeFunc;
+        private readonly ISerializationLogger? _logger;
 
         /// <summary>
         /// 로드된 폴더 경로
@@ -51,7 +52,8 @@ namespace Datra.Repositories
             IRawDataProvider rawDataProvider,
             DataSerializerFactory serializerFactory,
             Func<string, IDataSerializer, T> deserializeFunc,
-            Func<T, IDataSerializer, string>? serializeFunc = null)
+            Func<T, IDataSerializer, string>? serializeFunc = null,
+            ISerializationLogger? logger = null)
         {
             _folderPath = folderPath;
             _filePattern = filePattern;
@@ -59,6 +61,7 @@ namespace Datra.Repositories
             _serializerFactory = serializerFactory;
             _deserializeFunc = deserializeFunc;
             _serializeFunc = serializeFunc;
+            _logger = logger;
         }
 
         protected override async Task<IEnumerable<AssetSummary>> LoadSummariesAsync()
@@ -95,9 +98,23 @@ namespace Datra.Repositories
             var relativePath = Path.Combine(_folderPath, summary.FilePath).Replace("\\", "/");
             var serializer = _serializerFactory.GetSerializer(_filePattern);
 
-            var content = await _rawDataProvider.LoadTextAsync(relativePath);
-            var data = _deserializeFunc(content, serializer);
-            return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
+            try
+            {
+                var content = await _rawDataProvider.LoadTextAsync(relativePath);
+                var data = _deserializeFunc(content, serializer);
+                return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogParsingError(new SerializationErrorContext
+                {
+                    FileName = relativePath,
+                    Format = _filePattern,
+                    RecordId = id.ToString(),
+                    Message = ex.Message
+                }, ex);
+                throw;
+            }
         }
 
         protected override async Task SaveAssetAsync(Asset<T> asset)

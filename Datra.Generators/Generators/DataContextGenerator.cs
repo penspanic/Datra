@@ -223,7 +223,8 @@ namespace Datra.Generators.Generators
             builder.AppendLine($"    RawDataProvider,");
             builder.AppendLine($"    SerializerFactory,");
             builder.AppendLine($"    (data, serializer) => {simpleTypeName}Serializer.DeserializeSingle(data, serializer),");
-            builder.AppendLine($"    (obj, serializer) => {simpleTypeName}Serializer.SerializeSingle(obj, serializer)");
+            builder.AppendLine($"    (obj, serializer) => {simpleTypeName}Serializer.SerializeSingle(obj, serializer),");
+            builder.AppendLine($"    _logger");
             builder.AppendLine(");");
             builder.AppendLine($"RegisterAssetRepository(\"{model.PropertyName}\", {model.PropertyName});");
         }

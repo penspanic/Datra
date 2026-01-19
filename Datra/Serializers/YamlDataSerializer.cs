@@ -23,9 +23,23 @@ namespace Datra.Serializers
         public YamlDataSerializer(
             IEnumerable<Type>? polymorphicBaseTypes = null,
             IEnumerable<IYamlTypeConverter>? customConverters = null)
+            : this(polymorphicBaseTypes, customConverters, excludedTypes: null)
         {
-            _deserializer = DatraYamlSettings.CreateDeserializer(polymorphicBaseTypes, customConverters);
-            _serializer = DatraYamlSettings.CreateSerializer(polymorphicBaseTypes, customConverters);
+        }
+
+        /// <summary>
+        /// Creates a new YamlDataSerializer with optional polymorphic type support, custom converters, and excluded types.
+        /// </summary>
+        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Null for no polymorphism.</param>
+        /// <param name="customConverters">Custom type converters to register. These take priority over built-in polymorphic handling.</param>
+        /// <param name="excludedTypes">Types to exclude from polymorphic handling (handled by custom converters).</param>
+        public YamlDataSerializer(
+            IEnumerable<Type>? polymorphicBaseTypes,
+            IEnumerable<IYamlTypeConverter>? customConverters,
+            IEnumerable<Type>? excludedTypes)
+        {
+            _deserializer = DatraYamlSettings.CreateDeserializer(polymorphicBaseTypes, customConverters, excludedTypes);
+            _serializer = DatraYamlSettings.CreateSerializer(polymorphicBaseTypes, customConverters, excludedTypes);
         }
 
         public T DeserializeSingle<T>(string text) where T : class, new()

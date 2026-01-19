@@ -397,13 +397,29 @@ namespace Datra.Converters
     {
         private readonly PortableTypeResolver _typeResolver;
         private readonly HashSet<Type> _polymorphicBaseTypes;
+        private readonly HashSet<Type> _excludedTypes;
 
         public const string TypeFieldName = "$type";
 
         public PolymorphicYamlTypeConverter(PortableTypeResolver typeResolver, HashSet<Type>? polymorphicBaseTypes = null)
+            : this(typeResolver, polymorphicBaseTypes, excludedTypes: null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a new PolymorphicYamlTypeConverter.
+        /// </summary>
+        /// <param name="typeResolver">Type resolver for resolving $type values.</param>
+        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism.</param>
+        /// <param name="excludedTypes">Types that should be excluded from polymorphic handling (handled by custom converters).</param>
+        public PolymorphicYamlTypeConverter(
+            PortableTypeResolver typeResolver,
+            HashSet<Type>? polymorphicBaseTypes,
+            HashSet<Type>? excludedTypes)
         {
             _typeResolver = typeResolver;
             _polymorphicBaseTypes = polymorphicBaseTypes ?? new HashSet<Type>();
+            _excludedTypes = excludedTypes ?? new HashSet<Type>();
         }
 
         public bool Accepts(Type type)
@@ -531,6 +547,17 @@ namespace Datra.Converters
 
         private bool IsPolymorphicType(Type type)
         {
+            // Check if the type is excluded (handled by custom converters)
+            if (_excludedTypes.Contains(type))
+                return false;
+
+            // Check if any base type or interface is excluded
+            foreach (var excludedType in _excludedTypes)
+            {
+                if (excludedType.IsAssignableFrom(type))
+                    return false;
+            }
+
             if (_polymorphicBaseTypes.Contains(type))
                 return true;
 
@@ -1139,6 +1166,12 @@ namespace Datra.Converters
             if (underlying != null)
             {
                 return string.IsNullOrEmpty(value) ? null : ConvertString(value, underlying);
+            }
+
+            // Empty string for value types (structs) should return default value
+            if (string.IsNullOrEmpty(value) && targetType.IsValueType)
+            {
+                return Activator.CreateInstance(targetType);
             }
 
             return Convert.ChangeType(value, targetType);

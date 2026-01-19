@@ -41,9 +41,23 @@ namespace Datra.Serializers
         public DataSerializerFactory(
             IEnumerable<Type>? polymorphicBaseTypes,
             IEnumerable<IYamlTypeConverter>? customYamlConverters)
+            : this(polymorphicBaseTypes, customYamlConverters, excludedTypes: null)
+        {
+        }
+
+        /// <summary>
+        /// Creates a factory with polymorphic type support, custom YAML type converters, and excluded types.
+        /// </summary>
+        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Can be null.</param>
+        /// <param name="customYamlConverters">Custom YAML type converters for specialized serialization needs.</param>
+        /// <param name="excludedTypes">Types to exclude from polymorphic handling (handled by custom converters).</param>
+        public DataSerializerFactory(
+            IEnumerable<Type>? polymorphicBaseTypes,
+            IEnumerable<IYamlTypeConverter>? customYamlConverters,
+            IEnumerable<Type>? excludedTypes)
         {
             _jsonSerializer = new JsonDataSerializer();
-            _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters);
+            _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters, excludedTypes);
         }
 
         /// <summary>
