@@ -45,6 +45,12 @@ namespace Datra.Unity.Editor.Models
         public bool IsMissing => string.IsNullOrEmpty(Text) || Text.StartsWith("[Missing:");
 
         /// <summary>
+        /// Whether this key has been modified from its baseline value.
+        /// Set by the view when loading items.
+        /// </summary>
+        public bool IsModified { get; set; }
+
+        /// <summary>
         /// Creates a new LocalizationKeyWrapper
         /// </summary>
         /// <param name="key">The localization key</param>

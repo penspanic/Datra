@@ -257,6 +257,10 @@ namespace Datra.Unity.Editor.Views
 
                 var keyData = localizationContext.GetKeyData(keyId);
                 var wrapper = new LocalizationKeyWrapper(keyId, text, keyData);
+
+                // Set IsModified flag for filtering
+                wrapper.IsModified = LocalizationSource?.IsKeyModified(keyId) ?? false;
+
                 wrappers.Add(wrapper);
             }
 
@@ -418,6 +422,9 @@ namespace Datra.Unity.Editor.Views
                     bool isModified = LocalizationSource?.IsKeyModified(wrapper.Id) ?? false;
                     field.SetModified(isModified);
 
+                    // Update wrapper's IsModified for filtering
+                    wrapper.IsModified = isModified;
+
                     // Update UI states
                     UpdateModifiedState();
                     UpdateRowStateVisuals(wrapper);
@@ -437,9 +444,13 @@ namespace Datra.Unity.Editor.Views
                     bool isModified = LocalizationSource?.IsKeyModified(wrapper.Id) ?? false;
                     field.SetModified(isModified);
 
+                    // Update wrapper's IsModified for filtering
+                    wrapper.IsModified = isModified;
+
                     // Update UI states
                     UpdateModifiedState();
                     UpdateRowStateVisuals(wrapper);
+                    UpdateStatistics();
                 };
 
                 textCell.Add(field);
@@ -483,11 +494,13 @@ namespace Datra.Unity.Editor.Views
             var totalCount = allItems.Count;
             var shownCount = filteredItems.Count;
             var missingCount = allItems.Count(item => item is LocalizationKeyWrapper w && w.IsMissing);
+            var modifiedCount = allItems.Count(item => item is LocalizationKeyWrapper w && w.IsModified);
 
             statisticsBar.SetStatistics(
                 ("Total", totalCount, null),
                 ("Shown", shownCount, null),
-                ("Missing", missingCount, missingCount > 0 ? new Color(1f, 0.7f, 0.3f) : (Color?)null)
+                ("Missing", missingCount, missingCount > 0 ? new Color(0.86f, 0.21f, 0.27f) : (Color?)null),
+                ("Modified", modifiedCount, modifiedCount > 0 ? new Color(0.23f, 0.51f, 0.97f) : (Color?)null)
             );
         }
 

@@ -187,17 +187,17 @@
 
 /* Missing locale rows (for localization) */
 .table-row.missing-locale-row {
-    background-color: rgba(139, 69, 19, 0.25) !important;
+    background-color: rgba(220, 53, 69, 0.25) !important;
 }
 
 .table-row.missing-locale-row:hover {
-    background-color: rgba(139, 69, 19, 0.35) !important;
+    background-color: rgba(220, 53, 69, 0.35) !important;
 }
 
 /* Missing locale cell indicator - shown in the first cell */
 .table-cell.missing-locale-cell {
     border-left-width: 3px;
-    border-left-color: #d97706;
+    border-left-color: #dc3545;
 }
 
 /* Delete column styles */

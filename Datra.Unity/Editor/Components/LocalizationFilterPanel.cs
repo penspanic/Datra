@@ -100,10 +100,13 @@ namespace Datra.Unity.Editor.Components
             if (currentStatusFilter != TranslationStatus.All)
             {
                 bool isMissing = wrapper.IsMissing;
+                bool isModified = wrapper.IsModified;
 
                 if (currentStatusFilter == TranslationStatus.MissingOnly && !isMissing)
                     return false;
                 if (currentStatusFilter == TranslationStatus.CompleteOnly && isMissing)
+                    return false;
+                if (currentStatusFilter == TranslationStatus.ModifiedOnly && !isModified)
                     return false;
             }
 
@@ -268,7 +271,14 @@ namespace Datra.Unity.Editor.Components
             completeButton.text = "Complete";
             completeButton.name = "status-complete-button";
             completeButton.AddToClassList("status-filter-button");
+            completeButton.style.marginRight = 4;
             filterBar.Add(completeButton);
+
+            var modifiedButton = new Button(() => SetStatusFilter(TranslationStatus.ModifiedOnly));
+            modifiedButton.text = "Modified";
+            modifiedButton.name = "status-modified-button";
+            modifiedButton.AddToClassList("status-filter-button");
+            filterBar.Add(modifiedButton);
 
             return filterBar;
         }
@@ -280,10 +290,12 @@ namespace Datra.Unity.Editor.Components
             var allButton = statusFilterBar?.Q<Button>("status-all-button");
             var missingButton = statusFilterBar?.Q<Button>("status-missing-button");
             var completeButton = statusFilterBar?.Q<Button>("status-complete-button");
+            var modifiedButton = statusFilterBar?.Q<Button>("status-modified-button");
 
             allButton?.RemoveFromClassList("active");
             missingButton?.RemoveFromClassList("active");
             completeButton?.RemoveFromClassList("active");
+            modifiedButton?.RemoveFromClassList("active");
 
             switch (status)
             {
@@ -295,6 +307,9 @@ namespace Datra.Unity.Editor.Components
                     break;
                 case TranslationStatus.CompleteOnly:
                     completeButton?.AddToClassList("active");
+                    break;
+                case TranslationStatus.ModifiedOnly:
+                    modifiedButton?.AddToClassList("active");
                     break;
             }
 

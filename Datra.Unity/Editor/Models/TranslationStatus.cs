@@ -7,6 +7,7 @@ namespace Datra.Unity.Editor.Models
     {
         All = 0,
         MissingOnly = 1,
-        CompleteOnly = 2
+        CompleteOnly = 2,
+        ModifiedOnly = 3
     }
 }
