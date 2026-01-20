@@ -231,7 +231,18 @@ namespace Datra.Unity.Editor.Views
             if (localizationContext == null)
                 return new List<object>();
 
-            var keys = localizationContext.GetAllKeys();
+            // Use LocalizationSource.GetAllKeys() if available (includes _addedKeys)
+            // Otherwise fall back to localizationContext.GetAllKeys()
+            IEnumerable<string> keys;
+            if (LocalizationSource != null)
+            {
+                keys = LocalizationSource.GetAllKeys();
+            }
+            else
+            {
+                keys = localizationContext.GetAllKeys();
+            }
+
             var wrappers = new List<object>();
 
             foreach (var keyId in keys)

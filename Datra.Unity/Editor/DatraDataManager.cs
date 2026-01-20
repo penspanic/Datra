@@ -262,8 +262,13 @@ namespace Datra.Unity.Editor
 
             try
             {
+                // Handle LocalizationContext specially (stored separately from _dataSources)
+                if (dataType == typeof(LocalizationContext) && _localizationDataSource != null)
+                {
+                    await _localizationDataSource.SaveAsync();
+                }
                 // Prefer dataSource for saving (handles transactional changes)
-                if (_dataSources.TryGetValue(dataType, out var dataSource))
+                else if (_dataSources.TryGetValue(dataType, out var dataSource))
                 {
                     await dataSource.SaveAsync();
                 }

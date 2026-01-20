@@ -115,8 +115,19 @@ namespace Datra.Services
         /// </summary>
         public IEnumerable<string> GetAllKeys()
         {
+            // In single-file mode without KeyRepository, get keys from language data
             if (_keyRepository == null)
-                return Enumerable.Empty<string>();
+            {
+                var keys = new HashSet<string>();
+                foreach (var langData in _languageData.Values)
+                {
+                    foreach (var key in langData.Keys)
+                    {
+                        keys.Add(key);
+                    }
+                }
+                return keys;
+            }
             return _keyRepository.Keys;
         }
         

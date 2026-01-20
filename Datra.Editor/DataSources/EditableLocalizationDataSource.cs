@@ -130,6 +130,22 @@ namespace Datra.Editor.DataSources
                 await _context.DeleteKeyAsync(key);
             }
 
+            // Add new keys to KeyRepository so they persist after RefreshBaseline()
+            // SetText() only adds to _languageData, not to _keyRepository
+            foreach (var key in _addedKeys.ToList())
+            {
+                // AddKeyAsync adds to _keyRepository and _languageData
+                // Skip if already in context (HasKey checks _languageData, not _keyRepository)
+                try
+                {
+                    await _context.AddKeyAsync(key, "", "");
+                }
+                catch (InvalidOperationException)
+                {
+                    // Key already exists in _keyRepository, ignore
+                }
+            }
+
             // Save all loaded languages
             foreach (var language in LoadedLanguages)
             {
@@ -155,9 +171,13 @@ namespace Datra.Editor.DataSources
 
         public IEnumerable<string> GetAllKeys()
         {
-            return _context.GetAllKeys()
+            // Get keys from context (KeyRepository keys or _languageData keys)
+            var contextKeys = _context.GetAllKeys();
+
+            // Combine: context keys (minus deleted) + added keys (minus already in context)
+            return contextKeys
                 .Where(k => !_deletedKeys.Contains(k))
-                .Concat(_addedKeys.Where(k => !_context.HasKey(k)));
+                .Concat(_addedKeys.Where(k => !contextKeys.Contains(k)));
         }
 
         public string GetText(string key)
@@ -179,11 +199,21 @@ namespace Datra.Editor.DataSources
         {
             ExecuteWithNotification(() =>
             {
+                // Check if this is a new key (not in context's existing keys and not already tracked as added)
+                var contextKeys = _context.GetAllKeys();
+                var isNewKey = !contextKeys.Contains(key) && !_addedKeys.Contains(key);
+
                 _context.SetText(key, value, language);
 
                 if (_baselines.TryGetValue(language, out var baseline))
                 {
                     baseline.TrackChange(key, value);
+                }
+
+                // Track new key so it appears in GetAllKeys()
+                if (isNewKey)
+                {
+                    _addedKeys.Add(key);
                 }
 
                 OnTextChanged?.Invoke(key, language);
@@ -440,7 +470,8 @@ namespace Datra.Editor.DataSources
                 _addedKeys.Count > 0 ||
                 _deletedKeys.Count > 0 ||
                 _current.Any(kvp =>
-                    _baseline.TryGetValue(kvp.Key, out var baseVal) && baseVal != kvp.Value);
+                    !_baseline.ContainsKey(kvp.Key) ||  // New key not in baseline
+                    (_baseline.TryGetValue(kvp.Key, out var baseVal) && baseVal != kvp.Value));
 
             public void SetBaseline(string key, string value)
             {
@@ -480,6 +511,10 @@ namespace Datra.Editor.DataSources
             public bool IsModified(string key)
             {
                 if (_addedKeys.Contains(key) || _deletedKeys.Contains(key))
+                    return true;
+
+                // New key: not in baseline but in current
+                if (!_baseline.ContainsKey(key) && _current.ContainsKey(key))
                     return true;
 
                 if (_baseline.TryGetValue(key, out var baseVal) &&
