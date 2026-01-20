@@ -1,0 +1,50 @@
+Name: Test Dictionary Config
+TotalCount: 3
+EntryPoints:
+  - entry-a
+  - entry-b
+StartPoints:
+  default:
+    - entry-a
+  extra:
+    - entry-b
+CategoryCounts:
+  main: 2
+  extra: 1
+Entries:
+  entry-a:
+    EntryId: entry-a
+    Category: main
+    Tags:
+      - tutorial
+      - basic
+    NodeCount: 5
+    IsEntryPoint: true
+    OutgoingLinks:
+      - SourceId: entry-a
+        TargetId: entry-b
+        LinkType: Immediate
+        ChoiceIndex: 0
+    IncomingLinks: []
+  entry-b:
+    EntryId: entry-b
+    Category: main
+    Tags:
+      - advanced
+    NodeCount: 3
+    IsEntryPoint: false
+    OutgoingLinks: []
+    IncomingLinks:
+      - SourceId: entry-a
+        TargetId: entry-b
+        LinkType: Immediate
+        ChoiceIndex: 0
+  entry-c:
+    EntryId: entry-c
+    Category: extra
+    Tags:
+      - bonus
+    NodeCount: 2
+    IsEntryPoint: false
+    OutgoingLinks: []
+    IncomingLinks: []

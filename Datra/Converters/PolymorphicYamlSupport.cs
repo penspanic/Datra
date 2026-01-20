@@ -545,6 +545,22 @@ namespace Datra.Converters
             return false;
         }
 
+        private static bool IsNumericConversion(Type sourceType, Type targetType)
+        {
+            // Check if both types are numeric - YAML often parses numbers as long/double
+            // but target may be int/float
+            var numericTypes = new HashSet<Type>
+            {
+                typeof(byte), typeof(sbyte),
+                typeof(short), typeof(ushort),
+                typeof(int), typeof(uint),
+                typeof(long), typeof(ulong),
+                typeof(float), typeof(double), typeof(decimal)
+            };
+
+            return numericTypes.Contains(sourceType) && numericTypes.Contains(targetType);
+        }
+
         private bool IsPolymorphicType(Type type)
         {
             // Check if the type is excluded (handled by custom converters)
@@ -1102,13 +1118,30 @@ namespace Datra.Converters
                     // Check for $type in the nested dictionary's value properties
                     value = CreateInstanceWithPropertyTypes(valueType, nestedDict, rootDeserializer);
                 }
+                else if (kvp.Value is List<object?> listValue)
+                {
+                    // Handle List types in Dictionary values
+                    value = ConvertList(listValue, valueType, rootDeserializer);
+                }
                 else if (kvp.Value is string strValue)
                 {
                     value = ConvertString(strValue, valueType);
                 }
                 else
                 {
-                    value = Convert.ChangeType(kvp.Value, valueType);
+                    // Handle numeric types - YAML may parse as long/double but target is int/float
+                    if (IsNumericConversion(kvp.Value.GetType(), valueType))
+                    {
+                        value = Convert.ChangeType(kvp.Value, valueType);
+                    }
+                    else if (valueType.IsAssignableFrom(kvp.Value.GetType()))
+                    {
+                        value = kvp.Value;
+                    }
+                    else
+                    {
+                        value = Convert.ChangeType(kvp.Value, valueType);
+                    }
                 }
 
                 targetDict[key!] = value;
@@ -1332,6 +1365,38 @@ namespace Datra.Converters
         {
             var actualType = value.GetType();
 
+            // Handle primitive types directly
+            if (IsPrimitiveOrSimpleType(declaredType) || IsPrimitiveOrSimpleType(actualType))
+            {
+                WriteScalarValue(emitter, value);
+                return;
+            }
+
+            // Handle List<T> types
+            if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                var elementType = actualType.GetGenericArguments()[0];
+                WritePolymorphicList(emitter, (System.Collections.IList)value, elementType, serializer);
+                return;
+            }
+
+            // Handle array types
+            if (actualType.IsArray)
+            {
+                var elementType = actualType.GetElementType()!;
+                WritePolymorphicArray(emitter, (Array)value, elementType, serializer);
+                return;
+            }
+
+            // Handle nested Dictionary types
+            if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var nestedValueType = actualType.GetGenericArguments()[1];
+                WritePolymorphicDictionary(emitter, (System.Collections.IDictionary)value, nestedValueType, serializer);
+                return;
+            }
+
+            // Handle complex object types
             emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
 
             // Write all writable properties (excluding indexers)
@@ -1353,10 +1418,72 @@ namespace Datra.Converters
             emitter.Emit(new MappingEnd());
         }
 
+        private static bool IsPrimitiveOrSimpleType(Type type)
+        {
+            return type.IsPrimitive ||
+                   type == typeof(string) ||
+                   type == typeof(decimal) ||
+                   type == typeof(DateTime) ||
+                   type == typeof(DateTimeOffset) ||
+                   type == typeof(TimeSpan) ||
+                   type == typeof(Guid) ||
+                   type.IsEnum ||
+                   (Nullable.GetUnderlyingType(type) != null && IsPrimitiveOrSimpleType(Nullable.GetUnderlyingType(type)!));
+        }
+
+        private static void WriteScalarValue(IEmitter emitter, object value)
+        {
+            // Use appropriate string representation
+            if (value is bool boolVal)
+            {
+                emitter.Emit(new Scalar(null, boolVal.ToString().ToLowerInvariant()));
+            }
+            else if (value is Enum enumVal)
+            {
+                emitter.Emit(new Scalar(null, enumVal.ToString()));
+            }
+            else
+            {
+                emitter.Emit(new Scalar(null, value.ToString() ?? ""));
+            }
+        }
+
         private void WritePolymorphicElement(IEmitter emitter, object value, Type declaredType, ObjectSerializer serializer)
         {
             var actualType = value.GetType();
 
+            // Handle primitive types directly (string, int, etc.)
+            if (IsPrimitiveOrSimpleType(declaredType) || IsPrimitiveOrSimpleType(actualType))
+            {
+                WriteScalarValue(emitter, value);
+                return;
+            }
+
+            // Handle nested List<T> types
+            if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                var elementType = actualType.GetGenericArguments()[0];
+                WritePolymorphicList(emitter, (System.Collections.IList)value, elementType, serializer);
+                return;
+            }
+
+            // Handle nested array types
+            if (actualType.IsArray)
+            {
+                var elementType = actualType.GetElementType()!;
+                WritePolymorphicArray(emitter, (Array)value, elementType, serializer);
+                return;
+            }
+
+            // Handle nested Dictionary types
+            if (actualType.IsGenericType && actualType.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+            {
+                var nestedValueType = actualType.GetGenericArguments()[1];
+                WritePolymorphicDictionary(emitter, (System.Collections.IDictionary)value, nestedValueType, serializer);
+                return;
+            }
+
+            // Handle complex object types
             emitter.Emit(new MappingStart(null, null, false, MappingStyle.Block));
 
             // Always write $type for polymorphic elements
