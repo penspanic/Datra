@@ -320,6 +320,18 @@ namespace Datra.Editor.DataSources
 
         public IEnumerable<string> GetDeletedKeys() => _deletedKeys;
 
+        /// <summary>
+        /// Get all languages that have modifications (for UI display).
+        /// </summary>
+        public IEnumerable<LanguageCode> GetModifiedLanguages()
+        {
+            foreach (var kvp in _baselines)
+            {
+                if (kvp.Value.HasChanges)
+                    yield return kvp.Key;
+            }
+        }
+
         public async Task SwitchLanguageAsync(LanguageCode language)
         {
             if (!LoadedLanguages.Contains(language))

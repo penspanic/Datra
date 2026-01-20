@@ -122,6 +122,11 @@ namespace Datra.Editor.Interfaces
         IEnumerable<string> GetDeletedKeys();
 
         /// <summary>
+        /// Get all languages that have modifications
+        /// </summary>
+        IEnumerable<LanguageCode> GetModifiedLanguages();
+
+        /// <summary>
         /// Switch to a different language for editing.
         /// May trigger language loading if not already loaded.
         /// </summary>

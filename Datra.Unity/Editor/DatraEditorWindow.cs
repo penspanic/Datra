@@ -223,6 +223,7 @@ namespace Datra.Unity.Editor
             localizationInspectorPanel.OnDataModified += OnDataModified;
             localizationInspectorPanel.OnSaveRequested += OnInspectorSaveRequested;
             localizationInspectorPanel.OnSyncFixedLocaleKeysRequested += ShowFixedLocaleKeySync;
+            localizationInspectorPanel.OnLanguageChanged += OnLocalizationPanelLanguageChanged;
             
             // Initialize data
             EditorApplication.delayCall += InitializeData;
@@ -931,6 +932,24 @@ namespace Datra.Unity.Editor
 
             // Update LocalizationView (handles language switch internally)
             localizationInspectorPanel.SwitchLanguage(newLanguage);
+
+            // Refresh DataInspectorPanel to update LocaleRef fields in tables
+            if (currentInspectorPanel == dataInspectorPanel)
+            {
+                dataInspectorPanel.RefreshContent();
+            }
+        }
+
+        private void OnLocalizationPanelLanguageChanged(LanguageCode newLanguage)
+        {
+            // Sync toolbar dropdown when language is changed from localization panel (badge click)
+            toolbar.SetCurrentLanguage(newLanguage);
+
+            // Also update LocalizationContext current language
+            if (localizationContext != null)
+            {
+                localizationContext.LoadLanguageAsync(newLanguage).Wait();
+            }
 
             // Refresh DataInspectorPanel to update LocaleRef fields in tables
             if (currentInspectorPanel == dataInspectorPanel)
