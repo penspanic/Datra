@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Datra.Interfaces;
 using Datra.Serializers;
@@ -12,7 +13,7 @@ namespace Datra.Repositories
     /// EditableSingleRepository 확장
     /// </summary>
     public class SingleDataRepository<TData> : EditableSingleRepository<TData>, IEditableRepository
-        where TData : class
+        where TData : class, new()
     {
         private readonly string _filePath;
         private readonly IRawDataProvider _rawDataProvider;
@@ -57,10 +58,19 @@ namespace Datra.Repositories
 
         protected override async Task<TData?> LoadDataAsync()
         {
-            var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
-            LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
-            var serializer = _serializerFactory.GetSerializer(_filePath);
-            return _deserializeFunc(rawData, serializer);
+            try
+            {
+                var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
+                LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+                var serializer = _serializerFactory.GetSerializer(_filePath);
+                return _deserializeFunc(rawData, serializer);
+            }
+            catch (FileNotFoundException)
+            {
+                // 파일이 없으면 기본 인스턴스 반환
+                LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+                return new TData();
+            }
         }
 
         protected override async Task SaveDataAsync(TData data)

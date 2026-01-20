@@ -1,6 +1,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Datra.Interfaces;
@@ -77,7 +78,18 @@ namespace Datra.Repositories
 
         protected override async IAsyncEnumerable<(TKey key, TData data)> LoadAllDataAsync()
         {
-            var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
+            string rawData;
+            try
+            {
+                rawData = await _rawDataProvider.LoadTextAsync(_filePath);
+            }
+            catch (FileNotFoundException)
+            {
+                // 파일이 없으면 빈 데이터 반환
+                LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+                yield break;
+            }
+
             LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
 
             Dictionary<TKey, TData> data;
