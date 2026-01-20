@@ -37,6 +37,7 @@ namespace Datra.Interfaces
         /// </summary>
         /// <param name="folderPathOrLabel">Folder path (FileSystem) or label (Addressables)</param>
         /// <param name="pattern">File pattern like "*.json" (ignored for Addressables)</param>
+        /// <returns>Dictionary where key is file name only (relative to folderPath, not including folderPath), value is content</returns>
         Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPathOrLabel, string pattern = "*.json")
         {
             throw new NotSupportedException($"{GetType().Name} does not support multi-file loading. Use a provider that implements LoadMultipleTextAsync.");
@@ -49,7 +50,7 @@ namespace Datra.Interfaces
         /// </summary>
         /// <param name="folderPathOrLabel">Folder path (FileSystem) or label (Addressables)</param>
         /// <param name="pattern">File pattern like "*.json" (ignored for Addressables)</param>
-        /// <returns>List of relative file paths</returns>
+        /// <returns>List of file names only (relative to folderPath, not including folderPath)</returns>
         async Task<IReadOnlyList<string>> ListFilesAsync(string folderPathOrLabel, string pattern = "*.json")
         {
             // Default: fall back to LoadMultipleTextAsync (inefficient but works)

@@ -122,17 +122,17 @@ namespace Datra.Tests
         }
 
         [Fact]
-        public void ListFiles_EmptyDirectory_ReturnsEmpty()
+        public async Task ListFilesAsync_EmptyDirectory_ReturnsEmpty()
         {
             // Act
-            var result = _provider.ListFiles(".");
+            var result = await _provider.ListFilesAsync(".");
 
             // Assert
             Assert.Empty(result);
         }
 
         [Fact]
-        public void ListFiles_WithFiles_ReturnsMatchingFiles()
+        public async Task ListFilesAsync_WithFiles_ReturnsMatchingFiles()
         {
             // Arrange
             File.WriteAllText(Path.Combine(_testDirectory, "file1.json"), "{}");
@@ -140,19 +140,19 @@ namespace Datra.Tests
             File.WriteAllText(Path.Combine(_testDirectory, "file3.txt"), "text");
 
             // Act
-            var jsonFiles = _provider.ListFiles(".", "*.json");
-            var allFiles = _provider.ListFiles(".", "*.*");
+            var jsonFiles = await _provider.ListFilesAsync(".", "*.json");
+            var allFiles = await _provider.ListFilesAsync(".", "*.*");
 
             // Assert
-            Assert.Equal(2, jsonFiles.Count());
-            Assert.Equal(3, allFiles.Count());
+            Assert.Equal(2, jsonFiles.Count);
+            Assert.Equal(3, allFiles.Count);
         }
 
         [Fact]
-        public void ListFiles_NonExistentDirectory_ReturnsEmpty()
+        public async Task ListFilesAsync_NonExistentDirectory_ReturnsEmpty()
         {
             // Act
-            var result = _provider.ListFiles("nonexistent");
+            var result = await _provider.ListFilesAsync("nonexistent");
 
             // Assert
             Assert.Empty(result);

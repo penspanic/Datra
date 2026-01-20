@@ -198,7 +198,7 @@ namespace Datra.Generators.Generators
             
             // Generate Ref property with JsonIgnore to prevent serialization issues
             // (DataRef types contain System.Type which cannot be serialized)
-            codeBuilder.AppendLine($"[global::System.Text.Json.Serialization.JsonIgnore]");
+            codeBuilder.AppendLine($"[global::Newtonsoft.Json.JsonIgnore]");
             codeBuilder.AppendLine($"public {dataRefType} Ref => new {dataRefType}(this.Id);");
         }
         

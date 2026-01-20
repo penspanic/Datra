@@ -59,11 +59,11 @@ namespace Datra.Unity.Editor.Providers
 
             // Write the file
             File.WriteAllText(path, content);
-            
+
             // Import the asset to make it available in AssetDatabase
             AssetDatabase.ImportAsset(path);
             AssetDatabase.Refresh();
-            
+
             return Task.CompletedTask;
 #else
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
@@ -80,14 +80,14 @@ namespace Datra.Unity.Editor.Providers
             {
                 return true;
             }
-            
+
             // Check if it exists as a file
             return File.Exists(path);
 #else
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
 #endif
         }
-        
+
         public string ResolveFilePath(string path)
         {
 #if UNITY_EDITOR
@@ -104,6 +104,12 @@ namespace Datra.Unity.Editor.Providers
 #endif
         }
 
+        /// <summary>
+        /// Load multiple text files from a directory.
+        /// </summary>
+        /// <param name="folderPath">Relative folder path from base path</param>
+        /// <param name="pattern">Search pattern (e.g., "*.json")</param>
+        /// <returns>Dictionary where key is file name (relative to folderPath), value is content</returns>
         public Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPath, string pattern = "*.json")
         {
 #if UNITY_EDITOR
@@ -125,7 +131,10 @@ namespace Datra.Unity.Editor.Providers
 
             foreach (var file in files)
             {
-                // Convert to Unity asset path format
+                // Get file name for dictionary key (relative to folderPath)
+                var fileName = Path.GetFileName(file);
+
+                // Convert to Unity asset path format for loading
                 var unityPath = file.Replace("\\", "/");
                 if (unityPath.Contains("/Assets/"))
                 {
@@ -133,26 +142,52 @@ namespace Datra.Unity.Editor.Providers
                     unityPath = unityPath.Substring(assetsIndex + 1);
                 }
 
-                // Convert to relative path (relative to basePath) for dictionary key
-                // This ensures consistency with other providers (FileSystem, Addressable)
-                var keyPath = unityPath;
-                if (!string.IsNullOrEmpty(_basePath) && unityPath.StartsWith(_basePath))
-                {
-                    keyPath = unityPath.Substring(_basePath.Length).TrimStart('/');
-                }
-
                 var textAsset = AssetDatabase.LoadAssetAtPath<TextAsset>(unityPath);
                 if (textAsset != null)
                 {
-                    result[keyPath] = textAsset.text;
+                    result[fileName] = textAsset.text;
                 }
                 else if (File.Exists(file))
                 {
-                    result[keyPath] = File.ReadAllText(file);
+                    result[fileName] = File.ReadAllText(file);
                 }
             }
 
             return Task.FromResult(result);
+#else
+            throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
+#endif
+        }
+
+        /// <summary>
+        /// List files in a directory without loading their contents.
+        /// </summary>
+        /// <param name="folderPath">Relative folder path from base path</param>
+        /// <param name="pattern">Search pattern (e.g., "*.json")</param>
+        /// <returns>List of file names (relative to folderPath, not including folderPath)</returns>
+        public Task<IReadOnlyList<string>> ListFilesAsync(string folderPath, string pattern = "*.json")
+        {
+#if UNITY_EDITOR
+            var fullPath = PathHelper.CombinePath(_basePath, folderPath);
+
+            // Get absolute path for directory operations
+            var absolutePath = fullPath.StartsWith("Assets/")
+                ? Path.GetFullPath(fullPath)
+                : fullPath;
+
+            if (!Directory.Exists(absolutePath))
+            {
+                return Task.FromResult<IReadOnlyList<string>>(new List<string>());
+            }
+
+            // Return file names only (relative to folderPath)
+            var files = Directory.GetFiles(absolutePath, pattern, SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .Where(f => f != null)
+                .Cast<string>()
+                .ToList();
+
+            return Task.FromResult<IReadOnlyList<string>>(files);
 #else
             throw new System.NotSupportedException("AssetDatabaseDataProvider is only available in the Unity Editor");
 #endif

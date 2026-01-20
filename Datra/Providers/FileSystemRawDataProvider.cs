@@ -66,39 +66,33 @@ namespace Datra.Providers
         }
 
         /// <summary>
-        /// List all files in a directory matching a pattern
+        /// Asynchronously load multiple text files from a directory.
         /// </summary>
         /// <param name="folderPath">Relative folder path from base path</param>
         /// <param name="pattern">Search pattern (e.g., "*.json")</param>
-        /// <returns>Relative file paths from base path</returns>
-        public IEnumerable<string> ListFiles(string folderPath, string pattern = "*.*")
-        {
-            var fullPath = GetFullPath(folderPath);
-
-            if (!Directory.Exists(fullPath))
-            {
-                return Enumerable.Empty<string>();
-            }
-
-            return Directory.GetFiles(fullPath, pattern, SearchOption.TopDirectoryOnly)
-                .Select(f => GetRelativePath(f));
-        }
-
-        /// <summary>
-        /// Asynchronously load multiple text files from a directory
-        /// </summary>
-        /// <param name="folderPath">Relative folder path from base path</param>
-        /// <param name="pattern">Search pattern (e.g., "*.json")</param>
-        /// <returns>Dictionary of relative path to content</returns>
+        /// <returns>Dictionary where key is file name (relative to folderPath), value is content</returns>
         public async Task<Dictionary<string, string>> LoadMultipleTextAsync(string folderPath, string pattern = "*.json")
         {
-            var files = ListFiles(folderPath, pattern);
             var result = new Dictionary<string, string>();
+            var absoluteFolderPath = GetFullPath(folderPath);
 
-            foreach (var file in files)
+            if (!Directory.Exists(absoluteFolderPath))
             {
-                var content = await LoadTextAsync(file);
-                result[file] = content;
+                return result;
+            }
+
+            var absoluteFiles = Directory.GetFiles(absoluteFolderPath, pattern, SearchOption.TopDirectoryOnly);
+
+            foreach (var absoluteFile in absoluteFiles)
+            {
+                var fileName = Path.GetFileName(absoluteFile);
+                // Build path for LoadTextAsync (relative to basePath)
+                var loadPath = string.IsNullOrEmpty(folderPath)
+                    ? fileName
+                    : Path.Combine(folderPath, fileName).Replace('\\', '/');
+                var content = await LoadTextAsync(loadPath);
+                // Key is file name only (relative to folderPath)
+                result[fileName] = content;
             }
 
             return result;
@@ -110,10 +104,23 @@ namespace Datra.Providers
         /// </summary>
         /// <param name="folderPath">Relative folder path from base path</param>
         /// <param name="pattern">Search pattern (e.g., "*.json")</param>
-        /// <returns>List of relative file paths</returns>
+        /// <returns>List of file names (relative to folderPath, not including folderPath)</returns>
         public Task<IReadOnlyList<string>> ListFilesAsync(string folderPath, string pattern = "*.json")
         {
-            var files = ListFiles(folderPath, pattern).ToList();
+            var absoluteFolderPath = GetFullPath(folderPath);
+
+            if (!Directory.Exists(absoluteFolderPath))
+            {
+                return Task.FromResult<IReadOnlyList<string>>(new List<string>());
+            }
+
+            // Return file names only (relative to folderPath)
+            var files = Directory.GetFiles(absoluteFolderPath, pattern, SearchOption.TopDirectoryOnly)
+                .Select(Path.GetFileName)
+                .Where(f => f != null)
+                .Cast<string>()
+                .ToList();
+
             return Task.FromResult<IReadOnlyList<string>>(files);
         }
 
@@ -147,26 +154,6 @@ namespace Datra.Providers
                       .Replace('/', Path.DirectorySeparatorChar);
 
             return Path.Combine(_basePath, path);
-        }
-
-        private string GetRelativePath(string fullPath)
-        {
-            if (string.IsNullOrEmpty(_basePath))
-            {
-                return fullPath;
-            }
-
-#if NETSTANDARD2_0
-            // Manual relative path calculation for netstandard2.0
-            var baseUri = new System.Uri(_basePath.EndsWith(Path.DirectorySeparatorChar.ToString())
-                ? _basePath
-                : _basePath + Path.DirectorySeparatorChar);
-            var fileUri = new System.Uri(fullPath);
-            return System.Uri.UnescapeDataString(baseUri.MakeRelativeUri(fileUri).ToString())
-                .Replace('/', Path.DirectorySeparatorChar);
-#else
-            return Path.GetRelativePath(_basePath, fullPath);
-#endif
         }
     }
 }
