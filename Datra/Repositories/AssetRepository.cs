@@ -101,7 +101,7 @@ namespace Datra.Repositories
             {
                 var content = await _rawDataProvider.LoadTextAsync(relativePath);
                 var data = _deserializeFunc(content, serializer);
-                return new Asset<T>(summary.Id, summary.Metadata, data, summary.FilePath);
+                return new Asset<T>(summary.Id, summary.Metadata ?? new AssetMetadata(), data, summary.FilePath);
             }
             catch (Exception ex)
             {

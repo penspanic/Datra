@@ -21,7 +21,9 @@ namespace Datra.Repositories.Runtime
         private readonly Dictionary<string, AssetId> _nameToId = new();
         private bool _isInitialized;
 
+#pragma warning disable CS0067 // Event required by interface but not used in this implementation
         public event Action<bool>? OnModifiedStateChanged;
+#pragma warning restore CS0067
 
         #region IRepository
 

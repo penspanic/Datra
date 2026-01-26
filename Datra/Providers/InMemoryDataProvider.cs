@@ -102,9 +102,8 @@ namespace Datra.Providers
             // Try to parse from text file
             if (_textFiles.TryGetValue(normalizedPath, out var text))
             {
-                var data = DeepCloner.Clone(
-                    Newtonsoft.Json.JsonConvert.DeserializeObject<T>(text)
-                );
+                var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(text);
+                var data = deserialized != null ? DeepCloner.Clone(deserialized) : default;
                 return Task.FromResult(data);
             }
 
