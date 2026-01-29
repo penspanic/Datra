@@ -40,7 +40,7 @@ namespace Datra.Serializers
         /// </summary>
         public static string Serialize<T>(T obj)
         {
-            return JsonConvert.SerializeObject(obj, _settings);
+            return JsonConvert.SerializeObject(obj, typeof(T), _settings);
         }
 
         /// <summary>

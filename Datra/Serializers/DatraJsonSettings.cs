@@ -44,6 +44,7 @@ namespace Datra.Serializers
     /// <summary>
     /// Contract resolver that only serializes properties with setters.
     /// Excludes getter-only properties like generated Ref and LocaleRef properties.
+    /// Anonymous types are exempted (all their properties are getter-only).
     /// </summary>
     public class WritablePropertiesOnlyContractResolver : DefaultContractResolver
     {
@@ -53,14 +54,23 @@ namespace Datra.Serializers
 
             if (member is PropertyInfo propInfo)
             {
-                // Only serialize if the property has a setter
-                if (!propInfo.CanWrite)
+                // Anonymous types have only getter-only properties — always serialize them
+                if (!propInfo.CanWrite && !IsAnonymousType(propInfo.DeclaringType))
                 {
                     property.ShouldSerialize = _ => false;
                 }
             }
 
             return property;
+        }
+
+        private static bool IsAnonymousType(System.Type type)
+        {
+            return type != null
+                && type.Namespace == null
+                && type.IsSealed
+                && type.IsNotPublic
+                && type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), false);
         }
     }
 }
