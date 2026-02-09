@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -28,11 +29,11 @@ namespace Datra.Unity.Tests
         /// </summary>
         private class MockDataEditorService : IDataEditorService
         {
-            public IDataContext? DataContext => null;
+            public IDataContext DataContext => null;
             public IReadOnlyDictionary<Type, IEditableRepository> Repositories { get; } = new Dictionary<Type, IEditableRepository>();
 
-            public event Action<Type>? OnDataChanged;
-            public event Action<Type, bool>? OnModifiedStateChanged;
+            public event Action<Type> OnDataChanged;
+            public event Action<Type, bool> OnModifiedStateChanged;
 
             public bool SaveWasCalled { get; private set; }
             public bool SaveAllWasCalled { get; private set; }
@@ -49,7 +50,7 @@ namespace Datra.Unity.Tests
             }
 
             public IReadOnlyList<DataTypeInfo> GetDataTypeInfos() => _dataTypeInfos;
-            public IEditableRepository? GetRepository(Type dataType) => null;
+            public IEditableRepository GetRepository(Type dataType) => null;
 
             public Task<bool> SaveAsync(Type dataType, bool forceSave = false)
             {

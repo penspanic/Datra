@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for nested struct/class types (user-defined types)
     /// </summary>
-    public class NestedTypeFieldHandler : IFieldTypeHandler
+    public class NestedTypeFieldHandler : IUnityFieldHandler
     {
         public int Priority => 30;
 

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Reflection;
 using UnityEngine.UIElements;
@@ -10,7 +11,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for LocaleRef fields with FixedLocale attribute
     /// </summary>
-    public class LocaleRefFieldHandler : IFieldTypeHandler
+    public class LocaleRefFieldHandler : IUnityFieldHandler
     {
         public int Priority => 100; // Highest priority - very specific type
 

@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Reflection;
 using UnityEngine.UIElements;
@@ -11,7 +12,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for string fields with asset attributes (AssetType, FolderPath)
     /// </summary>
-    public class AssetStringFieldHandler : IFieldTypeHandler
+    public class AssetStringFieldHandler : IUnityFieldHandler
     {
         public int Priority => 50; // Higher than basic string handler
 

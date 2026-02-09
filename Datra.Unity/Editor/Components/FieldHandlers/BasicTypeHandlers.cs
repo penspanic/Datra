@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Reflection;
 using UnityEngine;
@@ -11,7 +12,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// Uses Unity's isDelayed mode - OnValueChanged is only called when editing is complete
     /// (Enter key or FocusOut), preventing UI rebuild during typing.
     /// </summary>
-    public class StringFieldHandler : IFieldTypeHandler
+    public class StringFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -65,7 +66,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for int fields
     /// </summary>
-    public class IntFieldHandler : IFieldTypeHandler
+    public class IntFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -89,7 +90,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for float fields
     /// </summary>
-    public class FloatFieldHandler : IFieldTypeHandler
+    public class FloatFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -113,7 +114,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for bool fields
     /// </summary>
-    public class BoolFieldHandler : IFieldTypeHandler
+    public class BoolFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -137,7 +138,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for enum fields
     /// </summary>
-    public class EnumFieldHandler : IFieldTypeHandler
+    public class EnumFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -161,7 +162,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for Vector2 fields
     /// </summary>
-    public class Vector2FieldHandler : IFieldTypeHandler
+    public class Vector2FieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -185,7 +186,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for Vector3 fields
     /// </summary>
-    public class Vector3FieldHandler : IFieldTypeHandler
+    public class Vector3FieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 
@@ -209,7 +210,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for Color fields
     /// </summary>
-    public class ColorFieldHandler : IFieldTypeHandler
+    public class ColorFieldHandler : IUnityFieldHandler
     {
         public int Priority => 0;
 

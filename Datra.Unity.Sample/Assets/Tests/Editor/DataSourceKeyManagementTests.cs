@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -61,13 +62,13 @@ namespace Datra.Unity.Tests
             public IEnumerable<string> Keys => _data.Keys.Where(k => !_deletedKeys.Contains(k));
 
             // ITableRepository - Reading (async)
-            public Task<TestTableData?> GetAsync(string key) => Task.FromResult(TryGetLoaded(key));
+            public Task<TestTableData> GetAsync(string key) => Task.FromResult(TryGetLoaded(key));
             public Task<IReadOnlyDictionary<string, TestTableData>> GetAllAsync() => Task.FromResult<IReadOnlyDictionary<string, TestTableData>>(_data);
             public Task<IEnumerable<TestTableData>> FindAsync(Func<TestTableData, bool> predicate) =>
                 Task.FromResult(_data.Values.Where(predicate));
 
             // ITableRepository - Loaded data (sync)
-            public TestTableData? TryGetLoaded(string key) => _data.TryGetValue(key, out var v) && !_deletedKeys.Contains(key) ? v : null;
+            public TestTableData TryGetLoaded(string key) => _data.TryGetValue(key, out var v) && !_deletedKeys.Contains(key) ? v : null;
             public IReadOnlyDictionary<string, TestTableData> LoadedItems => _data;
 
             // ITableRepository - Writing
@@ -100,7 +101,9 @@ namespace Datra.Unity.Tests
                 _deletedKeys.Clear();
             }
             public Task SaveAsync() => Task.CompletedTask;
-            public event Action<bool>? OnModifiedStateChanged;
+#pragma warning disable CS0067
+            public event Action<bool> OnModifiedStateChanged;
+#pragma warning restore CS0067
 
             // IChangeTracking<TKey>
             public ChangeState GetState(string key)
@@ -114,12 +117,12 @@ namespace Datra.Unity.Tests
             public IEnumerable<string> GetAddedKeys() => _addedKeys;
             public IEnumerable<string> GetModifiedKeys() => _modifiedKeys;
             public IEnumerable<string> GetDeletedKeys() => _deletedKeys;
-            public TData? GetBaseline<TData>(string key) where TData : class =>
+            public TData GetBaseline<TData>(string key) where TData : class =>
                 _baseline.TryGetValue(key, out var v) ? v as TData : null;
             public bool IsPropertyModified(string key, string propertyName) => _modifiedKeys.Contains(key);
             public IEnumerable<string> GetModifiedProperties(string key) => _modifiedKeys.Contains(key) ? new[] { "Name", "Value" } : Array.Empty<string>();
-            public object? GetPropertyBaseline(string key, string propertyName) => null;
-            public void TrackPropertyChange(string key, string propertyName, object? newValue) { if (!_addedKeys.Contains(key)) _modifiedKeys.Add(key); }
+            public object GetPropertyBaseline(string key, string propertyName) => null;
+            public void TrackPropertyChange(string key, string propertyName, object newValue) { if (!_addedKeys.Contains(key)) _modifiedKeys.Add(key); }
             public void Revert(string key)
             {
                 if (_addedKeys.Contains(key)) { _data.Remove(key); _addedKeys.Remove(key); }
@@ -131,8 +134,8 @@ namespace Datra.Unity.Tests
 
         private class MockSingleRepository : ISingleRepository<TestSingleData>
         {
-            private TestSingleData? _data;
-            private TestSingleData? _baseline;
+            private TestSingleData _data;
+            private TestSingleData _baseline;
 
             public void SetInitialData(TestSingleData data)
             {
@@ -150,25 +153,27 @@ namespace Datra.Unity.Tests
             public bool IsInitialized => _data != null;
 
             // ISingleRepository - Reading
-            public Task<TestSingleData?> GetAsync() => Task.FromResult(_data);
-            public TestSingleData? Current => _data;
+            public Task<TestSingleData> GetAsync() => Task.FromResult(_data);
+            public TestSingleData Current => _data;
 
             // ISingleRepository - Writing
             public void Set(TestSingleData data) => _data = data;
 
             // ISingleRepository - Change tracking
-            public TestSingleData? Baseline => _baseline;
+            public TestSingleData Baseline => _baseline;
             public bool IsPropertyModified(string propertyName) => false;
             public IEnumerable<string> GetModifiedProperties() => Array.Empty<string>();
-            public object? GetPropertyBaseline(string propertyName) => null;
-            public void TrackPropertyChange(string propertyName, object? newValue) { }
+            public object GetPropertyBaseline(string propertyName) => null;
+            public void TrackPropertyChange(string propertyName, object newValue) { }
             public void RevertProperty(string propertyName) { }
 
             // IChangeTracking
             public bool HasChanges => false;
             public void Revert() { if (_baseline != null) _data = new TestSingleData { Title = _baseline.Title, Count = _baseline.Count }; }
             public Task SaveAsync() => Task.CompletedTask;
-            public event Action<bool>? OnModifiedStateChanged;
+#pragma warning disable CS0067
+            public event Action<bool> OnModifiedStateChanged;
+#pragma warning restore CS0067
         }
 
         #endregion

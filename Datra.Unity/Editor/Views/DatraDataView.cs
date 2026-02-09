@@ -1,3 +1,4 @@
+#nullable disable
 using Datra;
 using System;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace Datra.Unity.Editor.Views
         protected List<DatraPropertyField> activeFields = new List<DatraPropertyField>();
 
         // Editable data source (provides data + change tracking)
-        protected IEditableDataSource dataSource;
+        protected new IEditableDataSource dataSource;
 
         // Localization support (for FixedLocale properties)
         protected Datra.Services.LocalizationContext localizationContext;

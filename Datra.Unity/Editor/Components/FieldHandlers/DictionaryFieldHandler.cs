@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -15,7 +16,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for Dictionary&lt;TKey, TValue&gt; types
     /// </summary>
-    public class DictionaryFieldHandler : IFieldTypeHandler
+    public class DictionaryFieldHandler : IUnityFieldHandler
     {
         public int Priority => 23;  // Higher than ListFieldHandler (22)
 

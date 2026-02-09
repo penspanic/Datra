@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -205,7 +206,7 @@ namespace Datra.Unity.Tests
 
             public int ItemCount => 0;
 
-            public string? LoadedFilePath => string.Empty;
+            public string LoadedFilePath => string.Empty;
         }
 
         /// <summary>
@@ -217,7 +218,9 @@ namespace Datra.Unity.Tests
             public bool HasModifications => false;
             public int Count => 0;
 
+#pragma warning disable CS0067
             public event Action<bool> OnModifiedStateChanged;
+#pragma warning restore CS0067
 
             public IEnumerable<object> EnumerateItems() => Array.Empty<object>();
             public ItemState GetItemState(object key) => ItemState.Unchanged;

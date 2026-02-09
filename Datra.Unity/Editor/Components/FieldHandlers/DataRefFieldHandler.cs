@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Reflection;
 using UnityEngine.UIElements;
@@ -11,7 +12,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Handler for DataRef types (StringDataRef<T>, IntDataRef<T>)
     /// </summary>
-    public class DataRefFieldHandler : IFieldTypeHandler
+    public class DataRefFieldHandler : IUnityFieldHandler
     {
         public int Priority => 40;
 

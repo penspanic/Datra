@@ -1,3 +1,4 @@
+#nullable enable
 using Datra;
 using System;
 using System.Collections.Generic;
@@ -89,17 +90,17 @@ namespace Datra.Unity.Editor.ViewModels
         public ILocaleEditorService? Localization => _localization;
 
         // Events
-        public event PropertyChangedEventHandler PropertyChanged;
-        public event Action<string> OnOperationCompleted;
-        public event Action<string> OnOperationFailed;
-        public event Action<Type, bool> OnModifiedStateChanged;
-        public event Action<TabViewModel> OnTabOpened;
-        public event Action<TabViewModel> OnTabClosed;
-        public event Action<TabViewModel> OnActiveTabChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public event Action<string>? OnOperationCompleted;
+        public event Action<string>? OnOperationFailed;
+        public event Action<Type, bool>? OnModifiedStateChanged;
+        public event Action<TabViewModel>? OnTabOpened;
+        public event Action<TabViewModel>? OnTabClosed;
+        public event Action<TabViewModel?>? OnActiveTabChanged;
 
         public DatraEditorViewModel(
             IDataEditorService dataService,
-            ILocaleEditorService localization = null)
+            ILocaleEditorService? localization = null)
         {
             _dataService = dataService ?? throw new ArgumentNullException(nameof(dataService));
             _localization = localization;
@@ -361,12 +362,12 @@ namespace Datra.Unity.Editor.ViewModels
 
         // INotifyPropertyChanged Implementation
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
@@ -381,12 +382,12 @@ namespace Datra.Unity.Editor.ViewModels
     public class TabViewModel
     {
         public Type DataType { get; }
-        public IEditableRepository Repository { get; }
-        public IDataContext DataContext { get; }
+        public IEditableRepository? Repository { get; }
+        public IDataContext? DataContext { get; }
         public string DisplayName => DataType?.Name ?? "Unknown";
         public bool IsModified { get; set; }
 
-        public TabViewModel(Type dataType, IEditableRepository repository, IDataContext dataContext)
+        public TabViewModel(Type dataType, IEditableRepository? repository, IDataContext? dataContext)
         {
             DataType = dataType;
             Repository = repository;

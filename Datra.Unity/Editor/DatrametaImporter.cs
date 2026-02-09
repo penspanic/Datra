@@ -1,3 +1,4 @@
+#nullable disable
 using UnityEditor.AssetImporters;
 using UnityEngine;
 

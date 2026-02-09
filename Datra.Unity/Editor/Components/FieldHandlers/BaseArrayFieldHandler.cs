@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -10,7 +11,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// <summary>
     /// Base class for array field handlers providing common UI scaffolding
     /// </summary>
-    public abstract class BaseArrayFieldHandler : IFieldTypeHandler
+    public abstract class BaseArrayFieldHandler : IUnityFieldHandler
     {
         public abstract int Priority { get; }
         public abstract bool CanHandle(Type type, MemberInfo member = null);

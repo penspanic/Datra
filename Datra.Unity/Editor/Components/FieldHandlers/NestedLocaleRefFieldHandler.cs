@@ -1,3 +1,4 @@
+#nullable disable
 using System;
 using System.Reflection;
 using UnityEngine.UIElements;
@@ -12,7 +13,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
     /// Handler for NestedLocaleRef fields with NestedLocale attribute.
     /// Creates UI for editing nested locale values within collection elements.
     /// </summary>
-    public class NestedLocaleRefFieldHandler : IFieldTypeHandler
+    public class NestedLocaleRefFieldHandler : IUnityFieldHandler
     {
         public int Priority => 101; // Higher than LocaleRefFieldHandler
 

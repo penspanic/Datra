@@ -1,3 +1,4 @@
+#nullable disable
 using Datra.Interfaces;
 using Datra.Models;
 
