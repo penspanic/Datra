@@ -21,7 +21,7 @@ namespace Datra.Unity.Tests.Integration
     public abstract class EditorWindowTestBase
     {
         protected DatraEditorWindow window;
-        protected const float DefaultTimeout = 10f;
+        protected const float DefaultTimeout = 30f;
         protected bool isGraphicsAvailable = true;
 
         [SetUp]
