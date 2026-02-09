@@ -122,6 +122,9 @@ namespace Datra.Unity.Editor.Views
         private float resizeStartX;
         private float resizeStartWidth;
 
+        // Column width persistence key
+        private string columnWidthsViewKey;
+
         public DatraTableView() : base()
         {
             AddToClassList("datra-table-view");
@@ -164,6 +167,10 @@ namespace Datra.Unity.Editor.Views
             {
                 hasUnsavedChanges = false;
             }
+
+            // Load saved column widths for this data type
+            columnWidthsViewKey = type.Name;
+            columnWidths = DatraUserPreferences.GetColumnWidths(columnWidthsViewKey);
 
             // Get columns (properties) BEFORE calling RefreshContent
             columns = GetFilteredProperties(type);
@@ -297,7 +304,8 @@ namespace Datra.Unity.Editor.Views
             // Actions column header
             if (ShowActionsColumn)
             {
-                var actionsHeader = CreateHeaderCell("Actions", ActionsColumnWidth);
+                float width = columnWidths.TryGetValue("__Actions", out var savedActions) ? savedActions : ActionsColumnWidth;
+                var actionsHeader = CreateHeaderCell("Actions", width);
                 var leftHandle = actionsHeader.Q<VisualElement>(className: "resize-handle-left");
                 if (leftHandle != null) leftHandle.style.display = DisplayStyle.None;
                 headerRow.Add(actionsHeader);
@@ -307,7 +315,8 @@ namespace Datra.Unity.Editor.Views
             // ID column (only for table data)
             if (ShowIdColumn && IsTableData(dataType))
             {
-                var idHeader = CreateHeaderCell("ID", IdColumnWidth);
+                float width = columnWidths.TryGetValue("__ID", out var savedId) ? savedId : IdColumnWidth;
+                var idHeader = CreateHeaderCell("ID", width);
                 if (columnIndex == 0)
                 {
                     var leftHandle = idHeader.Q<VisualElement>(className: "resize-handle-left");
@@ -322,7 +331,8 @@ namespace Datra.Unity.Editor.Views
             {
                 if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
-                var headerCell = CreateHeaderCell(colInfo.DisplayName, DefaultColumnWidth);
+                float width = columnWidths.TryGetValue(colInfo.ColumnName, out var savedWidth) ? savedWidth : DefaultColumnWidth;
+                var headerCell = CreateHeaderCell(colInfo.DisplayName, width);
                 if (columnIndex == 0)
                 {
                     var leftHandle = headerCell.Q<VisualElement>(className: "resize-handle-left");
@@ -338,11 +348,12 @@ namespace Datra.Unity.Editor.Views
             // Actions cell
             if (ShowActionsColumn)
             {
+                float width = columnWidths.TryGetValue("__Actions", out var savedActions) ? savedActions : ActionsColumnWidth;
                 var actionsCell = new VisualElement();
                 actionsCell.AddToClassList("table-cell");
                 actionsCell.AddToClassList("delete-cell");
-                actionsCell.style.width = ActionsColumnWidth;
-                actionsCell.style.minWidth = ActionsColumnWidth;
+                actionsCell.style.width = width;
+                actionsCell.style.minWidth = width;
 
                 var deleteButton = new Button();
                 deleteButton.text = "🗑";
@@ -357,11 +368,12 @@ namespace Datra.Unity.Editor.Views
             // ID cell (only for table data)
             if (ShowIdColumn && IsTableData(dataType))
             {
+                float width = columnWidths.TryGetValue("__ID", out var savedId) ? savedId : IdColumnWidth;
                 var idCell = new VisualElement();
                 idCell.AddToClassList("table-cell");
                 idCell.AddToClassList("editable-cell");
-                idCell.style.width = IdColumnWidth;
-                idCell.style.minWidth = IdColumnWidth;
+                idCell.style.width = width;
+                idCell.style.minWidth = width;
                 idCell.name = "id-cell";
                 row.Add(idCell);
             }
@@ -371,11 +383,12 @@ namespace Datra.Unity.Editor.Views
             {
                 if (colInfo.ColumnName == "Id" && ShowIdColumn) continue;
 
+                float width = columnWidths.TryGetValue(colInfo.ColumnName, out var savedWidth) ? savedWidth : DefaultColumnWidth;
                 var cell = new VisualElement();
                 cell.AddToClassList("table-cell");
                 cell.AddToClassList("editable-cell");
-                cell.style.width = DefaultColumnWidth;
-                cell.style.minWidth = DefaultColumnWidth;
+                cell.style.width = width;
+                cell.style.minWidth = width;
                 cell.name = $"cell-{colInfo.ColumnName}";
                 row.Add(cell);
             }
@@ -868,6 +881,16 @@ namespace Datra.Unity.Editor.Views
                 resizingColumn.ReleaseMouse();
                 resizingColumn.UnregisterCallback<MouseMoveEvent>(OnResizeMove);
                 resizingColumn.UnregisterCallback<MouseUpEvent>(OnResizeEnd);
+
+                // Save column width
+                int columnIndex = headerRow.IndexOf(resizingColumn);
+                string columnName = GetColumnNameByIndex(columnIndex);
+                if (columnName != null)
+                {
+                    float finalWidth = resizingColumn.style.width.value.value;
+                    columnWidths[columnName] = finalWidth;
+                    SaveColumnWidths();
+                }
             }
 
             var root = GetRootVisualElement();
@@ -875,6 +898,34 @@ namespace Datra.Unity.Editor.Views
                 root.style.cursor = StyleKeyword.Null;
 
             resizingColumn = null;
+        }
+
+        private string GetColumnNameByIndex(int index)
+        {
+            int offset = 0;
+            if (ShowActionsColumn)
+            {
+                if (index == offset) return "__Actions";
+                offset++;
+            }
+            if (ShowIdColumn && IsTableData(dataType))
+            {
+                if (index == offset) return "__ID";
+                offset++;
+            }
+            int colIdx = index - offset;
+            var filtered = expandedColumns.Where(c => !(c.ColumnName == "Id" && ShowIdColumn)).ToList();
+            if (colIdx >= 0 && colIdx < filtered.Count)
+                return filtered[colIdx].ColumnName;
+            return null;
+        }
+
+        private void SaveColumnWidths()
+        {
+            if (!string.IsNullOrEmpty(columnWidthsViewKey))
+            {
+                DatraUserPreferences.SetColumnWidths(columnWidthsViewKey, columnWidths);
+            }
         }
 
         private VisualElement GetRootVisualElement()

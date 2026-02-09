@@ -11,11 +11,13 @@ using Datra.Unity.Editor.Components;
 using Datra.Unity.Editor.Models;
 using Datra.Editor.Interfaces;
 using Datra.Editor.Models;
+using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
 using UnityEditor;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Cursor = UnityEngine.UIElements.Cursor;
 
 namespace Datra.Unity.Editor.Views
 {
@@ -50,6 +52,17 @@ namespace Datra.Unity.Editor.Views
         private const float ActionsColumnWidth = 60f;
         private const float KeyColumnWidth = 300f;
         private const float CategoryColumnWidth = 150f;
+        private const float TextColumnWidth = 400f;
+
+        // Column width persistence
+        private Dictionary<string, float> columnWidths = new Dictionary<string, float>();
+        private string columnWidthsViewKey;
+
+        // Column resize tracking
+        private bool isResizing = false;
+        private VisualElement resizingColumn;
+        private float resizeStartX;
+        private float resizeStartWidth;
 
         public DatraLocalizationView() : base()
         {
@@ -195,6 +208,8 @@ namespace Datra.Unity.Editor.Views
 
             // Initialize current language
             currentLanguageCode = context.CurrentLanguageCode;
+            columnWidthsViewKey = $"Localization_{currentLanguageCode}";
+            columnWidths = DatraUserPreferences.GetColumnWidths(columnWidthsViewKey);
             await LoadLanguageDataAsync(currentLanguageCode);
         }
 
@@ -270,29 +285,36 @@ namespace Datra.Unity.Editor.Views
         protected override void CreateHeaderCells()
         {
             // Actions column
-            var actionsHeader = CreateHeaderCell("", ActionsColumnWidth);
+            float actionsWidth = columnWidths.TryGetValue("__Actions", out var savedActions) ? savedActions : ActionsColumnWidth;
+            var actionsHeader = CreateResizableHeaderCell("", actionsWidth);
+            var leftHandle = actionsHeader.Q<VisualElement>(className: "resize-handle-left");
+            if (leftHandle != null) leftHandle.style.display = DisplayStyle.None;
             headerRow.Add(actionsHeader);
 
             // Key column
-            var keyHeader = CreateHeaderCell("Key", KeyColumnWidth);
+            float keyWidth = columnWidths.TryGetValue("Key", out var savedKey) ? savedKey : KeyColumnWidth;
+            var keyHeader = CreateResizableHeaderCell("Key", keyWidth);
             headerRow.Add(keyHeader);
 
             // Category column
-            var categoryHeader = CreateHeaderCell("Category", CategoryColumnWidth);
+            float categoryWidth = columnWidths.TryGetValue("Category", out var savedCategory) ? savedCategory : CategoryColumnWidth;
+            var categoryHeader = CreateResizableHeaderCell("Category", categoryWidth);
             headerRow.Add(categoryHeader);
 
             // Text column
-            var textHeader = CreateHeaderCell("Text", 400f);
+            float textWidth = columnWidths.TryGetValue("Text", out var savedText) ? savedText : TextColumnWidth;
+            var textHeader = CreateResizableHeaderCell("Text", textWidth);
             headerRow.Add(textHeader);
         }
 
         protected override void CreateRowCells(VisualElement row)
         {
             // Actions cell
+            float actionsWidth = columnWidths.TryGetValue("__Actions", out var savedActions) ? savedActions : ActionsColumnWidth;
             var actionsCell = new VisualElement();
             actionsCell.AddToClassList("table-cell");
-            actionsCell.style.width = ActionsColumnWidth;
-            actionsCell.style.minWidth = ActionsColumnWidth;
+            actionsCell.style.width = actionsWidth;
+            actionsCell.style.minWidth = actionsWidth;
             actionsCell.style.justifyContent = Justify.Center;
             actionsCell.style.alignItems = Align.Center;
 
@@ -305,28 +327,31 @@ namespace Datra.Unity.Editor.Views
             row.Add(actionsCell);
 
             // Key cell
+            float keyWidth = columnWidths.TryGetValue("Key", out var savedKey) ? savedKey : KeyColumnWidth;
             var keyCell = new VisualElement();
             keyCell.AddToClassList("table-cell");
-            keyCell.style.width = KeyColumnWidth;
-            keyCell.style.minWidth = KeyColumnWidth;
+            keyCell.style.width = keyWidth;
+            keyCell.style.minWidth = keyWidth;
             keyCell.style.paddingLeft = 8;
             keyCell.style.paddingRight = 8;
             row.Add(keyCell);
 
             // Category cell
+            float categoryWidth = columnWidths.TryGetValue("Category", out var savedCategory) ? savedCategory : CategoryColumnWidth;
             var categoryCell = new VisualElement();
             categoryCell.AddToClassList("table-cell");
-            categoryCell.style.width = CategoryColumnWidth;
-            categoryCell.style.minWidth = CategoryColumnWidth;
+            categoryCell.style.width = categoryWidth;
+            categoryCell.style.minWidth = categoryWidth;
             categoryCell.style.paddingLeft = 8;
             categoryCell.style.paddingRight = 8;
             row.Add(categoryCell);
 
             // Text cell
+            float textWidth = columnWidths.TryGetValue("Text", out var savedText) ? savedText : TextColumnWidth;
             var textCell = new VisualElement();
             textCell.AddToClassList("table-cell");
-            textCell.style.width = 600f;
-            textCell.style.minWidth = 400f;
+            textCell.style.width = textWidth;
+            textCell.style.minWidth = textWidth;
             textCell.style.paddingLeft = 8;
             textCell.style.paddingRight = 8;
             row.Add(textCell);
@@ -515,6 +540,10 @@ namespace Datra.Unity.Editor.Views
 
             currentLanguageCode = newLanguage;
 
+            // Load saved column widths for this language
+            columnWidthsViewKey = $"Localization_{newLanguage}";
+            columnWidths = DatraUserPreferences.GetColumnWidths(columnWidthsViewKey);
+
             // Load language data (includes LoadLanguageAsync, tracker init, and RefreshContent)
             await LoadLanguageDataAsync(newLanguage);
 
@@ -660,11 +689,12 @@ namespace Datra.Unity.Editor.Views
             }
         }
 
-        // Helper to create header cells
-        private VisualElement CreateHeaderCell(string text, float width)
+        // Helper to create header cells with resize handles
+        private VisualElement CreateResizableHeaderCell(string text, float width)
         {
             var cell = new VisualElement();
             cell.AddToClassList("table-header-cell");
+            cell.AddToClassList("header-cell-content");
             cell.style.width = width;
             cell.style.minWidth = width;
             cell.style.paddingLeft = 8;
@@ -677,7 +707,150 @@ namespace Datra.Unity.Editor.Views
             label.style.fontSize = 11;
             cell.Add(label);
 
+            // Add resize handles
+            var resizeHandleRight = CreateResizeHandle("resize-handle-right");
+            var resizeHandleLeft = CreateResizeHandle("resize-handle-left");
+
+            resizeHandleRight.RegisterCallback<MouseDownEvent>(evt => StartResize(evt, cell));
+            resizeHandleLeft.RegisterCallback<MouseDownEvent>(evt => {
+                var index = headerRow.IndexOf(cell);
+                if (index > 0)
+                {
+                    var previousCell = headerRow[index - 1];
+                    StartResize(evt, previousCell);
+                }
+            });
+
+            cell.Add(resizeHandleRight);
+            cell.Add(resizeHandleLeft);
+
             return cell;
+        }
+
+        private VisualElement CreateResizeHandle(string className)
+        {
+            var handle = new VisualElement();
+            handle.AddToClassList("table-resize-handle");
+            handle.AddToClassList("resize-handle");
+            handle.AddToClassList(className);
+            handle.pickingMode = PickingMode.Position;
+
+            handle.RegisterCallback<MouseEnterEvent>(evt => {
+                handle.style.cursor = new Cursor() { hotspot = Vector2.zero };
+                handle.style.backgroundColor = new Color(0.5f, 0.7f, 1f, 0.3f);
+            });
+
+            handle.RegisterCallback<MouseLeaveEvent>(evt => {
+                handle.style.cursor = StyleKeyword.Null;
+                handle.style.backgroundColor = Color.clear;
+            });
+
+            return handle;
+        }
+
+        private void StartResize(MouseDownEvent evt, VisualElement cell)
+        {
+            evt.StopPropagation();
+
+            isResizing = true;
+            resizingColumn = cell;
+            resizeStartX = evt.mousePosition.x;
+            resizeStartWidth = cell.style.width.value.value;
+
+            cell.CaptureMouse();
+            cell.RegisterCallback<MouseMoveEvent>(OnResizeMove);
+            cell.RegisterCallback<MouseUpEvent>(OnResizeEnd);
+
+            var root = GetRootVisualElement();
+            if (root != null)
+                root.style.cursor = new Cursor() { texture = null };
+        }
+
+        private void OnResizeMove(MouseMoveEvent evt)
+        {
+            if (!isResizing || resizingColumn == null) return;
+
+            evt.StopPropagation();
+
+            float deltaX = evt.mousePosition.x - resizeStartX;
+            float newWidth = Mathf.Max(50, resizeStartWidth + deltaX);
+
+            resizingColumn.style.width = newWidth;
+            resizingColumn.style.minWidth = newWidth;
+
+            // Update corresponding cells in ListView
+            int columnIndex = headerRow.IndexOf(resizingColumn);
+            if (columnIndex >= 0)
+            {
+                var visibleRows = listView.Query<VisualElement>(className: "table-row").ToList();
+                foreach (var row in visibleRows)
+                {
+                    if (row.childCount > columnIndex)
+                    {
+                        var rowCell = row[columnIndex];
+                        rowCell.style.width = newWidth;
+                        rowCell.style.minWidth = newWidth;
+                    }
+                }
+            }
+        }
+
+        private void OnResizeEnd(MouseUpEvent evt)
+        {
+            if (!isResizing) return;
+
+            evt.StopPropagation();
+            isResizing = false;
+
+            if (resizingColumn != null)
+            {
+                resizingColumn.ReleaseMouse();
+                resizingColumn.UnregisterCallback<MouseMoveEvent>(OnResizeMove);
+                resizingColumn.UnregisterCallback<MouseUpEvent>(OnResizeEnd);
+
+                // Save column width
+                int columnIndex = headerRow.IndexOf(resizingColumn);
+                string columnName = GetColumnNameByIndex(columnIndex);
+                if (columnName != null)
+                {
+                    float finalWidth = resizingColumn.style.width.value.value;
+                    columnWidths[columnName] = finalWidth;
+                    SaveColumnWidths();
+                }
+            }
+
+            var root = GetRootVisualElement();
+            if (root != null)
+                root.style.cursor = StyleKeyword.Null;
+
+            resizingColumn = null;
+        }
+
+        private static readonly string[] LocalizationColumnNames = { "__Actions", "Key", "Category", "Text" };
+
+        private string GetColumnNameByIndex(int index)
+        {
+            if (index >= 0 && index < LocalizationColumnNames.Length)
+                return LocalizationColumnNames[index];
+            return null;
+        }
+
+        private void SaveColumnWidths()
+        {
+            if (!string.IsNullOrEmpty(columnWidthsViewKey))
+            {
+                DatraUserPreferences.SetColumnWidths(columnWidthsViewKey, columnWidths);
+            }
+        }
+
+        private VisualElement GetRootVisualElement()
+        {
+            var element = this as VisualElement;
+            while (element.parent != null)
+            {
+                element = element.parent;
+            }
+            return element;
         }
 
         /// <summary>

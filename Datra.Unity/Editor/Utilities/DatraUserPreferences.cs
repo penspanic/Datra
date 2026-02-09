@@ -240,5 +240,70 @@ namespace Datra.Unity.Editor.Utilities
             var key = $"LocalizationStatusFilter_{languageCode}";
             SetInt(key, status);
         }
+
+        /// <summary>
+        /// Gets saved column widths for a specific view
+        /// </summary>
+        /// <param name="viewKey">View identifier (e.g., "CharacterData", "Localization_ko")</param>
+        /// <returns>Dictionary of column name to width, or empty dictionary if none saved</returns>
+        public static Dictionary<string, float> GetColumnWidths(string viewKey)
+        {
+            var json = GetString($"ColumnWidths_{viewKey}", "");
+            if (string.IsNullOrEmpty(json))
+                return new Dictionary<string, float>();
+
+            try
+            {
+                return JsonUtility.FromJson<ColumnWidthsData>(json)?.ToDictionary()
+                       ?? new Dictionary<string, float>();
+            }
+            catch
+            {
+                return new Dictionary<string, float>();
+            }
+        }
+
+        /// <summary>
+        /// Saves column widths for a specific view
+        /// </summary>
+        /// <param name="viewKey">View identifier (e.g., "CharacterData", "Localization_ko")</param>
+        /// <param name="widths">Dictionary of column name to width</param>
+        public static void SetColumnWidths(string viewKey, Dictionary<string, float> widths)
+        {
+            var data = new ColumnWidthsData(widths);
+            var json = JsonUtility.ToJson(data);
+            SetString($"ColumnWidths_{viewKey}", json);
+        }
+
+        /// <summary>
+        /// Serializable wrapper for column widths (JsonUtility requires a class with [Serializable])
+        /// </summary>
+        [Serializable]
+        private class ColumnWidthsData
+        {
+            public List<string> keys = new List<string>();
+            public List<float> values = new List<float>();
+
+            public ColumnWidthsData() { }
+
+            public ColumnWidthsData(Dictionary<string, float> dict)
+            {
+                foreach (var kvp in dict)
+                {
+                    keys.Add(kvp.Key);
+                    values.Add(kvp.Value);
+                }
+            }
+
+            public Dictionary<string, float> ToDictionary()
+            {
+                var dict = new Dictionary<string, float>();
+                for (int i = 0; i < keys.Count && i < values.Count; i++)
+                {
+                    dict[keys[i]] = values[i];
+                }
+                return dict;
+            }
+        }
     }
 }
