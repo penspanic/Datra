@@ -112,76 +112,68 @@ namespace Datra.Unity.Editor.UI
         private void LoadAvailableItems()
         {
             _availableItems.Clear();
-            
+
             if (_dataContext == null) return;
-            
+
             // Find the repository that contains the referenced type
             var contextType = _dataContext.GetType();
-            
-            // First try to find repository through properties
-            var properties = contextType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
             object repository = null;
-            
-            foreach (var prop in properties)
+
+            // First try the internal Repositories dictionary (registered by type FullName)
+            var repositoriesField = contextType.GetField("Repositories", BindingFlags.NonPublic | BindingFlags.Instance);
+            if (repositoriesField != null)
             {
-                var propType = prop.PropertyType;
-                if (propType.IsGenericType)
+                var repositoryDict = repositoriesField.GetValue(_dataContext) as Dictionary<string, object>;
+                if (repositoryDict != null)
                 {
-                    var genericDef = propType.GetGenericTypeDefinition();
-                    if (genericDef == typeof(ITableRepository<,>))
-                    {
-                        var genericArgs = propType.GetGenericArguments();
-                        if (genericArgs[1] == _referencedType)
-                        {
-                            repository = prop.GetValue(_dataContext);
-                            break;
-                        }
-                    }
+                    repositoryDict.TryGetValue(_referencedType.FullName, out repository);
                 }
             }
-            
-            // If not found through properties, try the internal Repositories field
+
+            // Fallback: find repository through public properties
             if (repository == null)
             {
-                var repositories = contextType.GetField("Repositories", BindingFlags.NonPublic | BindingFlags.Instance);
-                if (repositories != null)
+                var properties = contextType.GetProperties(BindingFlags.Public | BindingFlags.Instance);
+                foreach (var prop in properties)
                 {
-                    var repositoryDict = repositories.GetValue(_dataContext) as Dictionary<string, object>;
-                    if (repositoryDict != null)
+                    var propType = prop.PropertyType;
+                    // Check if property type implements ITableRepository<,> with matching data type
+                    var tableRepoInterface = propType.GetInterfaces()
+                        .Concat(propType.IsGenericType ? new[] { propType } : Array.Empty<Type>())
+                        .FirstOrDefault(i => i.IsGenericType &&
+                                            i.GetGenericTypeDefinition() == typeof(ITableRepository<,>) &&
+                                            i.GetGenericArguments()[1] == _referencedType);
+
+                    if (tableRepoInterface != null)
                     {
-                        // Look for repository by type name
-                        var typeName = _referencedType.FullName;
-                        repositoryDict.TryGetValue(typeName, out repository);
+                        repository = prop.GetValue(_dataContext);
+                        break;
                     }
                 }
             }
-            
-            // Get all items from repository
+
+            // Get all items from repository using LoadedItems property
             if (repository != null)
             {
-                var getAllMethod = repository.GetType().GetMethod("GetAll");
-                if (getAllMethod != null)
+                var loadedItemsProperty = repository.GetType().GetProperty("LoadedItems");
+                if (loadedItemsProperty != null)
                 {
-                    var result = getAllMethod.Invoke(repository, null);
-                    
-                    // Handle both dictionary and enumerable results
-                    if (result is System.Collections.IDictionary dict)
+                    var loadedItems = loadedItemsProperty.GetValue(repository);
+                    if (loadedItems is System.Collections.IDictionary dict)
                     {
                         foreach (var value in dict.Values)
                         {
                             _availableItems.Add(value);
                         }
                     }
-                    else if (result is System.Collections.IEnumerable items)
-                    {
-                        foreach (var item in items)
-                        {
-                            _availableItems.Add(item);
-                        }
-                    }
+                }
+                else if (repository is IEditableRepository editableRepo)
+                {
+                    // Fallback: use EnumerateItems from IEditableRepository
+                    _availableItems.AddRange(editableRepo.EnumerateItems());
                 }
             }
-            
+
             UpdateListView();
         }
         
