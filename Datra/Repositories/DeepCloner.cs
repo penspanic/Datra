@@ -1,21 +1,18 @@
 #nullable enable
 using System;
+using Datra.Serializers;
 using Newtonsoft.Json;
 
 namespace Datra.Repositories
 {
     /// <summary>
-    /// JSON 직렬화/역직렬화를 사용한 깊은 복사 유틸리티
+    /// JSON 직렬화/역직렬화를 사용한 깊은 복사 유틸리티.
+    /// DatraJsonSettings.CreateForClone()과 동일한 설정을 사용하여
+    /// EKDS 등 다른 Datra 컴포넌트와 일관된 직렬화를 보장합니다.
     /// </summary>
     public static class DeepCloner
     {
-        private static readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-        {
-            TypeNameHandling = TypeNameHandling.Auto,
-            NullValueHandling = NullValueHandling.Include,
-            ReferenceLoopHandling = ReferenceLoopHandling.Ignore,
-            PreserveReferencesHandling = PreserveReferencesHandling.None
-        };
+        private static readonly JsonSerializerSettings _settings = DatraJsonSettings.CreateForClone();
 
         /// <summary>
         /// 객체를 깊은 복사

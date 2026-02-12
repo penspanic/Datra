@@ -6,8 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
-using Datra.Serializers;
-using Newtonsoft.Json;
+using Datra.Repositories;
 
 namespace Datra.Editor.DataSources
 {
@@ -20,8 +19,6 @@ namespace Datra.Editor.DataSources
     public class EditableSingleDataSource<TData> : EditableDataSourceBase, IEditableDataSource<string, TData>
         where TData : class
     {
-        private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
-
         /// <summary>
         /// Constant key for the single data item
         /// </summary>
@@ -59,7 +56,7 @@ namespace Datra.Editor.DataSources
 
             if (_repository.IsInitialized && _repository.Current != null)
             {
-                _baseline = DeepClone(_repository.Current);
+                _baseline = DeepCloner.Clone(_repository.Current);
             }
             else
             {
@@ -213,7 +210,7 @@ namespace Datra.Editor.DataSources
             if (_baseline == null)
                 throw new InvalidOperationException("Data has not been loaded.");
 
-            _workingCopy = DeepClone(_baseline);
+            _workingCopy = DeepCloner.Clone(_baseline);
             return _workingCopy;
         }
 
@@ -224,7 +221,7 @@ namespace Datra.Editor.DataSources
 
             if (_workingCopy == null)
             {
-                _workingCopy = DeepClone(_baseline);
+                _workingCopy = DeepCloner.Clone(_baseline);
             }
         }
 
@@ -241,7 +238,7 @@ namespace Datra.Editor.DataSources
 
             if (_workingCopy == null && _baseline != null)
             {
-                _workingCopy = DeepClone(_baseline);
+                _workingCopy = DeepCloner.Clone(_baseline);
             }
 
             object? baselineValue = null;
@@ -300,7 +297,7 @@ namespace Datra.Editor.DataSources
             if (key != SingleKey)
                 return null;
 
-            return _baseline != null ? DeepClone(_baseline) : null;
+            return _baseline != null ? DeepCloner.Clone(_baseline) : null;
         }
 
         public bool IsPropertyModified(string key, string propertyName)
@@ -338,7 +335,7 @@ namespace Datra.Editor.DataSources
 
             if (_workingCopy == null)
             {
-                _workingCopy = DeepClone(_baseline);
+                _workingCopy = DeepCloner.Clone(_baseline);
             }
             return _workingCopy;
         }
@@ -348,39 +345,9 @@ namespace Datra.Editor.DataSources
             return _workingCopy ?? _baseline;
         }
 
-        private TData DeepClone(TData value)
-        {
-            if (value == null) return null!;
-
-            try
-            {
-                var json = JsonConvert.SerializeObject(value, _jsonSettings);
-                return JsonConvert.DeserializeObject<TData>(json, _jsonSettings)!;
-            }
-            catch
-            {
-                return value;
-            }
-        }
-
         private static bool DeepEqualsValues(object? a, object? b)
         {
-            if (a == null && b == null) return true;
-            if (a == null || b == null) return false;
-
-            if (a.GetType().IsValueType || a is string)
-                return a.Equals(b);
-
-            try
-            {
-                var jsonA = JsonConvert.SerializeObject(a);
-                var jsonB = JsonConvert.SerializeObject(b);
-                return jsonA == jsonB;
-            }
-            catch
-            {
-                return ReferenceEquals(a, b);
-            }
+            return DeepCloner.DeepEquals(a, b);
         }
 
         private static void CopyProperties(TData source, TData target)

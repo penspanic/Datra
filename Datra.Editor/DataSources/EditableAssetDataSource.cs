@@ -7,8 +7,7 @@ using System.Threading.Tasks;
 using Datra.DataTypes;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
-using Datra.Serializers;
-using Newtonsoft.Json;
+using Datra.Repositories;
 
 namespace Datra.Editor.DataSources
 {
@@ -21,8 +20,6 @@ namespace Datra.Editor.DataSources
     public class EditableAssetDataSource<T> : EditableDataSourceBase, IEditableDataSource<AssetId, Asset<T>>
         where T : class
     {
-        private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
-
         private readonly IAssetRepository<T> _repository;
 
         // Baseline snapshot (represents saved state)
@@ -491,43 +488,13 @@ namespace Datra.Editor.DataSources
 
         private Asset<T> CloneAsset(Asset<T> asset)
         {
-            var clonedData = DeepCloneData(asset.Data);
+            var clonedData = DeepCloner.Clone(asset.Data);
             return new Asset<T>(asset.Id, asset.Metadata, clonedData, asset.FilePath);
-        }
-
-        private T DeepCloneData(T data)
-        {
-            if (data == null) return null!;
-
-            try
-            {
-                var json = JsonConvert.SerializeObject(data, _jsonSettings);
-                return JsonConvert.DeserializeObject<T>(json, _jsonSettings)!;
-            }
-            catch
-            {
-                return data;
-            }
         }
 
         private static bool DeepEqualsValues(object? a, object? b)
         {
-            if (a == null && b == null) return true;
-            if (a == null || b == null) return false;
-
-            if (a.GetType().IsValueType || a is string)
-                return a.Equals(b);
-
-            try
-            {
-                var jsonA = JsonConvert.SerializeObject(a);
-                var jsonB = JsonConvert.SerializeObject(b);
-                return jsonA == jsonB;
-            }
-            catch
-            {
-                return ReferenceEquals(a, b);
-            }
+            return DeepCloner.DeepEquals(a, b);
         }
 
         private static void CopyDataProperties(T source, T target)

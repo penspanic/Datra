@@ -6,8 +6,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Datra.Editor.Interfaces;
 using Datra.Interfaces;
-using Datra.Serializers;
-using Newtonsoft.Json;
+using Datra.Repositories;
 
 namespace Datra.Editor.DataSources
 {
@@ -24,8 +23,6 @@ namespace Datra.Editor.DataSources
         where TKey : notnull
         where TData : class, ITableData<TKey>
     {
-        private static readonly JsonSerializerSettings _jsonSettings = DatraJsonSettings.CreateForClone();
-
         private readonly ITableRepository<TKey, TData> _repository;
 
         // Baseline snapshot (taken at initialization, represents saved state)
@@ -67,7 +64,7 @@ namespace Datra.Editor.DataSources
 
             foreach (var kvp in _repository.LoadedItems)
             {
-                _baseline[kvp.Key] = DeepClone(kvp.Value);
+                _baseline[kvp.Key] = DeepCloner.Clone(kvp.Value);
             }
         }
 
@@ -114,7 +111,7 @@ namespace Datra.Editor.DataSources
                 // Get or create working copy - this ensures baseline is never exposed for direct modification
                 if (!_workingCopies.TryGetValue(kvp.Key, out var workingCopy))
                 {
-                    workingCopy = DeepClone(kvp.Value);
+                    workingCopy = DeepCloner.Clone(kvp.Value);
                     _workingCopies[kvp.Key] = workingCopy;
                 }
                 yield return new KeyValuePair<TKey, TData>(kvp.Key, workingCopy);
@@ -195,7 +192,7 @@ namespace Datra.Editor.DataSources
             if (!_baseline.TryGetValue(key, out var baseline))
                 throw new KeyNotFoundException($"Item with key '{key}' not found in baseline.");
 
-            var workingCopy = DeepClone(baseline);
+            var workingCopy = DeepCloner.Clone(baseline);
             _workingCopies[key] = workingCopy;
             return workingCopy;
         }
@@ -231,7 +228,7 @@ namespace Datra.Editor.DataSources
                     }
                     return;
                 }
-                workingCopy = DeepClone(baseline);
+                workingCopy = DeepCloner.Clone(baseline);
                 _workingCopies[key] = workingCopy;
             }
 
@@ -293,7 +290,7 @@ namespace Datra.Editor.DataSources
 
             ExecuteWithNotification(() =>
             {
-                _workingCopies[key] = DeepClone(value);
+                _workingCopies[key] = DeepCloner.Clone(value);
                 _addedKeys.Add(key);
                 _deletedKeys.Remove(key);
             });
@@ -327,7 +324,7 @@ namespace Datra.Editor.DataSources
 
         public TData? GetBaselineValue(TKey key)
         {
-            return _baseline.TryGetValue(key, out var value) ? DeepClone(value) : null;
+            return _baseline.TryGetValue(key, out var value) ? DeepCloner.Clone(value) : null;
         }
 
         public override bool IsPropertyModified(object key, string propertyName)
@@ -487,42 +484,10 @@ namespace Datra.Editor.DataSources
             }
         }
 
-        private TData DeepClone(TData value)
-        {
-            if (value == null) return null!;
-
-            try
-            {
-                var json = JsonConvert.SerializeObject(value, _jsonSettings);
-                return JsonConvert.DeserializeObject<TData>(json, _jsonSettings)!;
-            }
-            catch
-            {
-                // Fallback to returning the same reference (not ideal but safe)
-                return value;
-            }
-        }
 
         private static bool DeepEqualsValues(object? a, object? b)
         {
-            if (a == null && b == null) return true;
-            if (a == null || b == null) return false;
-
-            // For value types and string, use Equals
-            if (a.GetType().IsValueType || a is string)
-                return a.Equals(b);
-
-            // For complex types, use JSON comparison
-            try
-            {
-                var jsonA = JsonConvert.SerializeObject(a);
-                var jsonB = JsonConvert.SerializeObject(b);
-                return jsonA == jsonB;
-            }
-            catch
-            {
-                return ReferenceEquals(a, b);
-            }
+            return DeepCloner.DeepEquals(a, b);
         }
 
         private static void CopyProperties(TData source, TData target)
