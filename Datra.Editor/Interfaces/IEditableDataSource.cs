@@ -1,10 +1,33 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Datra.Editor.Interfaces
 {
+    /// <summary>
+    /// 변경 항목 하나의 상세 정보
+    /// </summary>
+    public class ChangeEntry
+    {
+        public object Key { get; set; } = default!;
+        public ItemState State { get; set; }
+        public IReadOnlyList<string> ModifiedProperties { get; set; } = Array.Empty<string>();
+    }
+
+    /// <summary>
+    /// DataSource의 전체 변경 요약
+    /// </summary>
+    public class ChangeSummary
+    {
+        public IReadOnlyList<ChangeEntry> Entries { get; set; } = Array.Empty<ChangeEntry>();
+        public int AddedCount => Entries.Count(e => e.State == ItemState.Added);
+        public int ModifiedCount => Entries.Count(e => e.State == ItemState.Modified);
+        public int DeletedCount => Entries.Count(e => e.State == ItemState.Deleted);
+        public int TotalCount => Entries.Count;
+    }
+
     /// <summary>
     /// Represents the state of an item in the editable data source.
     /// </summary>
@@ -89,6 +112,11 @@ namespace Datra.Editor.Interfaces
         /// Event raised when modification state changes
         /// </summary>
         event Action<bool>? OnModifiedStateChanged;
+
+        /// <summary>
+        /// 변경 요약 반환 (추가/수정/삭제 항목 목록)
+        /// </summary>
+        ChangeSummary GetChangeSummary();
 
         /// <summary>
         /// Get the key for an item. Each data source type defines its own key semantics:

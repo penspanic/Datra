@@ -100,6 +100,40 @@ namespace Datra.Editor.DataSources
             return null;
         }
 
+        public override ChangeSummary GetChangeSummary()
+        {
+            var entries = new List<ChangeEntry>();
+
+            foreach (var key in _addedKeys)
+                entries.Add(new ChangeEntry { Key = key, State = ItemState.Added });
+
+            foreach (var key in _deletedKeys)
+                entries.Add(new ChangeEntry { Key = key, State = ItemState.Deleted });
+
+            // 텍스트 수정된 키 (Added/Deleted와 중복 제외)
+            foreach (var language in _baselines.Keys)
+            {
+                foreach (var key in GetModifiedKeys(language))
+                {
+                    if (!_addedKeys.Contains(key) && !_deletedKeys.Contains(key))
+                    {
+                        // 이미 entries에 없는 경우만 추가
+                        if (!entries.Any(e => e.Key is string sk && sk == key))
+                        {
+                            entries.Add(new ChangeEntry
+                            {
+                                Key = key,
+                                State = ItemState.Modified,
+                                ModifiedProperties = new List<string> { "Text" }
+                            });
+                        }
+                    }
+                }
+            }
+
+            return new ChangeSummary { Entries = entries };
+        }
+
         protected override void RevertInternal()
         {
             // Revert all text changes from baseline

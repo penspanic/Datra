@@ -135,6 +135,27 @@ namespace Datra.Editor.DataSources
             return null;
         }
 
+        public override ChangeSummary GetChangeSummary()
+        {
+            var entries = new List<ChangeEntry>();
+
+            foreach (var key in _addedKeys)
+                entries.Add(new ChangeEntry { Key = key, State = ItemState.Added });
+
+            foreach (var key in _deletedKeys)
+                entries.Add(new ChangeEntry { Key = key, State = ItemState.Deleted });
+
+            foreach (var key in _modifiedKeys)
+                entries.Add(new ChangeEntry
+                {
+                    Key = key,
+                    State = ItemState.Modified,
+                    ModifiedProperties = GetModifiedProperties(key).ToList()
+                });
+
+            return new ChangeSummary { Entries = entries };
+        }
+
         public override object? GetItemKey(object item)
         {
             if (item == null) return null;

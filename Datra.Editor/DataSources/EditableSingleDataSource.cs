@@ -108,6 +108,25 @@ namespace Datra.Editor.DataSources
             return null;
         }
 
+        public override ChangeSummary GetChangeSummary()
+        {
+            if (_propertyChanges.Count == 0)
+                return new ChangeSummary();
+
+            return new ChangeSummary
+            {
+                Entries = new List<ChangeEntry>
+                {
+                    new ChangeEntry
+                    {
+                        Key = SingleKey,
+                        State = ItemState.Modified,
+                        ModifiedProperties = _propertyChanges.Keys.ToList()
+                    }
+                }
+            };
+        }
+
         public override object? GetItemKey(object item)
         {
             if (item == null) return null;

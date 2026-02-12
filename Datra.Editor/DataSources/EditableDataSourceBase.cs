@@ -72,6 +72,11 @@ namespace Datra.Editor.DataSources
         protected abstract void RefreshBaselineInternal();
 
         /// <summary>
+        /// 변경 요약 반환. Implementation must be provided by derived class.
+        /// </summary>
+        public abstract ChangeSummary GetChangeSummary();
+
+        /// <summary>
         /// Get the key for an item. Implementation must be provided by derived class.
         /// </summary>
         public abstract object? GetItemKey(object item);
