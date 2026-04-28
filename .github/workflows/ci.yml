@@ -30,7 +30,7 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: |
-            9.0.x
+            10.0.x
 
       - name: Restore
         run: dotnet restore Datra.sln
@@ -39,7 +39,7 @@ jobs:
         run: dotnet build Datra.sln -c Release --no-restore
 
       - name: Test
-        run: dotnet test Datra.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults
+        run: dotnet test Datra.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx" --results-directory TestResults --blame-hang-timeout 3m
 
       - name: Upload test results
         if: always()
