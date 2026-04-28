@@ -124,7 +124,7 @@ namespace Datra.Tests
         }
 
         [Fact]
-        public void InMemory_Clear_RemovesAllData()
+        public async Task InMemory_Clear_RemovesAllData()
         {
             // Arrange
             _memoryProvider.AddTextFile("file1.txt", "Content1");
@@ -134,7 +134,7 @@ namespace Datra.Tests
             _memoryProvider.Clear();
 
             // Assert
-            Assert.ThrowsAsync<KeyNotFoundException>(() => _memoryProvider.LoadTextAsync("file1.txt"));
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => _memoryProvider.LoadTextAsync("file1.txt"));
         }
 
         [Fact]
