@@ -13,4 +13,48 @@
     <!-- Ensure NuGet packages are restored to a central location -->
     <RestorePackagesPath>$(MSBuildThisFileDirectory)Output\packages</RestorePackagesPath>
   </PropertyGroup>
+
+  <!-- ===== NuGet packaging defaults ===== -->
+  <PropertyGroup>
+    <!-- Default to non-packable. Library projects opt-in via <IsPackable>true</IsPackable>. -->
+    <IsPackable>false</IsPackable>
+
+    <!-- Package metadata applied to every packable project -->
+    <Authors>penspanic</Authors>
+    <Company>penspanic</Company>
+    <Copyright>Copyright (c) Geun-Hee Park</Copyright>
+    <PackageProjectUrl>https://github.com/penspanic/Datra</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/penspanic/Datra</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- Versioning: overridable via -p:Version=x.y.z on the command line / CI tag -->
+    <Version Condition="'$(Version)' == ''">0.1.0-local</Version>
+  </PropertyGroup>
+
+  <!-- ===== SourceLink + embedded debug ===== -->
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <!-- Embed PDB inside the assembly so consumers get stack traces and Go-to-Definition
+         without a separate snupkg feed. (See Plan 6.3.) -->
+    <DebugType>embedded</DebugType>
+    <EmbedAllSources>true</EmbedAllSources>
+    <!-- Deterministic builds: same source -> same binary, required for SourceLink -->
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- SourceLink only matters for packable projects, but the Microsoft.SourceLink.GitHub
+       PackageReference is harmless in unpackable projects (just adds build-time metadata). -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- README only needs to be packed for packable projects. The file lives at repo root,
+       so each packable project picks it up from $(MSBuildThisFileDirectory). -->
+  <ItemGroup Condition="'$(IsPackable)' == 'true' AND Exists('$(MSBuildThisFileDirectory)README.md')">
+    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
 </Project>

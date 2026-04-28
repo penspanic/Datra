@@ -1,11 +1,18 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>netstandard2.1</TargetFramework>
         <Nullable>enable</Nullable>
         <LangVersion>9.0</LangVersion>
     </PropertyGroup>
-    
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Datra</PackageId>
+        <Description>Datra is a game data management system that uses C# Source Generators to automatically generate serialization code for CSV, JSON, and YAML data. Works seamlessly in both Unity and .NET environments.</Description>
+        <PackageTags>game;data;serialization;csv;json;yaml;source-generator;unity</PackageTags>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="YamlDotNet" Version="16.3.0" />

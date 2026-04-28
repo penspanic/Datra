@@ -5,12 +5,21 @@
         <LangVersion>latest</LangVersion>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
         <IsRoslynComponent>true</IsRoslynComponent>
-        <!-- Include dll build for Unity usage -->
-        <IncludeBuildOutput>true</IncludeBuildOutput>
         <DevelopmentDependency>true</DevelopmentDependency>
         <RootNamespace>Datra.Generators</RootNamespace>
         <!-- Allow file IO for physical file emission feature -->
         <NoWarn>$(NoWarn);RS1035</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Datra.Generators</PackageId>
+        <Description>Roslyn source generators for Datra. Generates serialization and data-context code from [TableData]/[SingleData] attributes at compile time.</Description>
+        <PackageTags>datra;source-generator;roslyn;codegen;analyzer</PackageTags>
+        <!-- Analyzer NuGet layout: do not include the assembly under lib/, only under analyzers/dotnet/cs.
+             Roslyn analyzer host loads it as an analyzer; consumer's runtime never references it. -->
+        <IncludeBuildOutput>false</IncludeBuildOutput>
+        <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     </PropertyGroup>
 
     <ItemGroup>
@@ -23,8 +32,15 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
         <!-- Unity recommends version 4.3.0 -->
-        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" PrivateAssets="all" />
+        <!-- Newtonsoft is referenced only as a string literal in emitted code; the generator itself
+             does not call Newtonsoft APIs. Keep PrivateAssets="all" so it never propagates. -->
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" PrivateAssets="all" />
+    </ItemGroup>
+
+    <!-- Pack our own DLL into analyzers/dotnet/cs -->
+    <ItemGroup>
+        <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
 </Project>

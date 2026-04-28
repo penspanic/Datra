@@ -7,8 +7,8 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsPackable>true</IsPackable>
     <PackageId>Datra.Analyzers</PackageId>
-    <Description>Roslyn analyzers for Datra classes</Description>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Description>Roslyn analyzers for Datra. Validates [TableData]/[SingleData] declarations and surfaces design-time diagnostics.</Description>
+    <PackageTags>datra;analyzer;roslyn;diagnostics</PackageTags>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <DevelopmentDependency>true</DevelopmentDependency>
