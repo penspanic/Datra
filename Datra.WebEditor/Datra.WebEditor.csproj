@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <!-- Multi-target so consumers pick the right matching ASP.NET Core surface for their
+             host TFM (e.g. OFF + tidemark on net10, samples/tests on net9). -->
+        <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <LangVersion>latest</LangVersion>
@@ -19,8 +21,14 @@
         <PackageTags>datra;game;data;editor;blazor;razor;rcl</PackageTags>
     </PropertyGroup>
 
-    <ItemGroup>
-        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- Use Components.Web (NuGet) instead of FrameworkReference: keeps the RCL consumable
+         from Blazor WASM where the AspNetCore.App framework pack isn't available.
+         Version pinned per TFM so each consumer's host gets a non-downgrading reference. -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.0" />
     </ItemGroup>
 
     <ItemGroup>

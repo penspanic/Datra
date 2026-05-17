@@ -44,6 +44,8 @@ public static class DatraWebEditorServiceCollectionExtensions
 
         services.AddSingleton(options);
 
+        // BlazorFieldTypeRegistry is stateless once configured — Singleton is fine for any
+        // hosting model (WASM, Blazor Server, hybrid).
         services.AddSingleton<BlazorFieldTypeRegistry>(_ =>
         {
             var registry = new BlazorFieldTypeRegistry();
@@ -51,12 +53,17 @@ public static class DatraWebEditorServiceCollectionExtensions
             return registry;
         });
 
+        // HostService + Bootstrapper are Scoped so each editing session (Blazor circuit /
+        // WASM lifetime) has its own dirty-tracking state. In server-mode that prevents
+        // user A's pending edits leaking into user B's view. The consumer's DataContext is
+        // typically Scoped too — Singleton bootstrapper would trip the DI validator on
+        // GetRequiredService<DataContext>.
+        services.AddScoped<DatraEditorHostService>();
+        services.AddScoped<DatraEditorBootstrapper>();
+
+        // The notifier is the pub/sub seam — keep it process-wide so external triggers
+        // (CLI reload, file watcher) reach every active session.
         services.AddSingleton<IDataChangedNotifier, DataChangedNotifier>();
-
-        services.AddSingleton<DatraEditorHostService>();
-
-        // Bridge resolution — host service needs the consumer's context.
-        services.AddSingleton<DatraEditorBootstrapper>();
 
         return services;
     }
