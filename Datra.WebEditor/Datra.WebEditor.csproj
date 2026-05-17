@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <RootNamespace>Datra.WebEditor</RootNamespace>
+        <AssemblyName>Datra.WebEditor</AssemblyName>
+        <AddRazorSupportForMvc>false</AddRazorSupportForMvc>
+        <!-- Blazor RenderTreeBuilder loops legitimately use seq++ for dynamic content -->
+        <NoWarn>$(NoWarn);ASP0006</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <IsPackable>true</IsPackable>
+        <PackageId>Datra.WebEditor</PackageId>
+        <Description>Blazor RCL providing a schema-driven web editor for Datra-managed game data. Auto-enumerates ITableRepository&lt;,&gt; properties on a DataContext; no per-game boilerplate.</Description>
+        <PackageTags>datra;game;data;editor;blazor;razor;rcl</PackageTags>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Datra\Datra.csproj" />
+        <ProjectReference Include="..\Datra.Editor\Datra.Editor.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <SupportedPlatform Include="browser" />
+    </ItemGroup>
+
+</Project>

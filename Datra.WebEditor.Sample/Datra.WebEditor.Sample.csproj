@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <LangVersion>latest</LangVersion>
+        <RootNamespace>Datra.WebEditor.Sample</RootNamespace>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Datra\Datra.csproj" />
+        <ProjectReference Include="..\Datra.Editor\Datra.Editor.csproj" />
+        <ProjectReference Include="..\Datra.SampleData\Datra.SampleData.csproj" />
+        <ProjectReference Include="..\Datra.WebEditor\Datra.WebEditor.csproj" />
+        <ProjectReference Include="..\Datra.WebEditor.Server\Datra.WebEditor.Server.csproj" />
+    </ItemGroup>
+
+</Project>

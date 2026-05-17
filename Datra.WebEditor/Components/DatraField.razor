@@ -1,0 +1,39 @@
+@*
+    DatraField — thin host for the registry-chosen handler. Components above this never call the
+    registry directly; they parameterise this component and let it dispatch.
+*@
+@using Datra.WebEditor.Abstractions
+@using Datra.WebEditor.Handlers
+
+@inject BlazorFieldTypeRegistry Registry
+
+@if (_handler is not null && _context is not null)
+{
+    @_handler.CreateField(_context)
+}
+else
+{
+    <span class="datra-nested__missing">no handler for @FieldType?.Name</span>
+}
+
+@code {
+    [Parameter, EditorRequired] public Type FieldType { get; set; } = default!;
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public System.Reflection.PropertyInfo? Property { get; set; }
+    [Parameter] public object? Target { get; set; }
+    [Parameter] public Action<object?>? OnValueChanged { get; set; }
+    [Parameter] public FieldLayoutMode LayoutMode { get; set; } = FieldLayoutMode.Table;
+    [Parameter] public ILocaleEditorService? LocaleService { get; set; }
+    [Parameter] public bool IsReadOnly { get; set; }
+
+    private IBlazorFieldHandler? _handler;
+    private FieldCreationContext? _context;
+
+    protected override void OnParametersSet()
+    {
+        _handler = Registry.FindBlazorHandler(FieldType, Property);
+        _context = Property is not null
+            ? new FieldCreationContext(Property, Target, Value, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+            : new FieldCreationContext(FieldType, Value, 0, LayoutMode, OnValueChanged, LocaleService, IsReadOnly);
+    }
+}

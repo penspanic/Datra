@@ -1,0 +1,60 @@
+@*
+    Left-rail navigation. One row per editable type discovered on the bound DataContext.
+    Shows a dirty dot for types with pending changes.
+*@
+@using Datra.Interfaces
+@using Datra.WebEditor.Services
+@implements IDisposable
+
+@inject DatraEditorHostService Host
+
+<nav class="datra-sidebar" aria-label="Data types">
+    <header class="datra-sidebar__header">
+        <span class="datra-sidebar__title">Data</span>
+        <span class="datra-sidebar__count">@Host.DataTypes.Count</span>
+    </header>
+
+    <div class="datra-sidebar__list">
+        @foreach (var info in Host.DataTypes)
+        {
+            var dirty = Host.HasUnsavedChanges(info.DataType);
+            var isSelected = info.DataType == Selected;
+            var chipClass = info.RepositoryKind switch
+            {
+                Datra.Interfaces.RepositoryKind.Single => "datra-sidebar__chip--single",
+                Datra.Interfaces.RepositoryKind.Table => "datra-sidebar__chip--table",
+                Datra.Interfaces.RepositoryKind.Asset => "datra-sidebar__chip--asset",
+                _ => "datra-sidebar__chip--table",
+            };
+            <button type="button"
+                    class="datra-sidebar__item @(isSelected ? "datra-sidebar__item--active" : "")"
+                    title="@info.RepositoryKind · @info.FilePath"
+                    @onclick="() => OnSelect.InvokeAsync(info.DataType)">
+                <span class="datra-sidebar__chip @chipClass" aria-hidden="true"></span>
+                <span class="datra-sidebar__name">@info.DataType.Name</span>
+                @if (dirty)
+                {
+                    <span class="datra-sidebar__dirty" title="unsaved changes" aria-label="unsaved"></span>
+                }
+            </button>
+        }
+    </div>
+
+    <footer class="datra-sidebar__footer">
+        @Host.DataTypes.Count type@(Host.DataTypes.Count == 1 ? "" : "s")
+        @if (Host.HasAnyUnsavedChanges())
+        {
+            <span style="margin-left: auto; color: var(--datra-warning);">unsaved</span>
+        }
+    </footer>
+</nav>
+
+@code {
+    [Parameter] public Type? Selected { get; set; }
+    [Parameter] public EventCallback<Type> OnSelect { get; set; }
+
+    protected override void OnInitialized() => Host.StateChanged += OnHostStateChanged;
+    public void Dispose() => Host.StateChanged -= OnHostStateChanged;
+
+    private void OnHostStateChanged() => InvokeAsync(StateHasChanged);
+}

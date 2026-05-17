@@ -1,0 +1,187 @@
+/*
+ * Table view styled to match DatraTableView.uss / DatraInspectorPanel.uss:
+ *   36px toolbar, 28px header + rows, accent-tinted hover, amber strip on modified cells,
+ *   green strip on new rows, red on deleted, blue on otherwise-modified rows.
+ */
+
+.datra-table {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    background: var(--datra-bg);
+    color: var(--datra-text);
+}
+
+/* Header / toolbar */
+.datra-table__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: var(--datra-h-toolbar);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--datra-border);
+    background: var(--datra-bg-elevated);
+}
+.datra-table__heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.datra-table__title {
+    margin: 0;
+    font-size: var(--datra-font-size-lg);
+    font-weight: 600;
+    color: var(--datra-text);
+}
+.datra-table__count {
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-subtle);
+}
+.datra-table__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    background: var(--datra-warning);
+    color: #1a1a1a;
+    border-radius: var(--datra-radius);
+    font-size: var(--datra-font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.datra-table__actions { display: flex; align-items: center; gap: 6px; }
+
+/* Body */
+.datra-table__scroll {
+    flex: 1;
+    overflow: auto;
+    background: var(--datra-bg);
+}
+
+.datra-table__grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-family: var(--datra-font-ui);
+    font-size: var(--datra-font-size-sm);
+}
+.datra-table__grid thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    height: var(--datra-h-row);
+    background: #262626;
+    color: var(--datra-text-muted);
+    text-align: left;
+    font-weight: 600;
+    font-size: var(--datra-font-size-sm);
+    padding: 0 10px;
+    border-right: 1px solid var(--datra-border-cell);
+    border-bottom: 2px solid #1a1a1a;
+    white-space: nowrap;
+}
+.datra-table__grid thead th:last-child { border-right: none; }
+.datra-table__col-key { min-width: 140px; }
+.datra-table__col-actions { width: 48px; text-align: center; }
+.datra-table__col-meta {
+    font-size: var(--datra-font-size-xs);
+    color: var(--datra-text-faint);
+    margin-left: 4px;
+    font-family: var(--datra-font-mono);
+    font-weight: 400;
+}
+
+/* Rows */
+.datra-table__row td {
+    height: var(--datra-h-row);
+    padding: 0 10px;
+    border-bottom: 1px solid var(--datra-border-subtle);
+    border-right: 1px solid var(--datra-border-subtle);
+    vertical-align: middle;
+}
+.datra-table__row td:last-child { border-right: none; }
+.datra-table__row:hover td { background: var(--datra-bg-row-hover); }
+
+/* Per-state row tints (Unity exact tones) */
+.datra-table__row--added td {
+    background: var(--datra-success-soft);
+    border-left: 3px solid var(--datra-success);
+}
+.datra-table__row--added td:not(:first-child) { border-left: none; }
+.datra-table__row--added:hover td { background: rgba(76, 175, 80, 0.25); }
+
+.datra-table__row--modified td {
+    background: rgba(59, 130, 246, 0.10);
+}
+.datra-table__row--modified:hover td { background: rgba(59, 130, 246, 0.18); }
+
+.datra-table__row--deleted td {
+    background: var(--datra-danger-soft);
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+/* Cell that has a property-level edit pending — Unity uses an amber bg + left strip */
+.datra-table__cell { padding: 0 10px; min-width: 0; }
+.datra-table__cell--dirty {
+    background: var(--datra-warning-soft) !important;
+    border-left: 3px solid var(--datra-warning) !important;
+    padding-left: 7px !important;
+}
+.datra-table__row:hover .datra-table__cell--dirty {
+    background: var(--datra-warning-soft-strong) !important;
+}
+
+/* Key cell */
+.datra-table__cell-key {
+    font-family: var(--datra-font-mono);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: var(--datra-h-row);
+}
+.datra-table__key { color: var(--datra-text); font-weight: 500; }
+.datra-table__state {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: var(--datra-radius);
+    font-size: var(--datra-font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-family: var(--datra-font-ui);
+}
+.datra-table__state--added { background: var(--datra-success); color: var(--datra-text-on-accent); }
+.datra-table__state--modified { background: var(--datra-warning); color: #1a1a1a; }
+.datra-table__state--deleted { background: var(--datra-danger); color: var(--datra-text-on-accent); }
+
+.datra-table__cell-actions { text-align: center; }
+
+/* Empty states */
+.datra-table__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--datra-text-subtle);
+    font-style: italic;
+}
+.datra-table__empty--inline { padding: 28px 20px; }
+
+/* Footer add-row strip */
+.datra-table__footer {
+    padding: 8px 12px;
+    border-top: 1px solid var(--datra-border);
+    background: var(--datra-bg-elevated);
+}
+.datra-table__add { display: flex; align-items: center; gap: 8px; }
+.datra-table__add-key {
+    max-width: 220px;
+    text-align: left;
+    font-family: var(--datra-font-mono);
+}
+.datra-table__add-error {
+    color: var(--datra-danger);
+    font-size: var(--datra-font-size-sm);
+    font-style: italic;
+}

@@ -1,0 +1,70 @@
+@*
+    Top-level Datra editor shell. Mount with `<DatraEditor />` after registering the services
+    via `services.AddDatraWebEditor(...)`. The shell handles its own initialisation and routing
+    between data types via in-component state — no router required.
+*@
+@using Datra.Interfaces
+@using Datra.WebEditor.Services
+@implements IDisposable
+
+@inject DatraEditorBootstrapper Bootstrapper
+@inject DatraEditorHostService Host
+
+<div class="datra-editor @(string.IsNullOrEmpty(Theme) ? "" : "")"
+     data-datra-theme="@Theme">
+    @if (!_ready)
+    {
+        <div class="datra-editor__loading">
+            <span class="datra-editor__spinner" aria-hidden="true"></span>
+            <span>Loading data context…</span>
+        </div>
+    }
+    else
+    {
+        <aside class="datra-editor__nav">
+            <DatraTypeSidebar Selected="_selected" OnSelect="OnSelectType" />
+        </aside>
+
+        <main class="datra-editor__content">
+            <DatraTableView DataType="_selected" />
+        </main>
+    }
+</div>
+
+@code {
+    /// <summary>Optional theme name — currently "light" switches to the light palette.</summary>
+    [Parameter] public string? Theme { get; set; }
+
+    /// <summary>Callback fired after every successful save or reload.</summary>
+    [Parameter] public EventCallback<DataChangedEvent> OnDataChanged { get; set; }
+
+    [Inject] private IDataChangedNotifier Notifier { get; set; } = default!;
+
+    private bool _ready;
+    private Type? _selected;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Bootstrapper.EnsureInitialisedAsync();
+        _selected = Host.DataTypes.FirstOrDefault()?.DataType;
+        _ready = true;
+        Host.StateChanged += OnHostStateChanged;
+        Notifier.Changed += OnNotifierChanged;
+    }
+
+    private void OnSelectType(Type type) => _selected = type;
+
+    private async Task OnNotifierChanged(DataChangedEvent evt)
+    {
+        if (OnDataChanged.HasDelegate) await OnDataChanged.InvokeAsync(evt);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnHostStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Host.StateChanged -= OnHostStateChanged;
+        Notifier.Changed -= OnNotifierChanged;
+    }
+}

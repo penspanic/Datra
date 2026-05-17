@@ -1,0 +1,390 @@
+/*
+ * Datra.WebEditor — base stylesheet.
+ *
+ * Visual tokens mirror Datra.Unity.Editor so a designer / data author moving between the Unity
+ * inspector and the web editor sees the same color, spacing, and component vocabulary. Override
+ * any `--datra-*` custom property to retheme.
+ */
+
+:root {
+    /* Surfaces (Unity Editor "Professional" dark scheme) */
+    --datra-bg:            #383838;   /* main canvas */
+    --datra-bg-elevated:   #313131;   /* panels, headers, toolbars */
+    --datra-bg-input:      #1e1e1e;   /* form input fills */
+    --datra-bg-input-alt:  #252525;   /* secondary inputs (search, id chips) */
+    --datra-bg-hover:      #3a3a3a;   /* generic hover */
+    --datra-bg-row-hover:  rgba(90, 159, 212, 0.10);   /* table row hover */
+    --datra-bg-row-active: rgba(90, 159, 212, 0.20);   /* table row selected */
+    --datra-bg-field:      #2a2a2a;   /* property field container */
+    --datra-bg-tree-row:   #2d2d2d;   /* tree row hover */
+    --datra-bg-tree-sel:   #2d5a8d;   /* tree row selected */
+
+    /* Lines */
+    --datra-border:         #282828;
+    --datra-border-strong:  #151515;
+    --datra-border-subtle:  #2a2a2a;
+    --datra-border-cell:    #444444;
+
+    /* Text */
+    --datra-text:           #d4d4d4;
+    --datra-text-muted:     #b4b4b4;
+    --datra-text-subtle:    #969696;
+    --datra-text-faint:     #696969;
+    --datra-text-on-accent: #ffffff;
+
+    /* Accents */
+    --datra-accent:         #5a9fd4;
+    --datra-accent-hover:   #6eb5e5;
+    --datra-accent-active:  #4a8fc4;
+    --datra-accent-deep:    #2d5a8d;
+    --datra-accent-soft:    rgba(90, 159, 212, 0.10);
+    --datra-accent-medium:  rgba(90, 159, 212, 0.20);
+
+    /* State */
+    --datra-success:        #4caf50;
+    --datra-success-hover:  #5cbf60;
+    --datra-success-soft:   rgba(76, 175, 80, 0.15);
+    --datra-warning:        #ff9800;
+    --datra-warning-soft:   rgba(255, 193, 7, 0.20);
+    --datra-warning-soft-strong: rgba(255, 193, 7, 0.30);
+    --datra-warning-text:   #ffb74d;
+    --datra-modified-bg:    #2d2518;       /* property container bg when modified */
+    --datra-danger:         #f44336;
+    --datra-danger-alt:     #d45a5a;
+    --datra-danger-hover:   #e56e6e;
+    --datra-danger-soft:    rgba(244, 67, 54, 0.15);
+
+    /* Repository-kind colour chips (sidebar) */
+    --datra-kind-single:    #4caf50;
+    --datra-kind-table:     #2196f3;
+    --datra-kind-asset:     #9c27b0;
+    --datra-kind-locale:    #ff9800;
+
+    /* Geometry */
+    --datra-radius-sm:      2px;
+    --datra-radius:         3px;
+    --datra-radius-lg:      4px;
+
+    /* Typography */
+    --datra-font-ui:        system-ui, -apple-system, "Segoe UI", "Helvetica Neue", sans-serif;
+    --datra-font-mono:      ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --datra-font-size-xs:   10px;
+    --datra-font-size-sm:   11px;
+    --datra-font-size:      12px;
+    --datra-font-size-lg:   13px;
+    --datra-font-size-title:18px;
+
+    /* Heights / spacing */
+    --datra-h-toolbar:      36px;
+    --datra-h-row:          28px;
+    --datra-h-input:        22px;
+
+    /* Motion */
+    --datra-transition:     120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ============================================================ *
+ *  Base widgets — match Unity inspector field semantics.
+ *  In a "table" context the cell wrapper strips the box decoration
+ *  and the input becomes flush with the cell background, exactly
+ *  like Unity's `.unity-text-field` does inside table rows.
+ * ============================================================ */
+
+.datra-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 2px 6px;
+    height: var(--datra-h-input);
+    background: var(--datra-bg-input);
+    color: var(--datra-text);
+    border: 1px solid var(--datra-border-strong);
+    border-radius: var(--datra-radius);
+    font-family: var(--datra-font-ui);
+    font-size: var(--datra-font-size);
+    line-height: 1.4;
+    transition: border-color var(--datra-transition), background var(--datra-transition);
+}
+.datra-input:focus {
+    outline: none;
+    border-color: var(--datra-accent);
+}
+.datra-input:disabled {
+    color: var(--datra-text-faint);
+    background: var(--datra-bg);
+    cursor: not-allowed;
+}
+.datra-input--number {
+    font-family: var(--datra-font-mono);
+    text-align: right;
+    padding-right: 6px;
+}
+.datra-input--select {
+    appearance: none;
+    cursor: pointer;
+    background-image: linear-gradient(45deg, transparent 50%, var(--datra-text-subtle) 50%),
+                      linear-gradient(135deg, var(--datra-text-subtle) 50%, transparent 50%);
+    background-position: calc(100% - 12px) 50%, calc(100% - 7px) 50%;
+    background-size: 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 22px;
+}
+
+/* Inside a table cell the input loses its frame and merges with the row. */
+.datra-table__cell .datra-input,
+.datra-list__field .datra-input,
+.datra-dataref .datra-input {
+    background: transparent;
+    border-color: transparent;
+    height: var(--datra-h-input);
+    font-size: var(--datra-font-size-sm);
+}
+.datra-table__cell .datra-input:focus,
+.datra-list__field .datra-input:focus,
+.datra-dataref .datra-input:focus {
+    background: var(--datra-bg-input);
+    border-color: var(--datra-accent);
+}
+
+/* Checkbox */
+.datra-checkbox {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    padding: 0 4px;
+}
+.datra-checkbox input {
+    appearance: none;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.datra-checkbox__indicator {
+    width: 14px;
+    height: 14px;
+    background: var(--datra-bg-input);
+    border: 1px solid var(--datra-border-strong);
+    border-radius: var(--datra-radius-sm);
+    position: relative;
+    transition: background var(--datra-transition), border-color var(--datra-transition);
+}
+.datra-checkbox input:checked + .datra-checkbox__indicator {
+    background: var(--datra-accent);
+    border-color: var(--datra-accent);
+}
+.datra-checkbox input:checked + .datra-checkbox__indicator::after {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 0;
+    width: 4px;
+    height: 8px;
+    border: solid var(--datra-text-on-accent);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.datra-checkbox input:disabled + .datra-checkbox__indicator { opacity: 0.5; cursor: not-allowed; }
+
+/* Buttons — Unity toolbar / primary / secondary equivalents */
+.datra-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 12px;
+    background: #494949;
+    color: var(--datra-text);
+    border: 1px solid #393939;
+    border-radius: var(--datra-radius);
+    font-family: var(--datra-font-ui);
+    font-size: var(--datra-font-size-sm);
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--datra-transition), border-color var(--datra-transition),
+                color var(--datra-transition);
+    white-space: nowrap;
+}
+.datra-btn:hover { background: #5a5a5a; border-color: #696969; }
+.datra-btn:active { background: #393939; }
+.datra-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.datra-btn--primary {
+    background: var(--datra-accent);
+    border-color: var(--datra-accent-active);
+    color: var(--datra-text-on-accent);
+    font-weight: 600;
+}
+.datra-btn--primary:hover { background: var(--datra-accent-hover); border-color: var(--datra-accent); }
+.datra-btn--primary:active { background: var(--datra-accent-active); }
+.datra-btn--primary:disabled { background: #494949; color: var(--datra-text-faint); }
+
+.datra-btn--success {
+    background: var(--datra-success);
+    border-color: transparent;
+    color: var(--datra-text-on-accent);
+    font-weight: 600;
+}
+.datra-btn--success:hover { background: var(--datra-success-hover); }
+
+.datra-btn--ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--datra-text-subtle);
+}
+.datra-btn--ghost:hover {
+    background: var(--datra-bg-hover);
+    color: var(--datra-text);
+    border-color: transparent;
+}
+
+.datra-btn--danger {
+    background: transparent;
+    border-color: transparent;
+    color: var(--datra-text-subtle);
+}
+.datra-btn--danger:hover {
+    background: var(--datra-danger);
+    color: var(--datra-text-on-accent);
+    border-color: transparent;
+}
+
+.datra-btn--sm { height: 20px; padding: 0 8px; font-size: var(--datra-font-size-xs); }
+.datra-btn--icon {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: var(--datra-radius);
+}
+
+/* ============================================================ *
+ *  Array / list handlers — Unity property-field array style
+ * ============================================================ */
+
+.datra-list {
+    background: var(--datra-bg-input);
+    border-radius: var(--datra-radius);
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.datra-list__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 2px 4px 4px;
+    border-bottom: 1px solid var(--datra-border-subtle);
+}
+.datra-list__count {
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-subtle);
+    font-family: var(--datra-font-mono);
+}
+.datra-list__add {
+    height: 18px;
+    padding: 0 8px;
+    font-size: var(--datra-font-size-xs);
+    background: var(--datra-accent);
+    color: var(--datra-text-on-accent);
+    border-color: transparent;
+    font-weight: 600;
+}
+.datra-list__add:hover { background: var(--datra-accent-hover); }
+
+.datra-list__items { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+.datra-list__row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    background: var(--datra-bg-field);
+    border-radius: var(--datra-radius);
+}
+.datra-list__row:hover { background: #323232; }
+.datra-list__index {
+    flex-shrink: 0;
+    min-width: 18px;
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-xs);
+    color: var(--datra-text-faint);
+    text-align: right;
+}
+.datra-list__field { flex: 1; min-width: 0; }
+.datra-list__remove {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: var(--datra-danger-alt);
+    color: var(--datra-text-on-accent);
+    border-color: transparent;
+    font-weight: 700;
+    border-radius: var(--datra-radius);
+}
+.datra-list__remove:hover { background: var(--datra-danger-hover); }
+.datra-list__missing {
+    font-size: var(--datra-font-size-xs);
+    color: var(--datra-warning-text);
+    font-style: italic;
+}
+
+/* ============================================================ *
+ *  Nested type handler
+ * ============================================================ */
+
+.datra-nested {
+    border-left: 2px solid var(--datra-border-cell);
+    padding-left: 10px;
+    margin-left: 2px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: var(--datra-bg-input);
+    border-radius: var(--datra-radius);
+    padding: 6px 10px;
+}
+.datra-nested__row {
+    display: grid;
+    grid-template-columns: minmax(90px, 140px) 1fr;
+    align-items: center;
+    gap: 8px;
+}
+.datra-nested__label {
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-muted);
+    font-family: var(--datra-font-ui);
+}
+.datra-nested__field { min-width: 0; }
+.datra-nested__null,
+.datra-nested__missing {
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-faint);
+    font-style: italic;
+}
+
+/* ============================================================ *
+ *  DataRef + LocaleRef — Unity-style display + clear
+ * ============================================================ */
+
+.datra-dataref { display: flex; align-items: center; gap: 2px; min-width: 0; }
+.datra-dataref__input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--datra-font-mono);
+}
+.datra-dataref__clear {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    background: var(--datra-danger-alt);
+    color: var(--datra-text-on-accent);
+    border-color: transparent;
+    font-weight: 700;
+}
+.datra-dataref__clear:hover { background: var(--datra-danger-hover); }
+
+.datra-locale { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.datra-locale__text { flex: 1; min-width: 0; }

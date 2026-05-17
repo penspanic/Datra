@@ -1,0 +1,74 @@
+@page "/"
+
+<PageTitle>Datra.WebEditor — Sample</PageTitle>
+
+<div class="sample-shell">
+    <header class="sample-shell__topbar">
+        <div class="sample-shell__brand">
+            <strong>Datra.WebEditor</strong>
+            <span class="sample-shell__sub">Sample · GameDataContext</span>
+        </div>
+        <div class="sample-shell__hint">
+            Edits write to a scratch copy of <code>Datra.SampleData/Resources</code> under your OS
+            temp directory — your repo stays clean.
+        </div>
+    </header>
+    <div class="sample-shell__body">
+        <DatraEditor OnDataChanged="OnDataChanged" />
+    </div>
+    @if (_lastChange is not null)
+    {
+        <footer class="sample-shell__statusbar">
+            <span>
+                Last @_lastChange.Kind.ToString().ToLowerInvariant():
+                <code>@_lastChange.DataType.Name</code>
+                at @DateTime.Now.ToString("HH:mm:ss")
+            </span>
+        </footer>
+    }
+</div>
+
+@code {
+    private DataChangedEvent? _lastChange;
+
+    private Task OnDataChanged(DataChangedEvent evt)
+    {
+        _lastChange = evt;
+        return Task.CompletedTask;
+    }
+}
+
+<style>
+    .sample-shell {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: var(--datra-bg);
+        color: var(--datra-text);
+        font-family: var(--datra-font-ui);
+    }
+    .sample-shell__topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 20px;
+        border-bottom: 1px solid var(--datra-border);
+        background: var(--datra-bg-elevated);
+    }
+    .sample-shell__brand { display: flex; align-items: baseline; gap: 12px; }
+    .sample-shell__brand strong { font-size: 14px; letter-spacing: 0.04em; }
+    .sample-shell__sub { font-size: 11px; color: var(--datra-text-muted); font-family: var(--datra-font-mono); }
+    .sample-shell__hint { font-size: 11px; color: var(--datra-text-subtle); }
+    .sample-shell__hint code { font-family: var(--datra-font-mono); background: var(--datra-bg); padding: 1px 6px; border-radius: 4px; }
+    .sample-shell__body { flex: 1; min-height: 0; }
+    .sample-shell__statusbar {
+        padding: 6px 20px;
+        border-top: 1px solid var(--datra-border);
+        background: var(--datra-bg-elevated);
+        font-family: var(--datra-font-mono);
+        font-size: 11px;
+        color: var(--datra-text-muted);
+    }
+    .sample-shell__statusbar code { color: var(--datra-accent); }
+</style>

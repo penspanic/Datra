@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en" data-datra-theme="@(Theme)">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <title>Datra.WebEditor — Sample</title>
+    <link rel="stylesheet" href="_content/Datra.WebEditor/datra-webeditor.css" />
+    <link rel="stylesheet" href="Datra.WebEditor.Sample.styles.css" />
+    <link rel="stylesheet" href="app.css" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <script src="_framework/blazor.web.js"></script>
+</body>
+</html>
+
+@code {
+    private string Theme => "";
+}

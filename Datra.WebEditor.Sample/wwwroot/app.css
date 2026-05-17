@@ -1,0 +1,10 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--datra-bg);
+    color: var(--datra-text);
+    font-family: var(--datra-font-ui);
+    font-size: var(--datra-font-size);
+}
+
+* { box-sizing: border-box; }
