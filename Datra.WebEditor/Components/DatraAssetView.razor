@@ -1,0 +1,176 @@
+@*
+    Table for IAssetRepository<T>. Each row represents one Asset<T>; columns are the writable
+    properties of T (pivoted out of Asset<T>.Data). Editing a cell mutates the working copy of
+    Data; Save persists each file via the asset repository.
+*@
+@using System.Reflection
+@using Datra.DataTypes
+@using Datra.Editor.Interfaces
+@using Datra.Editor.Schema
+@using Datra.WebEditor.Services
+@implements IDisposable
+
+@inject DatraEditorHostService Host
+
+@if (_dataSource is null || _innerType is null)
+{
+    <div class="datra-table__empty"><p>Select a type from the sidebar.</p></div>
+}
+else
+{
+    <div class="datra-table">
+        <header class="datra-table__header">
+            <div class="datra-table__heading">
+                <h2 class="datra-table__title">@DataType?.Name</h2>
+                @if (_dataSource.HasModifications)
+                {
+                    <span class="datra-table__badge">
+                        @_dataSource.GetChangeSummary().TotalCount unsaved
+                    </span>
+                }
+                <span class="datra-table__count">@_dataSource.Count assets</span>
+            </div>
+            <div class="datra-table__actions">
+                <button class="datra-btn datra-btn--ghost" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnRevertClicked">Revert</button>
+                <button class="datra-btn datra-btn--primary" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnSaveClicked">Save</button>
+            </div>
+        </header>
+
+        <div class="datra-table__scroll">
+            <table class="datra-table__grid">
+                <thead>
+                    <tr>
+                        <th class="datra-table__col-key">AssetId <span class="datra-table__col-meta">file</span></th>
+                        @foreach (var column in _columns)
+                        {
+                            <th>@column.Name</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var item in EnumerateAssets())
+                {
+                    var key = item.Id;
+                    var state = _dataSource.GetItemState(key);
+                    <tr class="@RowClass(state)" @key="key">
+                        <td class="datra-table__cell-key">
+                            <span class="datra-table__key" title="@item.FilePath">@key</span>
+                            @if (state == ItemState.Added) { <span class="datra-table__state datra-table__state--added">new</span> }
+                            else if (state == ItemState.Deleted) { <span class="datra-table__state datra-table__state--deleted">deleted</span> }
+                            else if (state == ItemState.Modified) { <span class="datra-table__state datra-table__state--modified">edited</span> }
+                        </td>
+                        @foreach (var column in _columns)
+                        {
+                            var dirty = _dataSource.IsPropertyModified(key, column.Name);
+                            <td class="@(dirty ? "datra-table__cell datra-table__cell--dirty" : "datra-table__cell")">
+                                <DatraField FieldType="@column.PropertyType"
+                                            Property="@column"
+                                            Target="@item.Data"
+                                            Value="@column.GetValue(item.Data)"
+                                            LayoutMode="@FieldLayoutMode.Table"
+                                            OnValueChanged="@(value => HandleFieldChange(item, key, column, value))" />
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+
+            @if (_dataSource.Count == 0)
+            {
+                <div class="datra-table__empty datra-table__empty--inline">
+                    <p>No assets in this folder yet.</p>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Type? DataType { get; set; }
+
+    private IEditableDataSource? _dataSource;
+    private Type? _innerType;
+    private List<PropertyInfo> _columns = new();
+
+    protected override void OnInitialized() => Host.StateChanged += OnHostStateChanged;
+    public void Dispose() => Host.StateChanged -= OnHostStateChanged;
+
+    protected override void OnParametersSet()
+    {
+        if (DataType is null)
+        {
+            _dataSource = null;
+            _innerType = null;
+            _columns = new();
+            return;
+        }
+
+        _dataSource = Host.GetDataSource(DataType);
+        if (_dataSource is null)
+        {
+            _innerType = null;
+            _columns = new();
+            return;
+        }
+
+        // EditableAssetDataSource<T> implements IEditableDataSource<AssetId, Asset<T>>. We need T
+        // (the inner asset model) for column discovery.
+        var kv = _dataSource.GetKeyValueTypes();
+        if (kv is null || !kv.Value.Data.IsGenericType ||
+            kv.Value.Data.GetGenericTypeDefinition() != typeof(Asset<>))
+        {
+            _innerType = null;
+            _columns = new();
+            return;
+        }
+
+        _innerType = kv.Value.Data.GetGenericArguments()[0];
+        // Shared schema: writable / non-indexer / [DatraIgnore]-free properties only.
+        _columns = EditableMemberEnumerator.ForType(_innerType).ToList();
+    }
+
+    private IEnumerable<dynamic> EnumerateAssets()
+    {
+        if (_dataSource is null) yield break;
+        foreach (var raw in _dataSource.EnumerateItems())
+        {
+            yield return raw!;
+        }
+    }
+
+    private static string RowClass(ItemState state) => state switch
+    {
+        ItemState.Added => "datra-table__row datra-table__row--added",
+        ItemState.Modified => "datra-table__row datra-table__row--modified",
+        ItemState.Deleted => "datra-table__row datra-table__row--deleted",
+        _ => "datra-table__row",
+    };
+
+    private void HandleFieldChange(dynamic item, object key, PropertyInfo column, object? newValue)
+    {
+        if (_dataSource is null) return;
+        column.SetValue(item.Data, newValue);
+        _dataSource.TrackPropertyChange(key, column.Name, newValue, out _);
+        StateHasChanged();
+    }
+
+    private async Task OnSaveClicked()
+    {
+        if (DataType is null) return;
+        await Host.SaveAsync(DataType);
+    }
+
+    private void OnRevertClicked()
+    {
+        _dataSource?.Revert();
+        OnParametersSet();
+        StateHasChanged();
+    }
+
+    private void OnHostStateChanged() => InvokeAsync(StateHasChanged);
+}

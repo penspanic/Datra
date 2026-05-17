@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Datra.Editor.Interfaces;
+using Datra.Editor.Schema;
 using Datra.Interfaces;
 
 namespace Datra.WebEditor.Services;
@@ -65,14 +66,12 @@ public static class DatraEditorHostServiceExtensions
     }
 
     /// <summary>
-    /// Construct a new TData instance for an "add row" flow. Falls back to null if TData lacks a
-    /// parameterless constructor — caller is responsible for surfacing that case.
+    /// Construct a new TData instance for an "add row" flow. Thin shim over
+    /// <see cref="DefaultValueFactory.CreateDefault"/> — kept public for backward compatibility
+    /// with callers in the test suite and external consumers.
     /// </summary>
     public static object? CreateDefaultValue(Type dataType)
-    {
-        if (dataType.GetConstructor(Type.EmptyTypes) is null) return null;
-        return Activator.CreateInstance(dataType);
-    }
+        => DefaultValueFactory.CreateDefault(dataType);
 
     /// <summary>
     /// Parse a raw string into the data source's key type. Supports string and the common integral

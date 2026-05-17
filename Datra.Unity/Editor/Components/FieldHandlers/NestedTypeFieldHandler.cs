@@ -24,6 +24,13 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             return IsNestedType(type);
         }
 
+        // NOTE: We do NOT delegate to TypeClassifier.Classify(...) == FieldKind.Nested here because
+        // the classifier treats UnityEngine types (Vector2/Vector3/Color/...) as Nested too. Unity
+        // has dedicated handlers for those, but they run at Priority 0 while NestedTypeFieldHandler
+        // is at Priority 30 — so a classifier-driven CanHandle would steal Vector3 etc. from
+        // Vector3FieldHandler. Until Unity's specialized handlers are bumped above Priority 30 (or
+        // the classifier gains an "exclude UnityEngine" knob) we keep the original predicate.
+        // TODO: classifier doesn't currently exclude System.* / UnityEngine.* namespaces.
         public static bool IsNestedType(Type type)
         {
             if (type.IsPrimitive || type == typeof(string) || type == typeof(decimal))
@@ -34,7 +41,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 return false;
             if (type.Namespace != null && type.Namespace.StartsWith("UnityEngine"))
                 return false;
-            if (DataRefFieldHandler.IsDataRefType(type))
+            if (Datra.Editor.Schema.TypeClassifier.IsDataRefType(type))
                 return false;
             if (type == typeof(LocaleRef))
                 return false;
@@ -225,7 +232,10 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         {
             var members = new List<MemberInfo>();
 
-            // Get public fields
+            // Get public fields. EditableMemberEnumerator only enumerates properties; we keep the
+            // field walk so user-authored nested structs/classes with public fields still render.
+            // TODO: classifier doesn't currently surface public fields — drop this branch when
+            //       confirmed unused by real models.
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
             foreach (var field in fields)
             {
@@ -234,18 +244,11 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 members.Add(field);
             }
 
-            // Get public properties with setter
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var prop in properties)
+            // Properties — shared rules via EditableMemberEnumerator
+            // (public, get+set, no indexer, no [DatraIgnore], not field-shadowed).
+            foreach (var prop in Datra.Editor.Schema.EditableMemberEnumerator.ForType(type))
             {
-                if (prop.CanWrite && prop.CanRead && prop.GetIndexParameters().Length == 0)
-                {
-                    var fieldExists = fields.Any(f => f.Name.Equals(prop.Name, StringComparison.OrdinalIgnoreCase));
-                    if (!fieldExists)
-                    {
-                        members.Add(prop);
-                    }
-                }
+                members.Add(prop);
             }
 
             return members;

@@ -4,6 +4,7 @@
 *@
 @using System.Reflection
 @using Datra.Editor.Interfaces
+@using Datra.Editor.Schema
 @using Datra.WebEditor.Services
 @implements IDisposable
 
@@ -160,11 +161,9 @@ else
         _keyType = kv?.Key;
         _valueType = kv?.Data;
 
-        _columns = DataType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.GetIndexParameters().Length == 0)
-            // Hide the "Id" key column — it's already shown in the dedicated key cell.
-            .Where(p => !string.Equals(p.Name, "Id", StringComparison.Ordinal))
-            .ToList();
+        // Shared schema enforces: writable, no indexers, no [DatraIgnore], no field-shadowing,
+        // and (ForTableRow) excludes the "Id" key column — which we render in a dedicated cell.
+        _columns = EditableMemberEnumerator.ForTableRow(DataType).ToList();
     }
 
     private IEnumerable<object> EnumerateItems()

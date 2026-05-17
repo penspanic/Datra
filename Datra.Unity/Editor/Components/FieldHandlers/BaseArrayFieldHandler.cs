@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine.UIElements;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
@@ -37,13 +38,12 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
         protected abstract string GetElementDisplayText(object element, Type elementType);
 
         /// <summary>
-        /// Get default value for new element
+        /// Get default value for new element. Subclasses may override (e.g. EnumArrayFieldHandler
+        /// returns the first enum value), but the default body delegates to the shared factory.
         /// </summary>
         protected virtual object GetDefaultValue(Type elementType)
         {
-            if (elementType == typeof(string)) return "";
-            if (elementType.IsValueType) return Activator.CreateInstance(elementType);
-            return null;
+            return DefaultValueFactory.CreateDefault(elementType);
         }
 
         /// <summary>

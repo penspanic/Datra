@@ -4,11 +4,16 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using Datra.Editor.Schema;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Handler for basic array types (int[], string[], float[])
+    /// Handler for basic array types (int[], string[], float[]).
+    /// Note: ArrayFieldHandler is NOT a catch-all in Unity — it only handles the three primitive
+    /// element types its CreateElementField has Unity widgets for. Other arrays (e.g. enum[],
+    /// DataRef[]) are routed to the specialized handlers (EnumArrayFieldHandler / DataRefArrayFieldHandler)
+    /// at higher Priority.
     /// </summary>
     public class ArrayFieldHandler : BaseArrayFieldHandler
     {
@@ -18,13 +23,12 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public override bool CanHandle(Type type, MemberInfo member = null)
         {
-            if (!type.IsArray)
+            if (TypeClassifier.Classify(type, member) != FieldKind.Array)
                 return false;
-
-            var elementType = type.GetElementType();
-            return elementType == typeof(int) ||
-                   elementType == typeof(string) ||
-                   elementType == typeof(float);
+            var elementType = TypeClassifier.GetElementType(type);
+            return elementType == typeof(int)
+                || elementType == typeof(string)
+                || elementType == typeof(float);
         }
 
         protected override Type GetElementType(Type arrayType)
@@ -34,8 +38,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         protected override object GetDefaultValue(Type elementType)
         {
-            if (elementType == typeof(string)) return "";
-            return Activator.CreateInstance(elementType);
+            return DefaultValueFactory.CreateDefault(elementType);
         }
 
         protected override string GetElementDisplayText(object element, Type elementType)

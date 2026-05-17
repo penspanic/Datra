@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Reflection;
 using Datra.DataTypes;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
 
@@ -17,25 +18,23 @@ public sealed class DataRefFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 40;
 
-    public bool CanHandle(Type type, MemberInfo? member = null) => IsDataRefType(type);
-
-    public static bool IsDataRefType(Type type) =>
-        type.IsGenericType &&
-        (type.GetGenericTypeDefinition() == typeof(StringDataRef<>) ||
-         type.GetGenericTypeDefinition() == typeof(IntDataRef<>));
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.DataRef;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
-        var dataRefType = context.FieldType;
-        var isStringKey = dataRefType.GetGenericTypeDefinition() == typeof(StringDataRef<>);
-        var referenced = dataRefType.GetGenericArguments()[0];
-        var currentValue = context.Value;
-
-        object? currentKey = null;
-        if (currentValue != null)
+        var info = DataRefTypeInfo.TryCreate(context.FieldType);
+        if (info is null)
         {
-            currentKey = currentValue.GetType().GetProperty("Value")?.GetValue(currentValue);
+            // Defensive — registry shouldn't route non-DataRef types here.
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "datra-dataref__missing");
+            builder.AddContent(2, $"unsupported DataRef: {context.FieldType.Name}");
+            builder.CloseElement();
+            return;
         }
+
+        var currentKey = context.Value is null ? null : info.GetKey(context.Value);
 
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "datra-dataref");
@@ -44,13 +43,13 @@ public sealed class DataRefFieldHandler : IBlazorFieldHandler
         builder.AddAttribute(3, "type", "text");
         builder.AddAttribute(4, "class", "datra-input datra-dataref__input");
         builder.AddAttribute(5, "value", currentKey?.ToString() ?? string.Empty);
-        builder.AddAttribute(6, "placeholder", $"{referenced.Name} id");
+        builder.AddAttribute(6, "placeholder", $"{info.ReferencedType.Name} id");
         if (context.IsReadOnly) builder.AddAttribute(7, "disabled", true);
         builder.AddAttribute(8, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
         {
             var raw = e.Value?.ToString();
-            var newRef = BuildDataRef(dataRefType, raw, isStringKey);
-            if (newRef.success) context.OnValueChanged?.Invoke(newRef.value);
+            if (TryBuild(info, raw, out var built))
+                context.OnValueChanged?.Invoke(built);
         }));
         builder.CloseElement();
 
@@ -61,7 +60,7 @@ public sealed class DataRefFieldHandler : IBlazorFieldHandler
             builder.AddAttribute(11, "class", "datra-btn datra-btn--ghost datra-dataref__clear");
             builder.AddAttribute(12, "title", "clear reference");
             builder.AddAttribute(13, "onclick", EventCallback.Factory.Create(this, () =>
-                context.OnValueChanged?.Invoke(Activator.CreateInstance(dataRefType))));
+                context.OnValueChanged?.Invoke(info.CreateEmpty())));
             builder.AddContent(14, "×");
             builder.CloseElement();
         }
@@ -69,26 +68,27 @@ public sealed class DataRefFieldHandler : IBlazorFieldHandler
         builder.CloseElement();
     };
 
-    private static (bool success, object? value) BuildDataRef(Type dataRefType, string? raw, bool isStringKey)
+    private static bool TryBuild(DataRefTypeInfo info, string? raw, out object? value)
     {
-        var instance = Activator.CreateInstance(dataRefType);
-        if (string.IsNullOrEmpty(raw)) return (true, instance);
-
-        var valueProp = dataRefType.GetProperty("Value");
-        if (valueProp == null) return (false, null);
-
-        if (isStringKey)
+        if (string.IsNullOrEmpty(raw))
         {
-            valueProp.SetValue(instance, raw);
-            return (true, instance);
+            value = info.CreateEmpty();
+            return true;
+        }
+
+        if (info.IsStringKey)
+        {
+            value = info.Build(raw);
+            return true;
         }
 
         if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
         {
-            valueProp.SetValue(instance, parsed);
-            return (true, instance);
+            value = info.Build(parsed);
+            return true;
         }
 
-        return (false, null);
+        value = null;
+        return false;
     }
 }

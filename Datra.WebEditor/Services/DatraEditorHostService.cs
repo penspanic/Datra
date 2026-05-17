@@ -153,20 +153,49 @@ public sealed class DatraEditorHostService
 
     private static EditableEntry? BuildEntry(DataTypeInfo info, object repository)
     {
-        var repoType = repository.GetType();
-        var tableIface = repoType.GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableRepository<,>));
+        if (repository is not IEditableRepository editable) return null;
 
-        if (tableIface is not null && repository is IEditableRepository tableRepo)
+        var repoType = repository.GetType();
+        var interfaces = repoType.GetInterfaces();
+
+        var tableIface = interfaces.FirstOrDefault(i =>
+            i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ITableRepository<,>));
+        if (tableIface is not null)
         {
             var args = tableIface.GetGenericArguments();
-            var dataSourceType = typeof(EditableKeyValueDataSource<,>).MakeGenericType(args[0], args[1]);
-            var dataSource = (IEditableDataSource)Activator.CreateInstance(dataSourceType, repository)!;
-            return new EditableEntry(info, tableRepo, dataSource);
+            return BuildEntryFromOpenType(info, editable, typeof(EditableKeyValueDataSource<,>), args, repository);
         }
 
-        // Single/Asset/Localisation repository kinds are recognised but not wired yet.
+        var singleIface = interfaces.FirstOrDefault(i =>
+            i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISingleRepository<>));
+        if (singleIface is not null)
+        {
+            var args = singleIface.GetGenericArguments();
+            return BuildEntryFromOpenType(info, editable, typeof(Datra.Editor.DataSources.EditableSingleDataSource<>), args, repository);
+        }
+
+        var assetIface = interfaces.FirstOrDefault(i =>
+            i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IAssetRepository<>));
+        if (assetIface is not null)
+        {
+            var args = assetIface.GetGenericArguments();
+            return BuildEntryFromOpenType(info, editable, typeof(Datra.Editor.DataSources.EditableAssetDataSource<>), args, repository);
+        }
+
+        // Localisation context and other kinds: recognised but not wrapped yet.
         return null;
+    }
+
+    private static EditableEntry BuildEntryFromOpenType(
+        DataTypeInfo info,
+        IEditableRepository editable,
+        Type openSourceType,
+        Type[] genericArgs,
+        object repository)
+    {
+        var closed = openSourceType.MakeGenericType(genericArgs);
+        var source = (IEditableDataSource)Activator.CreateInstance(closed, repository)!;
+        return new EditableEntry(info, editable, source);
     }
 
     private sealed record EditableEntry(DataTypeInfo Info, IEditableRepository Repository, IEditableDataSource DataSource);

@@ -2,6 +2,7 @@
 using System;
 using System.Reflection;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
 
@@ -10,7 +11,8 @@ namespace Datra.WebEditor.Handlers;
 public sealed class EnumFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 10;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type.IsEnum;
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Enum;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {

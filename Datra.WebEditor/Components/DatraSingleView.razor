@@ -1,0 +1,132 @@
+@*
+    Form layout for a single-instance repository (ISingleRepository<T>). Renders one DatraField
+    per writable property of T, vertically stacked, with per-field dirty highlighting and a
+    shared Save/Revert toolbar.
+*@
+@using System.Reflection
+@using Datra.Editor.DataSources
+@using Datra.Editor.Interfaces
+@using Datra.Editor.Schema
+@using Datra.WebEditor.Services
+@implements IDisposable
+
+@inject DatraEditorHostService Host
+
+@if (_dataSource is null)
+{
+    <div class="datra-form__empty"><p>Select a type from the sidebar.</p></div>
+}
+else
+{
+    <div class="datra-form">
+        <header class="datra-form__header">
+            <div class="datra-form__heading">
+                <h2 class="datra-form__title">@DataType?.Name</h2>
+                @if (_dataSource.HasModifications)
+                {
+                    <span class="datra-form__badge">unsaved</span>
+                }
+                <span class="datra-form__kind">single</span>
+            </div>
+            <div class="datra-form__actions">
+                <button class="datra-btn datra-btn--ghost" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnRevertClicked">Revert</button>
+                <button class="datra-btn datra-btn--primary" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnSaveClicked">Save</button>
+            </div>
+        </header>
+
+        <div class="datra-form__scroll">
+            @if (_item is null)
+            {
+                <div class="datra-form__empty datra-form__empty--inline">
+                    <p>No data loaded for this type yet.</p>
+                </div>
+            }
+            else
+            {
+                <div class="datra-form__body">
+                    @foreach (var column in _columns)
+                    {
+                        var dirty = _dataSource.IsPropertyModified(EditableSingleDataSource<object>.SingleKey, column.Name);
+                        <div class="@(dirty ? "datra-form__row datra-form__row--dirty" : "datra-form__row")">
+                            <div class="datra-form__label">
+                                <span>@column.Name</span>
+                                <span class="datra-form__type">@column.PropertyType.Name</span>
+                            </div>
+                            <div class="datra-form__field">
+                                <DatraField FieldType="@column.PropertyType"
+                                            Property="@column"
+                                            Target="@_item"
+                                            Value="@column.GetValue(_item)"
+                                            LayoutMode="@FieldLayoutMode.Form"
+                                            OnValueChanged="@(value => HandleFieldChange(column, value))" />
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Type? DataType { get; set; }
+
+    private IEditableDataSource? _dataSource;
+    private object? _item;
+    private List<PropertyInfo> _columns = new();
+
+    protected override void OnInitialized() => Host.StateChanged += OnHostStateChanged;
+    public void Dispose() => Host.StateChanged -= OnHostStateChanged;
+
+    protected override void OnParametersSet()
+    {
+        if (DataType is null)
+        {
+            _dataSource = null;
+            _item = null;
+            _columns = new();
+            return;
+        }
+
+        _dataSource = Host.GetDataSource(DataType);
+        if (_dataSource is null)
+        {
+            _item = null;
+            _columns = new();
+            return;
+        }
+
+        _item = _dataSource.EnumerateItems().FirstOrDefault();
+        // Shared schema: writable / non-indexer / [DatraIgnore]-free properties only.
+        _columns = EditableMemberEnumerator.ForType(DataType).ToList();
+    }
+
+    private void HandleFieldChange(PropertyInfo column, object? newValue)
+    {
+        if (_dataSource is null || _item is null) return;
+        column.SetValue(_item, newValue);
+        // Single-instance data sources use a constant key (`__single__`); we pass it via the
+        // non-generic API which boxes the key for free.
+        _dataSource.TrackPropertyChange(EditableSingleDataSource<object>.SingleKey, column.Name, newValue, out _);
+        StateHasChanged();
+    }
+
+    private async Task OnSaveClicked()
+    {
+        if (DataType is null) return;
+        await Host.SaveAsync(DataType);
+    }
+
+    private void OnRevertClicked()
+    {
+        _dataSource?.Revert();
+        OnParametersSet();
+        StateHasChanged();
+    }
+
+    private void OnHostStateChanged() => InvokeAsync(StateHasChanged);
+}

@@ -442,13 +442,13 @@ namespace Datra.Unity.Editor.Views
         #endregion
 
         /// <summary>
-        /// Get filtered properties for a type, excluding properties with DatraIgnoreAttribute
+        /// Get filtered properties for a type, excluding properties with DatraIgnoreAttribute.
+        /// Delegates to <see cref="Datra.Editor.Schema.EditableMemberEnumerator"/> — the shared rule
+        /// (public, get+set, no indexer, no [DatraIgnore], not field-shadowed).
         /// </summary>
         protected List<PropertyInfo> GetFilteredProperties(Type type)
         {
-            return type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any())
-                .ToList();
+            return Datra.Editor.Schema.EditableMemberEnumerator.ForType(type).ToList();
         }
 
         /// <summary>

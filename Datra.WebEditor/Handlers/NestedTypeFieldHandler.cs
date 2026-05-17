@@ -1,9 +1,8 @@
 #nullable enable
 using System;
-using System.Collections;
-using System.Linq;
 using System.Reflection;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
 
@@ -22,12 +21,7 @@ public sealed class NestedTypeFieldHandler : IBlazorFieldHandler
     public int Priority => 30;
 
     public bool CanHandle(Type type, MemberInfo? member = null)
-    {
-        if (type.IsPrimitive || type.IsEnum) return false;
-        if (type == typeof(string) || type == typeof(decimal) || type == typeof(DateTime)) return false;
-        if (type.IsArray || typeof(IEnumerable).IsAssignableFrom(type)) return false;
-        return type.IsClass || type.IsValueType;
-    }
+        => TypeClassifier.Classify(type, member) == FieldKind.Nested;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -46,10 +40,7 @@ public sealed class NestedTypeFieldHandler : IBlazorFieldHandler
             return;
         }
 
-        var properties = context.FieldType
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.CanRead && p.CanWrite && p.GetIndexParameters().Length == 0)
-            .ToList();
+        var properties = EditableMemberEnumerator.ForType(context.FieldType);
 
         var seq = 2;
         foreach (var property in properties)

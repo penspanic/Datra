@@ -4,12 +4,16 @@ using System.Reflection;
 using UnityEngine.UIElements;
 using Datra.Attributes;
 using Datra.DataTypes;
+using Datra.Editor.Schema;
 using Datra.Unity.Editor.Interfaces;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Handler for LocaleRef fields with FixedLocale attribute
+    /// Handler for LocaleRef fields with FixedLocale attribute.
+    /// Classifier returns <see cref="FieldKind.LocaleRef"/> only when the originating member is
+    /// annotated with <see cref="FixedLocaleAttribute"/>; unannotated LocaleRef falls through to
+    /// Nested kind (handled by NestedLocaleRefFieldHandler / NestedTypeFieldHandler).
     /// </summary>
     public class LocaleRefFieldHandler : IUnityFieldHandler
     {
@@ -17,16 +21,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            if (type != typeof(LocaleRef))
-                return false;
-
-            // Only handle if has FixedLocale attribute
-            if (member is PropertyInfo property)
-            {
-                return property.GetCustomAttribute<FixedLocaleAttribute>() != null;
-            }
-
-            return false;
+            return TypeClassifier.Classify(type, member) == FieldKind.LocaleRef;
         }
 
         public VisualElement CreateField(FieldCreationContext context)

@@ -1,0 +1,114 @@
+/*
+ * Single view mirrors Unity's inspector single-data form: vertical stack of property rows
+ * inside a card. Save/Revert toolbar matches the table view exactly so the two modes feel
+ * like the same surface.
+ */
+
+.datra-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+    background: var(--datra-bg);
+    color: var(--datra-text);
+}
+
+.datra-form__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: var(--datra-h-toolbar);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--datra-border);
+    background: var(--datra-bg-elevated);
+}
+.datra-form__heading { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.datra-form__title {
+    margin: 0;
+    font-size: var(--datra-font-size-lg);
+    font-weight: 600;
+    color: var(--datra-text);
+}
+.datra-form__kind {
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-subtle);
+    text-transform: lowercase;
+}
+.datra-form__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    background: var(--datra-warning);
+    color: #1a1a1a;
+    border-radius: var(--datra-radius);
+    font-size: var(--datra-font-size-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.datra-form__actions { display: flex; align-items: center; gap: 6px; }
+
+.datra-form__scroll {
+    flex: 1;
+    overflow: auto;
+}
+.datra-form__body {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.datra-form__row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 8px 10px;
+    background: var(--datra-bg-field);
+    border: 1px solid transparent;
+    border-radius: var(--datra-radius-lg);
+    transition: border-color var(--datra-transition), background var(--datra-transition);
+}
+.datra-form__row:hover { border-color: var(--datra-border-cell); }
+.datra-form__row--dirty {
+    background: var(--datra-modified-bg);
+    border-color: var(--datra-warning);
+}
+
+.datra-form__label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 4px;
+}
+.datra-form__label > span:first-child {
+    font-size: var(--datra-font-size);
+    color: var(--datra-text);
+    font-weight: 500;
+}
+.datra-form__row--dirty .datra-form__label > span:first-child {
+    color: var(--datra-warning-text);
+    font-weight: 600;
+}
+.datra-form__type {
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-xs);
+    color: var(--datra-text-faint);
+}
+
+.datra-form__field { min-width: 0; }
+
+.datra-form__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: var(--datra-text-subtle);
+    font-style: italic;
+}
+.datra-form__empty--inline { padding: 30px 20px; }

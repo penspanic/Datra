@@ -9,12 +9,15 @@ using UnityEngine.UIElements;
 using UnityEditor;
 using UnityEditor.UIElements;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.Unity.Editor.Windows;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Handler for Dictionary&lt;TKey, TValue&gt; types
+    /// Handler for Dictionary&lt;TKey, TValue&gt; types. Narrowed to the concrete
+    /// <c>Dictionary&lt;,&gt;</c> generic — classifier reports <see cref="FieldKind.Dictionary"/>
+    /// for any IDictionary, but the field UI rebuilds a concrete <c>Dictionary&lt;,&gt;</c>.
     /// </summary>
     public class DictionaryFieldHandler : IUnityFieldHandler
     {
@@ -22,10 +25,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            if (!type.IsGenericType)
+            if (TypeClassifier.Classify(type, member) != FieldKind.Dictionary)
                 return false;
-
-            return type.GetGenericTypeDefinition() == typeof(Dictionary<,>);
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>);
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -427,9 +429,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         private object GetDefaultValue(Type type)
         {
-            if (type == typeof(string)) return "";
-            if (type.IsValueType) return Activator.CreateInstance(type);
-            return null;
+            return DefaultValueFactory.CreateDefault(type);
         }
 
         #endregion

@@ -26,7 +26,22 @@
         </aside>
 
         <main class="datra-editor__content">
-            <DatraTableView DataType="_selected" />
+            @{
+                var info = _selected is null ? null : Host.GetDataTypeInfo(_selected);
+            }
+            @switch (info?.RepositoryKind)
+            {
+                case Datra.Interfaces.RepositoryKind.Single:
+                    <DatraSingleView DataType="_selected" />
+                    break;
+                case Datra.Interfaces.RepositoryKind.Asset:
+                    <DatraAssetView DataType="_selected" />
+                    break;
+                case Datra.Interfaces.RepositoryKind.Table:
+                default:
+                    <DatraTableView DataType="_selected" />
+                    break;
+            }
         </main>
     }
 </div>

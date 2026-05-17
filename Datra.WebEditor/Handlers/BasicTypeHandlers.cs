@@ -3,6 +3,7 @@ using System;
 using System.Globalization;
 using System.Reflection;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
 
@@ -10,11 +11,15 @@ namespace Datra.WebEditor.Handlers;
 
 // CSS class convention: `datra-input` is the base style. Variants add `datra-input--<modifier>`.
 // All handlers are vanilla CSS — consumers theme via `--datra-*` custom properties.
+//
+// CanHandle gates use TypeClassifier first; primitive/int/long/float/double handlers still
+// narrow on exact type identity since Integer and Floating kinds cover multiple CLR types.
 
 public sealed class StringFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(string);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.String;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -32,7 +37,8 @@ public sealed class StringFieldHandler : IBlazorFieldHandler
 public sealed class IntFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(int);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Integer && type == typeof(int);
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -53,7 +59,8 @@ public sealed class IntFieldHandler : IBlazorFieldHandler
 public sealed class LongFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(long);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Integer && type == typeof(long);
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -74,7 +81,8 @@ public sealed class LongFieldHandler : IBlazorFieldHandler
 public sealed class FloatFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(float);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Floating && type == typeof(float);
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -102,7 +110,8 @@ public sealed class FloatFieldHandler : IBlazorFieldHandler
 public sealed class DoubleFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(double);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Floating && type == typeof(double);
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -130,7 +139,8 @@ public sealed class DoubleFieldHandler : IBlazorFieldHandler
 public sealed class BoolFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(bool);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Boolean;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -153,7 +163,8 @@ public sealed class BoolFieldHandler : IBlazorFieldHandler
 public sealed class DateTimeFieldHandler : IBlazorFieldHandler
 {
     public int Priority => 1;
-    public bool CanHandle(Type type, MemberInfo? member = null) => type == typeof(DateTime);
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.DateTime;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {

@@ -227,6 +227,7 @@ namespace Datra.Unity.Tests
             public bool IsPropertyModified(object key, string propertyName) => false;
             public IEnumerable<string> GetModifiedProperties(object key) => Array.Empty<string>();
             public object GetPropertyBaselineValue(object key, string propertyName) => null;
+            public ChangeSummary GetChangeSummary() => new ChangeSummary();
 
             public Task SaveAsync()
             {

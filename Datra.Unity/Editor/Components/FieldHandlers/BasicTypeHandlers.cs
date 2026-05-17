@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using Datra.Editor.Schema;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
@@ -18,7 +19,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type == typeof(string);
+            return TypeClassifier.Classify(type, member) == FieldKind.String;
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -72,7 +73,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type == typeof(int);
+            // Narrowed to int specifically: classifier returns Integer for any integral primitive,
+            // but Unity's IntegerField is int-only.
+            return type == typeof(int) && TypeClassifier.Classify(type, member) == FieldKind.Integer;
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -96,7 +99,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type == typeof(float);
+            // Narrowed to float specifically: classifier groups float/double/decimal under Floating,
+            // but Unity's FloatField is float-only.
+            return type == typeof(float) && TypeClassifier.Classify(type, member) == FieldKind.Floating;
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -120,7 +125,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type == typeof(bool);
+            return TypeClassifier.Classify(type, member) == FieldKind.Boolean;
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -144,7 +149,7 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type.IsEnum;
+            return TypeClassifier.Classify(type, member) == FieldKind.Enum;
         }
 
         public VisualElement CreateField(FieldCreationContext context)

@@ -4,6 +4,7 @@ using System.Reflection;
 using Datra.Attributes;
 using Datra.DataTypes;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
 
@@ -19,11 +20,7 @@ public sealed class LocaleRefFieldHandler : IBlazorFieldHandler
     public int Priority => 100;
 
     public bool CanHandle(Type type, MemberInfo? member = null)
-    {
-        if (type != typeof(LocaleRef)) return false;
-        return member is PropertyInfo property &&
-               property.GetCustomAttribute<FixedLocaleAttribute>() != null;
-    }
+        => TypeClassifier.Classify(type, member) == FieldKind.LocaleRef;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {

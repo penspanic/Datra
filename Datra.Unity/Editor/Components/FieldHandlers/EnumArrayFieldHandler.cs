@@ -3,6 +3,7 @@ using System;
 using System.Reflection;
 using UnityEngine.UIElements;
 using UnityEditor.UIElements;
+using Datra.Editor.Schema;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
@@ -17,7 +18,10 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public override bool CanHandle(Type type, MemberInfo member = null)
         {
-            return type.IsArray && type.GetElementType()?.IsEnum == true;
+            if (TypeClassifier.Classify(type, member) != FieldKind.Array)
+                return false;
+            var elementType = TypeClassifier.GetElementType(type);
+            return elementType != null && elementType.IsEnum;
         }
 
         protected override Type GetElementType(Type arrayType)

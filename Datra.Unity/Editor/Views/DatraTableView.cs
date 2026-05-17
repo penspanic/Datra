@@ -270,7 +270,11 @@ namespace Datra.Unity.Editor.Views
         {
             var members = new List<MemberInfo>();
 
-            // Get public fields
+            // Get public fields. EditableMemberEnumerator only enumerates properties (Datra-generated
+            // models use auto-properties), but we keep the field walk here so user-authored nested
+            // structs/classes with public fields still expand into columns.
+            // TODO: classifier doesn't currently surface public fields — if this turns out to be dead
+            //       code we can drop it once EditableMemberEnumerator is the only path.
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
             foreach (var field in fields)
             {
@@ -280,19 +284,11 @@ namespace Datra.Unity.Editor.Views
                 members.Add(field);
             }
 
-            // Get public properties with setter
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-            foreach (var prop in properties)
+            // Properties — shared rules via EditableMemberEnumerator
+            // (public, get+set, no indexer, no [DatraIgnore], not field-shadowed).
+            foreach (var prop in Datra.Editor.Schema.EditableMemberEnumerator.ForType(type))
             {
-                if (prop.CanWrite && prop.CanRead && prop.GetIndexParameters().Length == 0)
-                {
-                    // Skip if there's already a field with similar name
-                    var fieldExists = fields.Any(f => f.Name.Equals(prop.Name, StringComparison.OrdinalIgnoreCase));
-                    if (!fieldExists)
-                    {
-                        members.Add(prop);
-                    }
-                }
+                members.Add(prop);
             }
 
             return members;

@@ -3,6 +3,7 @@ using System;
 using System.Reflection;
 using UnityEngine.UIElements;
 using Datra.DataTypes;
+using Datra.Editor.Schema;
 using Datra.Unity.Editor.UI;
 using Datra.Unity.Editor.Utilities;
 using Datra.Unity.Editor.Windows;
@@ -18,14 +19,13 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public bool CanHandle(Type type, MemberInfo member = null)
         {
-            return IsDataRefType(type);
+            return TypeClassifier.Classify(type, member) == FieldKind.DataRef;
         }
 
+        /// <summary>Back-compat shim. Prefer <see cref="TypeClassifier.IsDataRefType"/>.</summary>
         public static bool IsDataRefType(Type type)
         {
-            return type.IsGenericType &&
-                   (type.GetGenericTypeDefinition() == typeof(StringDataRef<>) ||
-                    type.GetGenericTypeDefinition() == typeof(IntDataRef<>));
+            return TypeClassifier.IsDataRefType(type);
         }
 
         public VisualElement CreateField(FieldCreationContext context)
@@ -36,8 +36,8 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             container.style.alignItems = Align.Center;
 
             var dataRefType = context.FieldType;
-            var genericArgs = dataRefType.GetGenericArguments();
-            var referencedType = genericArgs[0];
+            var dataRefInfo = DataRefTypeInfo.TryCreate(dataRefType);
+            var referencedType = dataRefInfo?.ReferencedType ?? dataRefType.GetGenericArguments()[0];
 
             // Display field
             var displayField = new TextField();
@@ -52,7 +52,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             {
                 if (currentValue != null)
                 {
-                    var keyValue = currentValue.GetType().GetProperty("Value")?.GetValue(currentValue);
+                    var keyValue = dataRefInfo != null
+                        ? dataRefInfo.GetKey(currentValue)
+                        : currentValue.GetType().GetProperty("Value")?.GetValue(currentValue);
                     if (keyValue != null)
                     {
                         displayField.value = $"[{keyValue}]";
@@ -102,8 +104,10 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
                 {
                     DatraReferenceSelector.Show(referencedType, dataContext, selectedId =>
                     {
-                        var newDataRef = Activator.CreateInstance(dataRefType);
-                        if (selectedId != null)
+                        var newDataRef = dataRefInfo != null
+                            ? dataRefInfo.Build(selectedId)
+                            : Activator.CreateInstance(dataRefType);
+                        if (dataRefInfo == null && selectedId != null)
                         {
                             newDataRef.GetType().GetProperty("Value")?.SetValue(newDataRef, selectedId);
                         }
@@ -122,7 +126,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
             // Clear button
             var clearButton = new Button(() =>
             {
-                var newDataRef = Activator.CreateInstance(dataRefType);
+                var newDataRef = dataRefInfo != null
+                    ? dataRefInfo.CreateEmpty()
+                    : Activator.CreateInstance(dataRefType);
                 currentValue = newDataRef;
                 container.userData = currentValue;
                 UpdateDisplayValue();

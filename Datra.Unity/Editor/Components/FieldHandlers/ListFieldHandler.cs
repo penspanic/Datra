@@ -3,11 +3,14 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
+using Datra.Editor.Schema;
 
 namespace Datra.Unity.Editor.Components.FieldHandlers
 {
     /// <summary>
-    /// Handler for List&lt;T&gt; types with polymorphism support
+    /// Handler for List&lt;T&gt; types with polymorphism support.
+    /// Narrowed to <c>List&lt;T&gt;</c> specifically (not arbitrary <c>IList&lt;T&gt;</c>) so we can
+    /// safely rebuild the concrete list type when committing edits.
     /// </summary>
     public class ListFieldHandler : BaseCollectionFieldHandler
     {
@@ -15,10 +18,9 @@ namespace Datra.Unity.Editor.Components.FieldHandlers
 
         public override bool CanHandle(Type type, MemberInfo member = null)
         {
-            if (!type.IsGenericType)
+            if (TypeClassifier.Classify(type, member) != FieldKind.List)
                 return false;
-
-            return type.GetGenericTypeDefinition() == typeof(List<>);
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
         }
 
         protected override Type GetElementType(Type collectionType)

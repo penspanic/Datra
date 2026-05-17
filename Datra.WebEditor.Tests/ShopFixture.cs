@@ -89,4 +89,42 @@ internal sealed class TestFileRawDataProvider : IRawDataProvider
     public bool Exists(string path) => File.Exists(Path.Combine(_basePath, path));
 
     public string ResolveFilePath(string path) => Path.GetFullPath(Path.Combine(_basePath, path));
+
+    public async System.Threading.Tasks.Task<System.Collections.Generic.Dictionary<string, string>> LoadMultipleTextAsync(
+        string folderPathOrLabel, string pattern = "*.json")
+    {
+        var folder = Path.Combine(_basePath, folderPathOrLabel);
+        var result = new System.Collections.Generic.Dictionary<string, string>();
+        if (!Directory.Exists(folder)) return result;
+        foreach (var p in Directory.GetFiles(folder, pattern, SearchOption.TopDirectoryOnly))
+        {
+            result[Path.GetFileName(p)] = await File.ReadAllTextAsync(p).ConfigureAwait(false);
+        }
+        return result;
+    }
+
+    public System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string>> ListFilesAsync(
+        string folderPathOrLabel, string pattern = "*.json")
+    {
+        var folder = Path.Combine(_basePath, folderPathOrLabel);
+        var list = new System.Collections.Generic.List<string>();
+        if (Directory.Exists(folder))
+        {
+            foreach (var p in Directory.GetFiles(folder, pattern, SearchOption.TopDirectoryOnly))
+            {
+                var name = Path.GetFileName(p);
+                if (name is not null) list.Add(name);
+            }
+        }
+        System.Collections.Generic.IReadOnlyList<string> result = list;
+        return System.Threading.Tasks.Task.FromResult(result);
+    }
+
+    public System.Threading.Tasks.Task<bool> DeleteAsync(string path)
+    {
+        var full = Path.Combine(_basePath, path);
+        if (!File.Exists(full)) return System.Threading.Tasks.Task.FromResult(false);
+        File.Delete(full);
+        return System.Threading.Tasks.Task.FromResult(true);
+    }
 }

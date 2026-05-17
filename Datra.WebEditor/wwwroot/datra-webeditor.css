@@ -388,3 +388,67 @@
 
 .datra-locale { display: flex; align-items: center; gap: 4px; min-width: 0; }
 .datra-locale__text { flex: 1; min-width: 0; }
+
+/* ============================================================ *
+ *  Compact collection (Table mode) + popover
+ *  Used by ArrayFieldHandler / ListFieldHandler when LayoutMode == Table to keep table rows
+ *  height-stable. The trigger is a tiny "edit" pill; the panel floats above the table.
+ * ============================================================ */
+
+.datra-compact {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+}
+.datra-compact__summary {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-sm);
+    color: var(--datra-text-muted);
+}
+
+.datra-popover {
+    position: relative;
+    flex-shrink: 0;
+}
+.datra-popover__trigger {
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    padding: 0 8px;
+    background: #494949;
+    color: var(--datra-text);
+    border: 1px solid #393939;
+    border-radius: var(--datra-radius);
+    font-family: var(--datra-font-ui);
+    font-size: var(--datra-font-size-xs);
+}
+.datra-popover__trigger::-webkit-details-marker { display: none; }
+.datra-popover__trigger:hover { background: #5a5a5a; border-color: #696969; }
+.datra-popover[open] > .datra-popover__trigger { background: var(--datra-accent); color: var(--datra-text-on-accent); border-color: var(--datra-accent-active); }
+
+.datra-popover__panel {
+    position: absolute;
+    z-index: 50;
+    top: calc(100% + 4px);
+    left: 0;
+    min-width: 260px;
+    max-width: 420px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    background: var(--datra-bg-elevated);
+    border: 1px solid var(--datra-border);
+    border-radius: var(--datra-radius-lg);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}

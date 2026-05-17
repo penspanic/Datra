@@ -1,9 +1,13 @@
 #nullable enable
 using System;
+using System.Collections;
 using System.Reflection;
+using System.Text;
 using Datra.Editor.Models;
+using Datra.Editor.Schema;
 using Datra.WebEditor.Abstractions;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Datra.WebEditor.Handlers;
 
@@ -13,6 +17,11 @@ namespace Datra.WebEditor.Handlers;
 /// mutation produces a new instance the caller is expected to propagate via
 /// <see cref="FieldCreationContext.OnValueChanged"/>.
 /// </summary>
+/// <remarks>
+/// In <see cref="FieldLayoutMode.Table"/> the editor collapses to a "summary + edit" pop-out so
+/// table rows stay compact (matches Unity's <c>BaseArrayFieldHandler</c> behaviour). The popover
+/// is a self-managed <c>&lt;details&gt;</c> element — no JS interop.
+/// </remarks>
 public sealed class ArrayFieldHandler : IBlazorFieldHandler
 {
     private readonly BlazorFieldTypeRegistry _registry;
@@ -22,8 +31,8 @@ public sealed class ArrayFieldHandler : IBlazorFieldHandler
     // Higher than ListFieldHandler so arrays don't fall through to it.
     public int Priority => 22;
 
-    public bool CanHandle(Type type, MemberInfo? member = null) =>
-        type.IsArray && type.GetArrayRank() == 1;
+    public bool CanHandle(Type type, MemberInfo? member = null)
+        => TypeClassifier.Classify(type, member) == FieldKind.Array;
 
     public RenderFragment CreateField(FieldCreationContext context) => builder =>
     {
@@ -32,6 +41,22 @@ public sealed class ArrayFieldHandler : IBlazorFieldHandler
         var array = context.Value as Array;
         var count = array?.Length ?? 0;
 
+        if (context.LayoutMode == FieldLayoutMode.Table)
+        {
+            CollectionFieldRender.RenderCompact(
+                builder, _registry, context, elementType, count,
+                summary: BuildSummary(array, count),
+                renderItems: (b, seq) => RenderItems(b, seq, context, array, elementType, count),
+                onAdd: () => AddElement(context, array, elementType, count));
+            return;
+        }
+
+        RenderExpanded(builder, context, array, elementType, count);
+    };
+
+    private void RenderExpanded(RenderTreeBuilder builder, FieldCreationContext context,
+        Array? array, Type elementType, int count)
+    {
         builder.OpenElement(0, "div");
         builder.AddAttribute(1, "class", "datra-list");
 
@@ -49,12 +74,7 @@ public sealed class ArrayFieldHandler : IBlazorFieldHandler
             builder.AddAttribute(8, "type", "button");
             builder.AddAttribute(9, "class", "datra-btn datra-btn--ghost datra-list__add");
             builder.AddAttribute(10, "onclick", EventCallback.Factory.Create(this, () =>
-            {
-                var grown = Array.CreateInstance(elementType, count + 1);
-                if (array is not null) Array.Copy(array, grown, count);
-                grown.SetValue(CreateDefaultValue(elementType), count);
-                context.OnValueChanged?.Invoke(grown);
-            }));
+                AddElement(context, array, elementType, count)));
             builder.AddContent(11, "+ add");
             builder.CloseElement();
         }
@@ -64,79 +84,117 @@ public sealed class ArrayFieldHandler : IBlazorFieldHandler
         {
             builder.OpenElement(12, "div");
             builder.AddAttribute(13, "class", "datra-list__items");
-
-            for (var i = 0; i < count; i++)
-            {
-                var index = i;
-                var item = array.GetValue(index);
-
-                builder.OpenElement(14, "div");
-                builder.AddAttribute(15, "class", "datra-list__row");
-
-                builder.OpenElement(16, "span");
-                builder.AddAttribute(17, "class", "datra-list__index");
-                builder.AddContent(18, index.ToString());
-                builder.CloseElement();
-
-                var handler = _registry.FindBlazorHandler(elementType);
-                builder.OpenElement(19, "div");
-                builder.AddAttribute(20, "class", "datra-list__field");
-                if (handler is not null)
-                {
-                    var elementContext = new FieldCreationContext(
-                        elementType,
-                        item,
-                        index,
-                        context.LayoutMode,
-                        newValue =>
-                        {
-                            array.SetValue(newValue, index);
-                            context.OnValueChanged?.Invoke(array);
-                        },
-                        context.LocaleService,
-                        context.IsReadOnly);
-                    builder.AddContent(21, handler.CreateField(elementContext));
-                }
-                else
-                {
-                    builder.OpenElement(21, "span");
-                    builder.AddAttribute(22, "class", "datra-list__missing");
-                    builder.AddContent(23, $"no handler for {elementType.Name}");
-                    builder.CloseElement();
-                }
-                builder.CloseElement(); // field
-
-                if (!context.IsReadOnly)
-                {
-                    builder.OpenElement(24, "button");
-                    builder.AddAttribute(25, "type", "button");
-                    builder.AddAttribute(26, "class", "datra-btn datra-btn--danger datra-list__remove");
-                    builder.AddAttribute(27, "title", "remove");
-                    builder.AddAttribute(28, "onclick", EventCallback.Factory.Create(this, () =>
-                    {
-                        var shrunk = Array.CreateInstance(elementType, count - 1);
-                        if (index > 0) Array.Copy(array, 0, shrunk, 0, index);
-                        if (index < count - 1) Array.Copy(array, index + 1, shrunk, index, count - 1 - index);
-                        context.OnValueChanged?.Invoke(shrunk);
-                    }));
-                    builder.AddContent(29, "×");
-                    builder.CloseElement();
-                }
-
-                builder.CloseElement(); // row
-            }
+            RenderItems(builder, 14, context, array, elementType, count);
             builder.CloseElement(); // items
         }
 
         builder.CloseElement(); // list
-    };
+    }
 
-    private static object? CreateDefaultValue(Type type)
+    private void RenderItems(RenderTreeBuilder builder, int startSeq, FieldCreationContext context,
+        Array? array, Type elementType, int count)
     {
-        if (type == typeof(string)) return string.Empty;
-        if (type.IsValueType) return Activator.CreateInstance(type);
-        return type.GetConstructor(Type.EmptyTypes) != null
-            ? Activator.CreateInstance(type)
-            : null;
+        if (array is null || count == 0) return;
+        var seq = startSeq;
+        for (var i = 0; i < count; i++)
+        {
+            var index = i;
+            var item = array.GetValue(index);
+
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "datra-list__row");
+
+            builder.OpenElement(seq++, "span");
+            builder.AddAttribute(seq++, "class", "datra-list__index");
+            builder.AddContent(seq++, index.ToString());
+            builder.CloseElement();
+
+            var handler = _registry.FindBlazorHandler(elementType);
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "datra-list__field");
+            if (handler is not null)
+            {
+                var elementContext = new FieldCreationContext(
+                    elementType,
+                    item,
+                    index,
+                    // Force Form layout inside the popover so element editors expand.
+                    context.LayoutMode == FieldLayoutMode.Table ? FieldLayoutMode.Form : context.LayoutMode,
+                    newValue =>
+                    {
+                        array.SetValue(newValue, index);
+                        context.OnValueChanged?.Invoke(array);
+                    },
+                    context.LocaleService,
+                    context.IsReadOnly);
+                builder.AddContent(seq++, handler.CreateField(elementContext));
+            }
+            else
+            {
+                builder.OpenElement(seq++, "span");
+                builder.AddAttribute(seq++, "class", "datra-list__missing");
+                builder.AddContent(seq++, $"no handler for {elementType.Name}");
+                builder.CloseElement();
+            }
+            builder.CloseElement(); // field
+
+            if (!context.IsReadOnly)
+            {
+                builder.OpenElement(seq++, "button");
+                builder.AddAttribute(seq++, "type", "button");
+                builder.AddAttribute(seq++, "class", "datra-btn datra-btn--danger datra-list__remove");
+                builder.AddAttribute(seq++, "title", "remove");
+                builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () =>
+                {
+                    var shrunk = Array.CreateInstance(elementType, count - 1);
+                    if (index > 0) Array.Copy(array, 0, shrunk, 0, index);
+                    if (index < count - 1) Array.Copy(array, index + 1, shrunk, index, count - 1 - index);
+                    context.OnValueChanged?.Invoke(shrunk);
+                }));
+                builder.AddContent(seq++, "×");
+                builder.CloseElement();
+            }
+
+            builder.CloseElement(); // row
+        }
+    }
+
+    private static void AddElement(FieldCreationContext context, Array? array, Type elementType, int count)
+    {
+        var grown = Array.CreateInstance(elementType, count + 1);
+        if (array is not null) Array.Copy(array, grown, count);
+        grown.SetValue(DefaultValueFactory.CreateDefault(elementType), count);
+        context.OnValueChanged?.Invoke(grown);
+    }
+
+    private static string BuildSummary(Array? array, int count)
+    {
+        if (array is null || count == 0) return "empty";
+        var sb = new StringBuilder();
+        for (var i = 0; i < count; i++)
+        {
+            if (i > 0) sb.Append(", ");
+            sb.Append(FormatElement(array.GetValue(i)));
+            if (sb.Length > 40)
+            {
+                sb.Length = 37;
+                sb.Append("...");
+                break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    internal static string FormatElement(object? value)
+    {
+        if (value is null) return "null";
+        // DataRef structs: print their Value property instead of "StringDataRef`1[Foo]".
+        var info = DataRefTypeInfo.TryCreate(value.GetType());
+        if (info is not null)
+        {
+            var key = info.GetKey(value);
+            return key?.ToString() ?? string.Empty;
+        }
+        return value.ToString() ?? string.Empty;
     }
 }

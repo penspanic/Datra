@@ -53,9 +53,9 @@ namespace Datra.Unity.Editor.Components
             ILocaleProvider localeProvider = null)
         {
             var fields = new List<DatraPropertyField>();
-            // Filter out properties with DatraIgnore attribute
-            var properties = target.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => p.CanRead && !p.GetCustomAttributes(typeof(Datra.Attributes.DatraIgnoreAttribute), true).Any());
+            // Shared rule via EditableMemberEnumerator
+            // (public, get+set, no indexer, no [DatraIgnore], not field-shadowed).
+            var properties = Datra.Editor.Schema.EditableMemberEnumerator.ForType(target.GetType());
 
             foreach (var property in properties)
             {
