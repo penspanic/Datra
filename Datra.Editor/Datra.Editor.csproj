@@ -6,6 +6,10 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Datra.Editor</RootNamespace>
     <AssemblyName>Datra.Editor</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>Datra.Editor</PackageId>
+    <Description>Editor schema and editable data-source primitives for Datra-managed game data.</Description>
+    <PackageTags>datra;game;data;editor;schema</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
