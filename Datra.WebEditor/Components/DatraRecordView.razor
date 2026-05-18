@@ -1,0 +1,217 @@
+@*
+    Detail view for one Datra item. Used both by the full DatraEditor
+    (table row → View) and by host apps that want to embed a focused row
+    editor next to domain UI such as an asset inspector.
+*@
+@using System.Reflection
+@using Datra.DataTypes
+@using Datra.Editor.DataSources
+@using Datra.Editor.Interfaces
+@using Datra.Editor.Schema
+@using Datra.Interfaces
+@using Datra.WebEditor.Services
+@implements IDisposable
+
+@inject DatraEditorHostService Host
+
+@if (_dataSource is null)
+{
+    <div class="datra-detail__empty"><p>Select a type.</p></div>
+}
+else if (_item is null || _editTarget is null)
+{
+    <div class="datra-detail__empty">
+        <p>No row found.</p>
+        @if (!string.IsNullOrWhiteSpace(ItemKey))
+        {
+            <small>@DataType?.Name / @ItemKey</small>
+        }
+    </div>
+}
+else
+{
+    <div class="datra-detail @(Compact ? "datra-detail--compact" : "")">
+        <header class="datra-detail__header">
+            <div class="datra-detail__heading">
+                <h2 class="datra-detail__title">@(Title ?? DataType?.Name)</h2>
+                <div class="datra-detail__meta">
+                    <span class="datra-detail__key">@_displayKey</span>
+                    <span class="datra-detail__kind">@(_info?.RepositoryKind.ToString().ToLowerInvariant() ?? "row")</span>
+                    @if (_state != ItemState.Unchanged)
+                    {
+                        <span class="datra-detail__state">@_state.ToString().ToLowerInvariant()</span>
+                    }
+                    @if (_dataSource.HasModifications)
+                    {
+                        <span class="datra-detail__badge">@_dataSource.GetChangeSummary().TotalCount unsaved</span>
+                    }
+                </div>
+            </div>
+            <div class="datra-detail__actions">
+                @if (ShowBackButton && OnBack.HasDelegate)
+                {
+                    <button class="datra-btn datra-btn--ghost" type="button"
+                            @onclick="() => OnBack.InvokeAsync()">Back</button>
+                }
+                <button class="datra-btn datra-btn--ghost" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnRevertClicked">Revert</button>
+                <button class="datra-btn datra-btn--primary" type="button"
+                        disabled="@(!_dataSource.HasModifications)"
+                        @onclick="OnSaveClicked">Save</button>
+            </div>
+        </header>
+
+        <div class="datra-detail__body">
+            @foreach (var column in _columns)
+            {
+                var dirty = _dataSource.IsPropertyModified(_itemKey, column.Name);
+                <div class="@(dirty ? "datra-detail__row datra-detail__row--dirty" : "datra-detail__row")">
+                    <div class="datra-detail__label">
+                        <span>@column.Name</span>
+                        <small>@column.PropertyType.Name</small>
+                    </div>
+                    <div class="datra-detail__field">
+                        <DatraField FieldType="@column.PropertyType"
+                                    Property="@column"
+                                    Target="@_editTarget"
+                                    Value="@column.GetValue(_editTarget)"
+                                    LayoutMode="@FieldLayoutMode.Form"
+                                    OnValueChanged="@(value => HandleFieldChange(column, value))" />
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Type? DataType { get; set; }
+    [Parameter] public string? ItemKey { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool ShowBackButton { get; set; } = true;
+    [Parameter] public EventCallback OnBack { get; set; }
+
+    private IEditableDataSource? _dataSource;
+    private DataTypeInfo? _info;
+    private object? _item;
+    private object? _editTarget;
+    private object _itemKey = "";
+    private string _displayKey = "";
+    private ItemState _state;
+    private List<PropertyInfo> _columns = new();
+
+    protected override void OnInitialized() => Host.StateChanged += OnHostStateChanged;
+    public void Dispose() => Host.StateChanged -= OnHostStateChanged;
+
+    protected override void OnParametersSet() => LoadItem();
+
+    private void LoadItem()
+    {
+        _item = null;
+        _editTarget = null;
+        _itemKey = "";
+        _displayKey = "";
+        _state = ItemState.Unchanged;
+        _columns = new();
+
+        if (DataType is null)
+        {
+            _dataSource = null;
+            _info = null;
+            return;
+        }
+
+        _info = Host.GetDataTypeInfo(DataType);
+        _dataSource = Host.GetDataSource(DataType);
+        if (_dataSource is null) return;
+
+        if (!TryResolveItem(_dataSource, out var key, out var item) || item is null) return;
+        _item = item;
+        _itemKey = key;
+        _displayKey = FormatKey(key);
+        _state = _dataSource.GetItemState(key);
+
+        if (_info?.RepositoryKind == RepositoryKind.Asset)
+        {
+            if (_dataSource is not IEditableAssetDataSource assetSource) return;
+            _editTarget = assetSource.GetAssetData(item);
+            _columns = EditableMemberEnumerator.ForType(assetSource.AssetDataType).ToList();
+        }
+        else
+        {
+            _editTarget = item;
+            _columns = _info?.RepositoryKind == RepositoryKind.Table
+                ? EditableMemberEnumerator.ForTableRow(DataType).ToList()
+                : EditableMemberEnumerator.ForType(DataType).ToList();
+        }
+    }
+
+    private bool TryResolveItem(IEditableDataSource source, out object key, out object? item)
+    {
+        key = "";
+        item = null;
+
+        var kv = source.GetKeyValueTypes();
+        var keyType = kv?.Key ?? typeof(string);
+        object? requestedKey = null;
+
+        if (_info?.RepositoryKind == RepositoryKind.Single)
+        {
+            requestedKey = EditableSingleDataSource<object>.SingleKey;
+        }
+        else if (!string.IsNullOrWhiteSpace(ItemKey))
+        {
+            var parsed = DatraEditorHostServiceExtensions.TryParseKey(keyType, ItemKey);
+            if (!parsed.ok || parsed.key is null) return false;
+            requestedKey = parsed.key;
+        }
+
+        foreach (var candidate in source.EnumerateItems())
+        {
+            var candidateKey = source.GetItemKey(candidate);
+            if (candidateKey is null) continue;
+            if (requestedKey is null || Equals(candidateKey, requestedKey))
+            {
+                key = candidateKey;
+                item = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void HandleFieldChange(PropertyInfo column, object? newValue)
+    {
+        if (_dataSource is null || _editTarget is null) return;
+        column.SetValue(_editTarget, newValue);
+        _dataSource.TrackPropertyChange(_itemKey, column.Name, newValue, out _);
+        LoadItem();
+        StateHasChanged();
+    }
+
+    private async Task OnSaveClicked()
+    {
+        if (DataType is null) return;
+        await Host.SaveAsync(DataType);
+        LoadItem();
+    }
+
+    private void OnRevertClicked()
+    {
+        _dataSource?.Revert();
+        LoadItem();
+        StateHasChanged();
+    }
+
+    private void OnHostStateChanged() => InvokeAsync(() =>
+    {
+        LoadItem();
+        StateHasChanged();
+    });
+
+    private static string FormatKey(object key) =>
+        key is AssetId assetId ? assetId.ToString() : key.ToString() ?? "";
+}

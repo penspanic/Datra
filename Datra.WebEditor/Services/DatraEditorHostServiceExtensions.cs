@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using Datra.DataTypes;
 using Datra.Editor.Interfaces;
 using Datra.Editor.Schema;
 using Datra.Interfaces;
@@ -88,6 +89,10 @@ public static class DatraEditorHostServiceExtensions
 
         if (keyType == typeof(long) && long.TryParse(raw, System.Globalization.NumberStyles.Integer,
             System.Globalization.CultureInfo.InvariantCulture, out var lvalue)) return (true, lvalue);
+
+        if (keyType == typeof(Guid) && Guid.TryParse(raw, out var guid)) return (true, guid);
+
+        if (keyType == typeof(AssetId) && AssetId.TryParse(raw, out var assetId)) return (true, assetId);
 
         if (keyType.IsEnum && Enum.TryParse(keyType, raw, ignoreCase: true, out var evalue))
             return (true, evalue);

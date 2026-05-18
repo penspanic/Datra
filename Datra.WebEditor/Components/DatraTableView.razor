@@ -86,6 +86,9 @@ else
                             }
                             <td class="datra-table__cell-actions">
                                 <button class="datra-btn datra-btn--ghost datra-btn--sm" type="button"
+                                        title="view"
+                                        @onclick="() => OnOpenDetail.InvokeAsync(key.ToString())">View</button>
+                                <button class="datra-btn datra-btn--ghost datra-btn--sm" type="button"
                                         title="delete"
                                         @onclick="() => OnRowDelete(key)">×</button>
                             </td>
@@ -123,6 +126,7 @@ else
 
 @code {
     [Parameter, EditorRequired] public Type? DataType { get; set; }
+    [Parameter] public EventCallback<string> OnOpenDetail { get; set; }
 
     private IEditableDataSource? _dataSource;
     private Type? _keyType;

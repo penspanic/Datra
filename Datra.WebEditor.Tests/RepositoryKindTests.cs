@@ -76,11 +76,16 @@ public class RepositoryKindTests
         var dataType = typeof(ScriptAssetData);
         var source = host.GetDataSource(dataType)!;
         Assert.IsType<EditableAssetDataSource<ScriptAssetData>>(source);
+        var assetSource = Assert.IsAssignableFrom<IEditableAssetDataSource>(source);
+        Assert.Equal(typeof(ScriptAssetData), assetSource.AssetDataType);
         Assert.True(source.Count >= 1, "expected scripts folder to have at least one asset");
 
         var asset = source.EnumerateItems().FirstOrDefault();
         Assert.NotNull(asset);
         Assert.IsType<Asset<ScriptAssetData>>(asset);
+        Assert.IsType<ScriptAssetData>(assetSource.GetAssetData(asset));
+        Assert.NotEqual(AssetId.Empty, assetSource.GetAssetId(asset));
+        Assert.False(string.IsNullOrWhiteSpace(assetSource.GetAssetFilePath(asset)));
     }
 
     [Fact]

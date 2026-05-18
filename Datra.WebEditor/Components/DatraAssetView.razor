@@ -12,7 +12,7 @@
 
 @inject DatraEditorHostService Host
 
-@if (_dataSource is null || _innerType is null)
+@if (_dataSource is null || _assetDataSource is null || _innerType is null)
 {
     <div class="datra-table__empty"><p>Select a type from the sidebar.</p></div>
 }
@@ -49,16 +49,19 @@ else
                         {
                             <th>@column.Name</th>
                         }
+                        <th class="datra-table__col-actions" aria-label="row actions"></th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach (var item in EnumerateAssets())
                 {
-                    var key = item.Id;
+                    var key = _assetDataSource.GetAssetId(item);
+                    var data = _assetDataSource.GetAssetData(item);
+                    var filePath = _assetDataSource.GetAssetFilePath(item);
                     var state = _dataSource.GetItemState(key);
                     <tr class="@RowClass(state)" @key="key">
                         <td class="datra-table__cell-key">
-                            <span class="datra-table__key" title="@item.FilePath">@key</span>
+                            <span class="datra-table__key" title="@filePath">@key</span>
                             @if (state == ItemState.Added) { <span class="datra-table__state datra-table__state--added">new</span> }
                             else if (state == ItemState.Deleted) { <span class="datra-table__state datra-table__state--deleted">deleted</span> }
                             else if (state == ItemState.Modified) { <span class="datra-table__state datra-table__state--modified">edited</span> }
@@ -69,12 +72,17 @@ else
                             <td class="@(dirty ? "datra-table__cell datra-table__cell--dirty" : "datra-table__cell")">
                                 <DatraField FieldType="@column.PropertyType"
                                             Property="@column"
-                                            Target="@item.Data"
-                                            Value="@column.GetValue(item.Data)"
+                                            Target="@data"
+                                            Value="@column.GetValue(data)"
                                             LayoutMode="@FieldLayoutMode.Table"
                                             OnValueChanged="@(value => HandleFieldChange(item, key, column, value))" />
                             </td>
                         }
+                        <td class="datra-table__cell-actions">
+                            <button class="datra-btn datra-btn--ghost datra-btn--sm" type="button"
+                                    title="view"
+                                    @onclick="() => OnOpenDetail.InvokeAsync(key.ToString())">View</button>
+                        </td>
                     </tr>
                 }
                 </tbody>
@@ -92,8 +100,10 @@ else
 
 @code {
     [Parameter, EditorRequired] public Type? DataType { get; set; }
+    [Parameter] public EventCallback<string> OnOpenDetail { get; set; }
 
     private IEditableDataSource? _dataSource;
+    private IEditableAssetDataSource? _assetDataSource;
     private Type? _innerType;
     private List<PropertyInfo> _columns = new();
 
@@ -105,36 +115,28 @@ else
         if (DataType is null)
         {
             _dataSource = null;
+            _assetDataSource = null;
             _innerType = null;
             _columns = new();
             return;
         }
 
         _dataSource = Host.GetDataSource(DataType);
-        if (_dataSource is null)
+        _assetDataSource = _dataSource as IEditableAssetDataSource;
+        if (_dataSource is null || _assetDataSource is null)
         {
+            _assetDataSource = null;
             _innerType = null;
             _columns = new();
             return;
         }
 
-        // EditableAssetDataSource<T> implements IEditableDataSource<AssetId, Asset<T>>. We need T
-        // (the inner asset model) for column discovery.
-        var kv = _dataSource.GetKeyValueTypes();
-        if (kv is null || !kv.Value.Data.IsGenericType ||
-            kv.Value.Data.GetGenericTypeDefinition() != typeof(Asset<>))
-        {
-            _innerType = null;
-            _columns = new();
-            return;
-        }
-
-        _innerType = kv.Value.Data.GetGenericArguments()[0];
+        _innerType = _assetDataSource.AssetDataType;
         // Shared schema: writable / non-indexer / [DatraIgnore]-free properties only.
         _columns = EditableMemberEnumerator.ForType(_innerType).ToList();
     }
 
-    private IEnumerable<dynamic> EnumerateAssets()
+    private IEnumerable<object> EnumerateAssets()
     {
         if (_dataSource is null) yield break;
         foreach (var raw in _dataSource.EnumerateItems())
@@ -151,10 +153,10 @@ else
         _ => "datra-table__row",
     };
 
-    private void HandleFieldChange(dynamic item, object key, PropertyInfo column, object? newValue)
+    private void HandleFieldChange(object item, object key, PropertyInfo column, object? newValue)
     {
-        if (_dataSource is null) return;
-        column.SetValue(item.Data, newValue);
+        if (_dataSource is null || _assetDataSource is null) return;
+        column.SetValue(_assetDataSource.GetAssetData(item), newValue);
         _dataSource.TrackPropertyChange(key, column.Name, newValue, out _);
         StateHasChanged();
     }

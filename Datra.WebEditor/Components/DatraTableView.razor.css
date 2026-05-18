@@ -81,7 +81,7 @@
 }
 .datra-table__grid thead th:last-child { border-right: none; }
 .datra-table__col-key { min-width: 140px; }
-.datra-table__col-actions { width: 48px; text-align: center; }
+.datra-table__col-actions { width: 86px; text-align: center; }
 .datra-table__col-meta {
     font-size: var(--datra-font-size-xs);
     color: var(--datra-text-faint);
@@ -155,7 +155,10 @@
 .datra-table__state--modified { background: var(--datra-warning); color: #1a1a1a; }
 .datra-table__state--deleted { background: var(--datra-danger); color: var(--datra-text-on-accent); }
 
-.datra-table__cell-actions { text-align: center; }
+.datra-table__cell-actions {
+    text-align: center;
+    white-space: nowrap;
+}
 
 /* Empty states */
 .datra-table__empty {

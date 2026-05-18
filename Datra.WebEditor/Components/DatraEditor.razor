@@ -21,26 +21,40 @@
     }
     else
     {
-        <aside class="datra-editor__nav">
-            <DatraTypeSidebar Selected="_selected" OnSelect="OnSelectType" />
-        </aside>
+        @if (!HideSidebar && !Compact)
+        {
+            <aside class="datra-editor__nav">
+                <DatraTypeSidebar Selected="_selected" OnSelect="OnSelectType" />
+            </aside>
+        }
 
         <main class="datra-editor__content">
             @{
                 var info = _selected is null ? null : Host.GetDataTypeInfo(_selected);
             }
-            @switch (info?.RepositoryKind)
+            @if (ShouldShowDetail)
             {
-                case Datra.Interfaces.RepositoryKind.Single:
-                    <DatraSingleView DataType="_selected" />
-                    break;
-                case Datra.Interfaces.RepositoryKind.Asset:
-                    <DatraAssetView DataType="_selected" />
-                    break;
-                case Datra.Interfaces.RepositoryKind.Table:
-                default:
-                    <DatraTableView DataType="_selected" />
-                    break;
+                <DatraRecordView DataType="_selected"
+                                 ItemKey="@ActiveDetailKey"
+                                 Compact="@Compact"
+                                 ShowBackButton="@(_showDetail && !Compact)"
+                                 OnBack="BackToTable" />
+            }
+            else
+            {
+                @switch (info?.RepositoryKind)
+                {
+                    case Datra.Interfaces.RepositoryKind.Single:
+                        <DatraSingleView DataType="_selected" />
+                        break;
+                    case Datra.Interfaces.RepositoryKind.Asset:
+                        <DatraAssetView DataType="_selected" OnOpenDetail="OpenDetail" />
+                        break;
+                    case Datra.Interfaces.RepositoryKind.Table:
+                    default:
+                        <DatraTableView DataType="_selected" OnOpenDetail="OpenDetail" />
+                        break;
+                }
             }
         </main>
     }
@@ -50,6 +64,18 @@
     /// <summary>Optional theme name — currently "light" switches to the light palette.</summary>
     [Parameter] public string? Theme { get; set; }
 
+    /// <summary>Optional data type to focus. Accepts full name or simple type name.</summary>
+    [Parameter] public string? FocusType { get; set; }
+
+    /// <summary>Optional row key to focus. When present, the editor opens in detail mode.</summary>
+    [Parameter] public string? FocusKey { get; set; }
+
+    /// <summary>"auto" (default), "table", or "detail".</summary>
+    [Parameter] public string ViewMode { get; set; } = "auto";
+
+    [Parameter] public bool Compact { get; set; }
+    [Parameter] public bool HideSidebar { get; set; }
+
     /// <summary>Callback fired after every successful save or reload.</summary>
     [Parameter] public EventCallback<DataChangedEvent> OnDataChanged { get; set; }
 
@@ -57,17 +83,60 @@
 
     private bool _ready;
     private Type? _selected;
+    private bool _showDetail;
+    private string? _detailKey;
+
+    private bool ShouldShowDetail =>
+        string.Equals(ViewMode, "detail", StringComparison.OrdinalIgnoreCase)
+        || _showDetail
+        || (!string.Equals(ViewMode, "table", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(FocusKey));
+
+    private string? ActiveDetailKey => _detailKey ?? FocusKey;
 
     protected override async Task OnInitializedAsync()
     {
         await Bootstrapper.EnsureInitialisedAsync();
-        _selected = Host.DataTypes.FirstOrDefault()?.DataType;
+        _selected = ResolveFocusType() ?? Host.DataTypes.FirstOrDefault()?.DataType;
         _ready = true;
         Host.StateChanged += OnHostStateChanged;
         Notifier.Changed += OnNotifierChanged;
     }
 
-    private void OnSelectType(Type type) => _selected = type;
+    protected override void OnParametersSet()
+    {
+        if (!_ready) return;
+        var focusType = ResolveFocusType();
+        if (focusType is not null && focusType != _selected)
+        {
+            _selected = focusType;
+            _showDetail = false;
+            _detailKey = null;
+        }
+    }
+
+    private Type? ResolveFocusType() => Host.FindDataType(FocusType);
+
+    private void OnSelectType(Type type)
+    {
+        _selected = type;
+        _showDetail = false;
+        _detailKey = null;
+    }
+
+    private Task OpenDetail(string key)
+    {
+        _detailKey = key;
+        _showDetail = true;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private Task BackToTable()
+    {
+        _showDetail = false;
+        _detailKey = null;
+        return InvokeAsync(StateHasChanged);
+    }
 
     private async Task OnNotifierChanged(DataChangedEvent evt)
     {

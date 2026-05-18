@@ -1,6 +1,7 @@
 #nullable enable
 using System.Linq;
 using System.Threading.Tasks;
+using Datra.DataTypes;
 using Datra.Editor.Interfaces;
 using Datra.SampleData2.Models;
 using Datra.WebEditor.Services;
@@ -137,6 +138,18 @@ public class HostServiceTests
         Assert.True(host.HasUnsavedChanges(typeof(ShopItemData)));
     }
 
+    [Fact]
+    public async Task FindDataType_resolves_simple_and_full_names()
+    {
+        using var shop = new ShopFixture();
+        var host = new DatraEditorHostService(new DataChangedNotifier());
+        await host.InitializeAsync(shop.Context);
+
+        Assert.Equal(typeof(ShopItemData), host.FindDataType(nameof(ShopItemData)));
+        Assert.Equal(typeof(ShopItemData), host.FindDataType(typeof(ShopItemData).FullName));
+        Assert.Null(host.FindDataType("MissingData"));
+    }
+
     [Theory]
     [InlineData("hello", typeof(string), "hello")]
     [InlineData("42", typeof(int), 42)]
@@ -153,5 +166,15 @@ public class HostServiceTests
     {
         var (ok, _) = DatraEditorHostServiceExtensions.TryParseKey(typeof(int), "not-a-number");
         Assert.False(ok);
+    }
+
+    [Fact]
+    public void TryParseKey_handles_AssetId()
+    {
+        var id = AssetId.NewId();
+        var (ok, value) = DatraEditorHostServiceExtensions.TryParseKey(typeof(AssetId), id.ToString());
+
+        Assert.True(ok);
+        Assert.Equal(id, value);
     }
 }

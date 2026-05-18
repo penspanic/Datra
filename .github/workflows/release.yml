@@ -60,6 +60,9 @@ jobs:
           dotnet pack Datra/Datra.csproj                       -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
           dotnet pack Datra.Generators/Datra.Generators.csproj -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
           dotnet pack Datra.Analyzers/Datra.Analyzers.csproj   -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
+          dotnet pack Datra.Editor/Datra.Editor.csproj         -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
+          dotnet pack Datra.WebEditor/Datra.WebEditor.csproj   -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
+          dotnet pack Datra.WebEditor.Server/Datra.WebEditor.Server.csproj -c Release --no-build -p:Version=${{ steps.version.outputs.version }} -o artifacts
           ls -la artifacts
 
       - name: Push to GitHub Packages

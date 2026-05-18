@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra.DataTypes;
 
 namespace Datra.Editor.Interfaces
 {
@@ -219,5 +220,26 @@ namespace Datra.Editor.Interfaces
         /// Get baseline value for a specific property
         /// </summary>
         object? GetPropertyBaselineValue(TKey key, string propertyName);
+    }
+
+    /// <summary>
+    /// Non-generic contract for editable asset sources. Asset repositories expose
+    /// <c>Asset&lt;T&gt;</c> rows, but host UI often needs to render them through
+    /// runtime-discovered data types; this keeps that path strongly owned by the
+    /// Datra editor layer instead of ad-hoc dynamic access in components.
+    /// </summary>
+    public interface IEditableAssetDataSource : IEditableDataSource
+    {
+        /// <summary>The inner data model type <c>T</c> for <c>Asset&lt;T&gt;</c>.</summary>
+        Type AssetDataType { get; }
+
+        /// <summary>Read the stable asset id from an item returned by <see cref="IEditableDataSource.EnumerateItems"/>.</summary>
+        AssetId GetAssetId(object item);
+
+        /// <summary>Read the editable inner data object from an asset item.</summary>
+        object GetAssetData(object item);
+
+        /// <summary>Read the asset file path for display/debugging.</summary>
+        string GetAssetFilePath(object item);
     }
 }

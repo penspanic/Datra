@@ -17,7 +17,7 @@ namespace Datra.Editor.DataSources
     /// Property changes are tracked on the inner Data object, not on Asset&lt;T&gt; wrapper.
     /// </summary>
     /// <typeparam name="T">The asset data type</typeparam>
-    public class EditableAssetDataSource<T> : EditableDataSourceBase, IEditableDataSource<AssetId, Asset<T>>
+    public class EditableAssetDataSource<T> : EditableDataSourceBase, IEditableDataSource<AssetId, Asset<T>>, IEditableAssetDataSource
         where T : class
     {
         private readonly IAssetRepository<T> _repository;
@@ -47,6 +47,8 @@ namespace Datra.Editor.DataSources
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             InitializeBaselineInternal();
         }
+
+        public Type AssetDataType => typeof(T);
 
         #region Initialization
 
@@ -171,6 +173,24 @@ namespace Datra.Editor.DataSources
                 return idProp.GetValue(item);
 
             return null;
+        }
+
+        public AssetId GetAssetId(object item)
+        {
+            if (item is Asset<T> asset) return asset.Id;
+            throw new ArgumentException($"Expected {typeof(Asset<T>).FullName}.", nameof(item));
+        }
+
+        public object GetAssetData(object item)
+        {
+            if (item is Asset<T> asset) return asset.Data;
+            throw new ArgumentException($"Expected {typeof(Asset<T>).FullName}.", nameof(item));
+        }
+
+        public string GetAssetFilePath(object item)
+        {
+            if (item is Asset<T> asset) return asset.FilePath;
+            throw new ArgumentException($"Expected {typeof(Asset<T>).FullName}.", nameof(item));
         }
 
         public override void TrackPropertyChange(object key, string propertyName, object? newValue, out bool isPropertyModified)

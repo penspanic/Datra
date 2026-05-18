@@ -19,8 +19,8 @@ namespace Datra.WebEditor.Services;
 /// <para>The consumer registers exactly one of these per data context (typically a singleton in
 /// server-side Blazor or scoped in WASM). The editor UI talks only to this service — never to the
 /// individual repositories directly — which keeps lifecycle and dirty-state tracking centralised.</para>
-/// <para>Single, asset, and localisation repository kinds are detected but not yet wrapped here.
-/// They surface as read-only entries until the corresponding view components land.</para>
+/// <para>Localisation repositories are detected but not yet wrapped here. They stay out of the
+/// editor until a dedicated localisation view lands.</para>
 /// </remarks>
 public sealed class DatraEditorHostService
 {
@@ -82,7 +82,7 @@ public sealed class DatraEditorHostService
         }
 
         // Surface only the types we actually wrapped — keeps non-editable repository kinds
-        // (single, asset, localisation) out of the UI until dedicated views land for them.
+        // such as localisation out of the UI until dedicated views land for them.
         DataTypes = typeInfos.Where(info => _entries.ContainsKey(info.DataType)).ToList();
         _initialized = true;
         StateChanged?.Invoke();
@@ -96,6 +96,14 @@ public sealed class DatraEditorHostService
 
     public DataTypeInfo? GetDataTypeInfo(Type dataType) =>
         DataTypes.FirstOrDefault(d => d.DataType == dataType);
+
+    public Type? FindDataType(string? typeName)
+    {
+        if (string.IsNullOrWhiteSpace(typeName)) return null;
+        return DataTypes.FirstOrDefault(d =>
+            string.Equals(d.DataType.FullName, typeName, StringComparison.Ordinal)
+            || string.Equals(d.DataType.Name, typeName, StringComparison.Ordinal))?.DataType;
+    }
 
     public bool HasUnsavedChanges(Type dataType) =>
         _entries.TryGetValue(dataType, out var entry) && entry.DataSource.HasModifications;
