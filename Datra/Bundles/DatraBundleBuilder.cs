@@ -4,6 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using Datra.Attributes;
+using Datra.Utilities;
+using YamlDotNet.Serialization;
 
 namespace Datra.Bundles
 {
@@ -37,6 +41,64 @@ namespace Datra.Bundles
                 CreatedAtUtc = DateTimeOffset.UtcNow,
             };
             bundle.ContentHash = ComputeContentHash(files);
+            return bundle;
+        }
+
+        /// <summary>
+        /// Returns a new bundle whose YAML and CSV files have been converted to JSON
+        /// in-place. The file path keys are preserved (so generated <c>[TableData]</c>
+        /// lookups still find them) — a <see cref="DatraRawBundle.FormatOverrides"/>
+        /// entry per converted file tells the runtime to dispatch to the JSON
+        /// serializer regardless of the path extension.
+        ///
+        /// CSV is left untouched (its row-oriented serializer is source-generated and
+        /// already trim/AOT-safe). Files already keyed as <c>*.json</c> are passed
+        /// through verbatim.
+        ///
+        /// Use case: the Tidemark wasm client receives a JSON-only bundle so
+        /// YamlDotNet is no longer reachable in the client trim graph.
+        /// </summary>
+        public static DatraRawBundle NormalizeToJson(DatraRawBundle source)
+        {
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (source.Files == null) throw new ArgumentException("Source bundle has no Files.", nameof(source));
+
+            var yamlDeserializer = new DeserializerBuilder().Build();
+            var jsonOptions = new JsonSerializerOptions { WriteIndented = false };
+
+            var outFiles = new Dictionary<string, string>(source.Files.Count, StringComparer.Ordinal);
+            var overrides = new Dictionary<string, DataFormat>(StringComparer.Ordinal);
+
+            foreach (var kvp in source.Files)
+            {
+                var path = kvp.Key;
+                var content = kvp.Value ?? string.Empty;
+                var fmt = DataFormatHelper.DetectFormat(path);
+
+                if (fmt == DataFormat.Yaml)
+                {
+                    // YAML → opaque object graph → JSON via STJ. The runtime serializer
+                    // re-parses this content with its proper [TableData] type info,
+                    // so we only need a structurally faithful conversion here.
+                    using var reader = new StringReader(content);
+                    var graph = yamlDeserializer.Deserialize(reader);
+                    var jsonContent = JsonSerializer.Serialize(graph, jsonOptions);
+                    outFiles[path] = jsonContent;
+                    overrides[path] = DataFormat.Json;
+                }
+                else
+                {
+                    outFiles[path] = content;
+                }
+            }
+
+            var bundle = new DatraRawBundle
+            {
+                Files = outFiles,
+                FormatOverrides = overrides,
+                CreatedAtUtc = source.CreatedAtUtc,
+            };
+            bundle.ContentHash = ComputeContentHash(outFiles);
             return bundle;
         }
 

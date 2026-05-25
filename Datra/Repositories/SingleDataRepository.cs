@@ -62,7 +62,7 @@ namespace Datra.Repositories
             {
                 var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
                 LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
-                var serializer = _serializerFactory.GetSerializer(_filePath);
+                var serializer = ResolveSerializer();
                 return _deserializeFunc(rawData, serializer);
             }
             catch (FileNotFoundException)
@@ -78,9 +78,24 @@ namespace Datra.Repositories
             if (_serializeFunc == null)
                 throw new InvalidOperationException("Repository was not initialized with save functionality.");
 
-            var serializer = _serializerFactory.GetSerializer(_filePath);
+            var serializer = ResolveSerializer();
             var rawData = _serializeFunc(data, serializer);
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
+        }
+
+        /// <summary>
+        /// See <see cref="KeyValueDataRepository{TKey,TData}"/>'s analogue —
+        /// allows an <see cref="IFormatAwareRawDataProvider"/> to override
+        /// extension-based format inference.
+        /// </summary>
+        private IDataSerializer ResolveSerializer()
+        {
+            if (_rawDataProvider is IFormatAwareRawDataProvider fa &&
+                fa.GetFormat(_filePath) is { } overrideFmt)
+            {
+                return _serializerFactory.GetSerializer(_filePath, overrideFmt);
+            }
+            return _serializerFactory.GetSerializer(_filePath);
         }
     }
 }

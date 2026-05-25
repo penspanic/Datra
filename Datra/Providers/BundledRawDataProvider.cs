@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Datra.Attributes;
 using Datra.Bundles;
 using Datra.Interfaces;
 
@@ -11,24 +12,40 @@ namespace Datra.Providers
     /// <summary>
     /// Read-only Datra raw provider backed by a single in-memory bundle.
     /// </summary>
-    public sealed class BundledRawDataProvider : IRawDataProvider
+    public sealed class BundledRawDataProvider : IFormatAwareRawDataProvider
     {
         private readonly DatraRawBundle _bundle;
         private readonly Dictionary<string, string> _files;
+        private readonly Dictionary<string, DataFormat> _formatOverrides;
 
         public BundledRawDataProvider(DatraRawBundle bundle)
         {
             _bundle = bundle ?? throw new ArgumentNullException(nameof(bundle));
-            if (_bundle.SchemaVersion != DatraRawBundle.CurrentSchemaVersion)
+            // Accept any schema version up to current — v1 bundles have no FormatOverrides
+            // and the provider falls back to extension-based format detection.
+            if (_bundle.SchemaVersion > DatraRawBundle.CurrentSchemaVersion)
             {
                 throw new NotSupportedException(
                     $"Unsupported Datra raw bundle schema version {_bundle.SchemaVersion}. " +
-                    $"Expected {DatraRawBundle.CurrentSchemaVersion}.");
+                    $"This runtime supports up to {DatraRawBundle.CurrentSchemaVersion}.");
             }
 
             _files = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var kvp in _bundle.Files ?? new Dictionary<string, string>())
                 _files[DatraBundleBuilder.NormalizePath(kvp.Key)] = kvp.Value;
+
+            _formatOverrides = new Dictionary<string, DataFormat>(StringComparer.Ordinal);
+            if (_bundle.FormatOverrides != null)
+            {
+                foreach (var kvp in _bundle.FormatOverrides)
+                    _formatOverrides[DatraBundleBuilder.NormalizePath(kvp.Key)] = kvp.Value;
+            }
+        }
+
+        public DataFormat? GetFormat(string path)
+        {
+            var normalized = DatraBundleBuilder.NormalizePath(path);
+            return _formatOverrides.TryGetValue(normalized, out var fmt) ? fmt : (DataFormat?)null;
         }
 
         public DatraRawBundle Bundle => _bundle;

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Datra.Attributes;
 
 namespace Datra.Bundles
 {
@@ -10,7 +11,12 @@ namespace Datra.Bundles
     /// </summary>
     public sealed class DatraRawBundle
     {
-        public const int CurrentSchemaVersion = 1;
+        /// <summary>
+        /// Schema version 2 added <see cref="FormatOverrides"/> for in-flight
+        /// YAML→JSON normalization (Datra v2 wasm trim path). v1 bundles are
+        /// still accepted — provider treats them as having no format overrides.
+        /// </summary>
+        public const int CurrentSchemaVersion = 2;
 
         public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -24,5 +30,14 @@ namespace Datra.Bundles
 
         public Dictionary<string, string> Files { get; set; } =
             new Dictionary<string, string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// Per-file format override. When present, the runtime uses the override
+        /// instead of inferring from the file extension. Used by
+        /// <see cref="DatraBundleBuilder.NormalizeToJson"/> to mark YAML files
+        /// whose content has been converted to JSON without changing the path.
+        /// </summary>
+        public Dictionary<string, DataFormat> FormatOverrides { get; set; } =
+            new Dictionary<string, DataFormat>(StringComparer.Ordinal);
     }
 }

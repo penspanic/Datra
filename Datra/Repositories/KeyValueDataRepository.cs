@@ -100,7 +100,7 @@ namespace Datra.Repositories
             }
             else if (_deserializeFunc != null && _serializerFactory != null)
             {
-                var serializer = _serializerFactory.GetSerializer(_filePath);
+                var serializer = ResolveSerializer();
                 data = _deserializeFunc(rawData, serializer);
             }
             else
@@ -141,7 +141,7 @@ namespace Datra.Repositories
             }
             else if (_serializeFunc != null && _serializerFactory != null)
             {
-                var serializer = _serializerFactory.GetSerializer(_filePath);
+                var serializer = ResolveSerializer();
                 rawData = _serializeFunc(allData, serializer);
             }
             else
@@ -150,6 +150,23 @@ namespace Datra.Repositories
             }
 
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
+        }
+
+        /// <summary>
+        /// Picks the serializer for <see cref="_filePath"/>. When the provider is
+        /// <see cref="IFormatAwareRawDataProvider"/> and supplies an explicit format
+        /// for this file (e.g. a bundle normalized via
+        /// <see cref="Datra.Bundles.DatraBundleBuilder.NormalizeToJson"/>), that wins
+        /// over the path-extension default.
+        /// </summary>
+        private IDataSerializer ResolveSerializer()
+        {
+            if (_rawDataProvider is IFormatAwareRawDataProvider fa &&
+                fa.GetFormat(_filePath) is { } overrideFmt)
+            {
+                return _serializerFactory!.GetSerializer(_filePath, overrideFmt);
+            }
+            return _serializerFactory!.GetSerializer(_filePath);
         }
     }
 }
