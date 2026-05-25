@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Datra.SampleData.Models;
 using Datra.Serializers;
-using Newtonsoft.Json;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -26,13 +25,18 @@ namespace Datra.Tests
     public class PolymorphicJsonTests
     {
         private readonly ITestOutputHelper _output;
-        private readonly JsonDataSerializer _serializer;
+        private readonly IDataSerializer _serializer;
 
+#pragma warning disable IL2026, IL3050
         public PolymorphicJsonTests(ITestOutputHelper output)
         {
             _output = output;
-            _serializer = new JsonDataSerializer();
+            // Polymorphic [JsonDerivedType] metadata still works under the reflection path.
+            // Source-gen polymorphism for this test would require a custom JsonSerializerContext
+            // that includes QuestObjective + derived types; covered in Phase 0.3.
+            _serializer = SystemTextJsonDataSerializer.CreateReflectionUnsafe();
         }
+#pragma warning restore IL2026, IL3050
 
         [Fact]
         public async Task LoadQuestData_WithPolymorphicObjectives_ShouldDeserializeCorrectTypes()

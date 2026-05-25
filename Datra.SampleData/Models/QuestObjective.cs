@@ -1,6 +1,6 @@
 using Datra.Attributes;
 using Datra.Localization;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace Datra.SampleData.Models
 {
@@ -8,7 +8,11 @@ namespace Datra.SampleData.Models
     /// Base class for quest objectives - demonstrates polymorphic JSON support
     /// and NestedLocaleRef for hierarchical locale keys.
     /// </summary>
-    [JsonObject]
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+    [JsonDerivedType(typeof(KillObjective), typeDiscriminator: "Datra.SampleData.Models.KillObjective")]
+    [JsonDerivedType(typeof(CollectObjective), typeDiscriminator: "Datra.SampleData.Models.CollectObjective")]
+    [JsonDerivedType(typeof(TalkObjective), typeDiscriminator: "Datra.SampleData.Models.TalkObjective")]
+    [JsonDerivedType(typeof(LocationObjective), typeDiscriminator: "Datra.SampleData.Models.LocationObjective")]
     public abstract class QuestObjective
     {
         public string Id { get; set; } = string.Empty;

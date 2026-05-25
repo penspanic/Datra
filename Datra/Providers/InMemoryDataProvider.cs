@@ -1,7 +1,9 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Datra.DataTypes;
 using Datra.Repositories;
@@ -90,6 +92,10 @@ namespace Datra.Providers
             return Task.FromResult(content);
         }
 
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Reflection-based JSON parse. Provide a pre-deserialized object via AddObject for trim/AOT safety.")]
+        [RequiresDynamicCode("Reflection-based JSON parse may need runtime code generation.")]
+#endif
         public Task<T?> LoadAsync<T>(string path) where T : class
         {
             var normalizedPath = NormalizePath(path);
@@ -102,7 +108,7 @@ namespace Datra.Providers
             // Try to parse from text file
             if (_textFiles.TryGetValue(normalizedPath, out var text))
             {
-                var deserialized = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(text);
+                var deserialized = JsonSerializer.Deserialize<T>(text);
                 var data = deserialized != null ? DeepCloner.Clone(deserialized) : default;
                 return Task.FromResult(data);
             }

@@ -1,11 +1,12 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Datra.DataTypes;
-using Newtonsoft.Json;
 
 namespace Datra.Providers
 {
@@ -16,17 +17,16 @@ namespace Datra.Providers
     public class FileSystemDataProvider : IDataProvider
     {
         private readonly string _basePath;
-        private readonly JsonSerializerSettings _jsonSettings;
+        private readonly JsonSerializerOptions _jsonOptions;
 
         public FileSystemDataProvider(string basePath)
         {
             _basePath = basePath ?? throw new ArgumentNullException(nameof(basePath));
 
-            _jsonSettings = new JsonSerializerSettings
+            _jsonOptions = new JsonSerializerOptions
             {
-                TypeNameHandling = TypeNameHandling.Auto,
-                NullValueHandling = NullValueHandling.Include,
-                Formatting = Formatting.Indented
+                WriteIndented = true,
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never,
             };
         }
 
@@ -69,7 +69,7 @@ namespace Datra.Providers
                     try
                     {
                         var metaContent = File.ReadAllText(metaPath);
-                        metadata = JsonConvert.DeserializeObject<AssetMetadata>(metaContent, _jsonSettings);
+                        metadata = JsonSerializer.Deserialize<AssetMetadata>(metaContent, _jsonOptions);
                         id = metadata?.Guid ?? AssetId.NewId();
                     }
                     catch
@@ -111,6 +111,10 @@ namespace Datra.Providers
             return Task.FromResult(content);
         }
 
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Generic JSON load uses reflection-based STJ. Trimmed consumers should pre-serialize via a JsonSerializerContext.")]
+        [RequiresDynamicCode("Generic JSON load may need runtime code generation.")]
+#endif
         public Task<T?> LoadAsync<T>(string path) where T : class
         {
             var fullPath = GetFullPath(path);
@@ -121,7 +125,7 @@ namespace Datra.Providers
             }
 
             var content = File.ReadAllText(fullPath);
-            var data = JsonConvert.DeserializeObject<T>(content, _jsonSettings);
+            var data = JsonSerializer.Deserialize<T>(content, _jsonOptions);
             return Task.FromResult(data);
         }
 
@@ -144,6 +148,10 @@ namespace Datra.Providers
             return Task.CompletedTask;
         }
 
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Generic JSON save uses reflection-based STJ. Trimmed consumers should pre-serialize via a JsonSerializerContext.")]
+        [RequiresDynamicCode("Generic JSON save may need runtime code generation.")]
+#endif
         public Task SaveAsync<T>(string path, T data) where T : class
         {
             var fullPath = GetFullPath(path);
@@ -155,7 +163,7 @@ namespace Datra.Providers
                 Directory.CreateDirectory(directory);
             }
 
-            var content = JsonConvert.SerializeObject(data, _jsonSettings);
+            var content = JsonSerializer.Serialize(data, _jsonOptions);
             File.WriteAllText(fullPath, content);
             return Task.CompletedTask;
         }

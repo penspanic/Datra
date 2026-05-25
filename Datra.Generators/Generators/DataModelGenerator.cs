@@ -58,8 +58,8 @@ namespace Datra.Generators.Generators
                 "System.Linq",
                 "System.IO",
                 "System.Text",
-                "Newtonsoft.Json",
-                "Newtonsoft.Json.Linq", 
+                "System.Text.Json",
+                "System.Text.Json.Serialization",
                 "System.Globalization",
                 "Datra.Interfaces",
                 "Datra.DataTypes"
@@ -198,7 +198,7 @@ namespace Datra.Generators.Generators
             
             // Generate Ref property with JsonIgnore to prevent serialization issues
             // (DataRef types contain System.Type which cannot be serialized)
-            codeBuilder.AppendLine($"[global::Newtonsoft.Json.JsonIgnore]");
+            codeBuilder.AppendLine($"[global::System.Text.Json.Serialization.JsonIgnore]");
             codeBuilder.AppendLine($"public {dataRefType} Ref => new {dataRefType}(this.Id);");
         }
         

@@ -33,9 +33,6 @@
         </PackageReference>
         <!-- Unity recommends version 4.3.0 -->
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.3.0" PrivateAssets="all" />
-        <!-- Newtonsoft is referenced only as a string literal in emitted code; the generator itself
-             does not call Newtonsoft APIs. Keep PrivateAssets="all" so it never propagates. -->
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" PrivateAssets="all" />
     </ItemGroup>
 
     <!-- Pack our own DLL into analyzers/dotnet/cs -->

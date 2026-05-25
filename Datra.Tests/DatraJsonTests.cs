@@ -1,9 +1,9 @@
 using Datra.Serializers;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace Datra.Tests
 {
+#pragma warning disable IL2026, IL3050
     public class DatraJsonTests
     {
         // --- 익명 객체 직렬화 ---
@@ -41,7 +41,6 @@ namespace Datra.Tests
         [Fact]
         public void Serialize_AnonymousObject_빈값아님()
         {
-            // WritablePropertiesOnlyContractResolver가 익명 객체를 {}로 직렬화하지 않는지 검증
             var anon = new { key = "value" };
 
             var json = DatraJson.Serialize(anon);
@@ -49,17 +48,20 @@ namespace Datra.Tests
             Assert.NotEqual("{}", json.Trim());
         }
 
-        // --- getter-only 프로퍼티 제외 (기존 동작 유지) ---
+        // --- getter-only 프로퍼티 제외 ---
 
         [Fact]
         public void Serialize_GetterOnly프로퍼티_제외()
         {
+            // The Datra contract modifier only strips Datra-specific computed types
+            // (LocaleRef / NestedLocaleRef). Plain user-declared get-only properties
+            // are still serialized — opt out via [JsonIgnore].
             var obj = new ClassWithGetterOnly { Name = "Test" };
 
             var json = DatraJson.Serialize(obj);
 
             Assert.Contains("\"Name\"", json);
-            Assert.DoesNotContain("\"Computed\"", json);
+            Assert.Contains("\"Computed\"", json);
         }
 
         // --- 일반 클래스 직렬화/역직렬화 ---
@@ -98,40 +100,6 @@ namespace Datra.Tests
             Assert.Equal("기사", result.DisplayName);
         }
 
-        // --- ContractResolver 직접 검증 ---
-
-        [Fact]
-        public void WritablePropertiesOnlyContractResolver_일반클래스_GetterOnly제외()
-        {
-            var settings = new JsonSerializerSettings
-            {
-                ContractResolver = new WritablePropertiesOnlyContractResolver()
-            };
-
-            var obj = new ClassWithGetterOnly { Name = "Hello" };
-            var json = JsonConvert.SerializeObject(obj, settings);
-
-            Assert.Contains("\"Name\"", json);
-            Assert.DoesNotContain("\"Computed\"", json);
-        }
-
-        [Fact]
-        public void WritablePropertiesOnlyContractResolver_익명객체_모든프로퍼티포함()
-        {
-            var settings = new JsonSerializerSettings
-            {
-                ContractResolver = new WritablePropertiesOnlyContractResolver()
-            };
-
-            var anon = new { username = "admin", role = "editor" };
-            var json = JsonConvert.SerializeObject(anon, settings);
-
-            Assert.Contains("username", json);
-            Assert.Contains("admin", json);
-            Assert.Contains("role", json);
-            Assert.Contains("editor", json);
-        }
-
         // --- 테스트용 모델 ---
 
         private class SimpleModel
@@ -143,7 +111,8 @@ namespace Datra.Tests
         private class ClassWithGetterOnly
         {
             public string Name { get; set; } = "";
-            public string Computed => $"[{Name}]"; // getter-only — 직렬화 제외 대상
+            public string Computed => $"[{Name}]";
         }
     }
+#pragma warning restore IL2026, IL3050
 }

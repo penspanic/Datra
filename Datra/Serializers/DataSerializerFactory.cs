@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+#if NET8_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
+using System.Text.Json.Serialization;
 using Datra.Attributes;
 using Datra.Utilities;
 using YamlDotNet.Serialization;
@@ -7,7 +11,8 @@ using YamlDotNet.Serialization;
 namespace Datra.Serializers
 {
     /// <summary>
-    /// Factory for creating appropriate serializers based on data format
+    /// Factory for creating appropriate serializers based on data format.
+    /// JSON path is backed by System.Text.Json.
     /// </summary>
     public class DataSerializerFactory
     {
@@ -15,29 +20,41 @@ namespace Datra.Serializers
         private readonly IDataSerializer _yamlSerializer;
 
         /// <summary>
-        /// Creates a factory with default serializers (no polymorphic type support)
+        /// Reflection-mode JSON. Trim/AOT-unsafe — explicit opt-in suitable for tooling/tests.
         /// </summary>
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Default ctor uses reflection-based STJ. Construct with a JsonSerializerContext for trim/AOT safety.")]
+        [RequiresDynamicCode("Default ctor uses reflection-based STJ.")]
+#endif
         public DataSerializerFactory()
         {
-            _jsonSerializer = new JsonDataSerializer();
+            _jsonSerializer = SystemTextJsonDataSerializer.CreateReflectionUnsafe();
             _yamlSerializer = new YamlDataSerializer();
         }
 
         /// <summary>
-        /// Creates a factory with polymorphic type support for YAML serialization
+        /// Trim/AOT-safe JSON path via a source-gen JsonSerializerContext.
         /// </summary>
-        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism</param>
+        public DataSerializerFactory(JsonSerializerContext jsonContext)
+        {
+            if (jsonContext == null) throw new ArgumentNullException(nameof(jsonContext));
+            _jsonSerializer = new SystemTextJsonDataSerializer(jsonContext);
+            _yamlSerializer = new YamlDataSerializer();
+        }
+
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Polymorphic YAML/JSON via reflection.")]
+        [RequiresDynamicCode("Polymorphic YAML/JSON via reflection.")]
+#endif
         public DataSerializerFactory(IEnumerable<Type> polymorphicBaseTypes)
             : this(polymorphicBaseTypes, customYamlConverters: null)
         {
         }
 
-        /// <summary>
-        /// Creates a factory with polymorphic type support and custom YAML type converters.
-        /// Custom converters take priority over built-in polymorphic handling.
-        /// </summary>
-        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Can be null.</param>
-        /// <param name="customYamlConverters">Custom YAML type converters for specialized serialization needs.</param>
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Polymorphic YAML/JSON via reflection.")]
+        [RequiresDynamicCode("Polymorphic YAML/JSON via reflection.")]
+#endif
         public DataSerializerFactory(
             IEnumerable<Type>? polymorphicBaseTypes,
             IEnumerable<IYamlTypeConverter>? customYamlConverters)
@@ -45,24 +62,19 @@ namespace Datra.Serializers
         {
         }
 
-        /// <summary>
-        /// Creates a factory with polymorphic type support, custom YAML type converters, and excluded types.
-        /// </summary>
-        /// <param name="polymorphicBaseTypes">Base types that require $type field for polymorphism. Can be null.</param>
-        /// <param name="customYamlConverters">Custom YAML type converters for specialized serialization needs.</param>
-        /// <param name="excludedTypes">Types to exclude from polymorphic handling (handled by custom converters).</param>
+#if NET8_0_OR_GREATER
+        [RequiresUnreferencedCode("Polymorphic YAML/JSON via reflection.")]
+        [RequiresDynamicCode("Polymorphic YAML/JSON via reflection.")]
+#endif
         public DataSerializerFactory(
             IEnumerable<Type>? polymorphicBaseTypes,
             IEnumerable<IYamlTypeConverter>? customYamlConverters,
             IEnumerable<Type>? excludedTypes)
         {
-            _jsonSerializer = new JsonDataSerializer();
+            _jsonSerializer = SystemTextJsonDataSerializer.CreateReflectionUnsafe();
             _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters, excludedTypes);
         }
 
-        /// <summary>
-        /// Returns appropriate serializer based on file path and format
-        /// </summary>
         public IDataSerializer GetSerializer(string filePath, DataFormat format = DataFormat.Auto)
         {
             if (format == DataFormat.Auto)

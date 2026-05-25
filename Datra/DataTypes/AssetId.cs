@@ -1,6 +1,7 @@
 #nullable enable
 using System;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Datra.DataTypes
 {
@@ -88,15 +89,16 @@ namespace Datra.DataTypes
     /// </summary>
     public class AssetIdJsonConverter : JsonConverter<AssetId>
     {
-        public override AssetId ReadJson(JsonReader reader, Type objectType, AssetId existingValue, bool hasExistingValue, JsonSerializer serializer)
+        public override AssetId Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            var value = reader.Value?.ToString();
+            if (reader.TokenType == JsonTokenType.Null) return AssetId.Empty;
+            var value = reader.GetString();
             return AssetId.TryParse(value, out var id) ? id : AssetId.Empty;
         }
 
-        public override void WriteJson(JsonWriter writer, AssetId value, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, AssetId value, JsonSerializerOptions options)
         {
-            writer.WriteValue(value.ToString());
+            writer.WriteStringValue(value.ToString());
         }
     }
 }

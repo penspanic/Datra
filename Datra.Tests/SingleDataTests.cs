@@ -10,6 +10,7 @@ using Xunit;
 
 namespace Datra.Tests
 {
+#pragma warning disable IL2026, IL3050
     public class SingleDataTests
     {
         private readonly GameDataContext _context;
@@ -125,12 +126,13 @@ namespace Datra.Tests
             );
             
             // Act
-            string json = GameConfigDataSerializer.SerializeSingle(newConfig, new JsonDataSerializer());
+            string json = GameConfigDataSerializer.SerializeSingle(newConfig, SystemTextJsonDataSerializer.CreateReflectionUnsafe());
             
             // Assert
             Assert.Contains("\"GameName\": \"Test Game\"", json);
             Assert.Contains("\"MaxLevel\": 50", json);
-            Assert.Contains("\"ExpMultiplier\": 2.0", json);
+            // STJ writes whole floats without the trailing ".0" (writes 2 for 2.0f).
+            Assert.Contains("\"ExpMultiplier\": 2", json);
             Assert.Contains("\"DefaultMode\": \"Hard\"", json);
             Assert.Contains("\"Gold\"", json);
             Assert.Contains("\"Skill\"", json);
@@ -146,8 +148,8 @@ namespace Datra.Tests
             var original = _context.GameConfig.Current;
             
             // Act
-            string serialized = GameConfigDataSerializer.SerializeSingle(original, new JsonDataSerializer());
-            var deserialized = GameConfigDataSerializer.DeserializeSingle(serialized, new JsonDataSerializer());
+            string serialized = GameConfigDataSerializer.SerializeSingle(original, SystemTextJsonDataSerializer.CreateReflectionUnsafe());
+            var deserialized = GameConfigDataSerializer.DeserializeSingle(serialized, SystemTextJsonDataSerializer.CreateReflectionUnsafe());
             
             // Assert
             Assert.Equal(original.GameName, deserialized.GameName);
@@ -180,7 +182,7 @@ namespace Datra.Tests
             }";
             
             // Act
-            var gameConfig = GameConfigDataSerializer.DeserializeSingle(json, new JsonDataSerializer());
+            var gameConfig = GameConfigDataSerializer.DeserializeSingle(json, SystemTextJsonDataSerializer.CreateReflectionUnsafe());
             
             // Assert
             Assert.Equal(GameMode.Hard, gameConfig.DefaultMode);
@@ -211,7 +213,7 @@ namespace Datra.Tests
             }";
             
             // Act
-            var gameConfig = GameConfigDataSerializer.DeserializeSingle(json, new JsonDataSerializer());
+            var gameConfig = GameConfigDataSerializer.DeserializeSingle(json, SystemTextJsonDataSerializer.CreateReflectionUnsafe());
             
             // Assert
             Assert.NotNull(gameConfig.AvailableModes);
@@ -224,4 +226,5 @@ namespace Datra.Tests
             Assert.Empty(gameConfig.StartingItems);
         }
     }
+#pragma warning restore IL2026, IL3050
 }

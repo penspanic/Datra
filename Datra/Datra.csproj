@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.1</TargetFramework>
+        <!-- net8.0: [DynamicallyAccessedMembers], JsonSerializerContext, IsTrimmable APIs.
+             netstandard2.1: Unity IL2CPP / older .NET consumers. STJ is a PackageReference there. -->
+        <TargetFrameworks>net8.0;netstandard2.1</TargetFrameworks>
         <Nullable>enable</Nullable>
         <LangVersion>9.0</LangVersion>
     </PropertyGroup>
@@ -14,8 +16,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    </ItemGroup>
+
+    <!-- netstandard2.1: STJ is a separate package. net8 has it in BCL. -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+      <PackageReference Include="System.Text.Json" Version="8.0.5" />
     </ItemGroup>
 
 </Project>

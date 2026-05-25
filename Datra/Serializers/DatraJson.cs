@@ -1,75 +1,62 @@
 #nullable enable
 using System;
-using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using Datra.Converters;
 
 namespace Datra.Serializers
 {
     /// <summary>
-    /// Static JSON serialization API using Datra's default settings.
-    /// Provides simple Serialize/Deserialize methods with consistent polymorphic type handling.
+    /// Static JSON helpers backed by System.Text.Json (reflection mode).
+    /// Convenience for editor / tooling / tests; not trim/AOT safe.
+    /// Production code paths should prefer <see cref="SystemTextJsonDataSerializer"/>
+    /// constructed with a source-gen <see cref="JsonSerializerContext"/>.
     /// </summary>
+#if NET8_0_OR_GREATER
+    [RequiresUnreferencedCode("DatraJson.* uses reflection-based STJ. Not trim/AOT safe.")]
+    [RequiresDynamicCode("DatraJson.* may need runtime code generation.")]
+#endif
     public static class DatraJson
     {
-        private static readonly JsonSerializerSettings _settings;
+        private static readonly JsonSerializerOptions _options;
 
-        /// <summary>
-        /// Gets the underlying JsonSerializerSettings for advanced usage.
-        /// </summary>
-        public static JsonSerializerSettings Settings => _settings;
+        public static JsonSerializerOptions Options => _options;
 
         static DatraJson()
         {
-            _settings = DatraJsonSettings.CreateDefault();
+            _options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                PropertyNameCaseInsensitive = true,
+                NumberHandling = JsonNumberHandling.AllowReadingFromString,
+            };
+            _options.Converters.Add(new DataRefSystemTextJsonConverterFactory());
+            _options.Converters.Add(new JsonStringEnumConverter());
+            _options.WithDatraContract();
         }
 
-        /// <summary>
-        /// Adds a custom JsonConverter to the settings.
-        /// Use this to register project-specific converters.
-        /// </summary>
         public static void AddConverter(JsonConverter converter)
         {
-            _settings.Converters.Add(converter);
+            _options.Converters.Add(converter);
         }
 
-        /// <summary>
-        /// Serializes an object to JSON string.
-        /// </summary>
         public static string Serialize<T>(T obj)
-        {
-            return JsonConvert.SerializeObject(obj, typeof(T), _settings);
-        }
+            => JsonSerializer.Serialize(obj, _options);
 
-        /// <summary>
-        /// Serializes an object to JSON string.
-        /// </summary>
         public static string Serialize(object obj)
-        {
-            return JsonConvert.SerializeObject(obj, _settings);
-        }
+            => JsonSerializer.Serialize(obj, obj?.GetType() ?? typeof(object), _options);
 
-        /// <summary>
-        /// Deserializes JSON string to an object of type T.
-        /// </summary>
         public static T Deserialize<T>(string json)
-        {
-            return JsonConvert.DeserializeObject<T>(json, _settings)!;
-        }
+            => JsonSerializer.Deserialize<T>(json, _options)!;
 
-        /// <summary>
-        /// Deserializes JSON string to an object of the specified type.
-        /// </summary>
         public static object? Deserialize(string json, Type type)
-        {
-            return JsonConvert.DeserializeObject(json, type, _settings);
-        }
+            => JsonSerializer.Deserialize(json, type, _options);
 
-        /// <summary>
-        /// Deserializes JSON from a stream asynchronously.
-        /// </summary>
         public static async Task<T> DeserializeAsync<T>(Stream stream)
         {
             using var reader = new StreamReader(stream, Encoding.UTF8);
