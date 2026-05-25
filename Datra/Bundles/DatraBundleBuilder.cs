@@ -1,12 +1,17 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Datra.Attributes;
 using Datra.Utilities;
+using YamlDotNet.Core;
+using YamlDotNet.RepresentationModel;
 using YamlDotNet.Serialization;
 
 namespace Datra.Bundles
@@ -63,7 +68,6 @@ namespace Datra.Bundles
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (source.Files == null) throw new ArgumentException("Source bundle has no Files.", nameof(source));
 
-            var yamlDeserializer = new DeserializerBuilder().Build();
             var jsonOptions = new JsonSerializerOptions { WriteIndented = false };
 
             var outFiles = new Dictionary<string, string>(source.Files.Count, StringComparer.Ordinal);
@@ -77,12 +81,19 @@ namespace Datra.Bundles
 
                 if (fmt == DataFormat.Yaml)
                 {
-                    // YAML → opaque object graph → JSON via STJ. The runtime serializer
-                    // re-parses this content with its proper [TableData] type info,
-                    // so we only need a structurally faithful conversion here.
+                    // YAML → JSON via the YamlStream representation model so we can
+                    // see each scalar's ScalarStyle: plain scalars are type-inferred
+                    // per the YAML 1.2 core schema, but quoted ones (`"0"`, `'true'`)
+                    // stay as JSON strings — matching the author's intent.
                     using var reader = new StringReader(content);
-                    var graph = yamlDeserializer.Deserialize(reader);
-                    var jsonContent = JsonSerializer.Serialize(graph, jsonOptions);
+                    var yamlStream = new YamlStream();
+                    yamlStream.Load(reader);
+                    JsonNode? node = null;
+                    if (yamlStream.Documents.Count > 0)
+                    {
+                        node = ConvertYamlNodeToJsonNode(yamlStream.Documents[0].RootNode);
+                    }
+                    var jsonContent = node?.ToJsonString(jsonOptions) ?? "null";
                     outFiles[path] = jsonContent;
                     overrides[path] = DataFormat.Json;
                 }
@@ -100,6 +111,92 @@ namespace Datra.Bundles
             };
             bundle.ContentHash = ComputeContentHash(outFiles);
             return bundle;
+        }
+
+        /// <summary>
+        /// Convert a <see cref="YamlNode"/> tree to a <see cref="JsonNode"/> tree.
+        /// Scalar typing follows YAML 1.2 core schema for plain (unquoted) scalars;
+        /// single/double-quoted scalars are always emitted as JSON strings so
+        /// authored quoting (e.g. <c>AttachWhenEquals: "0"</c>) survives round-trip.
+        /// </summary>
+        private static JsonNode? ConvertYamlNodeToJsonNode(YamlNode yaml)
+        {
+            switch (yaml)
+            {
+                case YamlMappingNode map:
+                {
+                    var obj = new JsonObject();
+                    foreach (var entry in map.Children)
+                    {
+                        var key = (entry.Key as YamlScalarNode)?.Value ?? entry.Key.ToString();
+                        obj[key ?? string.Empty] = ConvertYamlNodeToJsonNode(entry.Value);
+                    }
+                    return obj;
+                }
+                case YamlSequenceNode seq:
+                {
+                    var arr = new JsonArray();
+                    foreach (var child in seq.Children) arr.Add(ConvertYamlNodeToJsonNode(child));
+                    return arr;
+                }
+                case YamlScalarNode scalar:
+                    return ConvertYamlScalar(scalar);
+                default:
+                    return null;
+            }
+        }
+
+        private static JsonNode? ConvertYamlScalar(YamlScalarNode scalar)
+        {
+            var s = scalar.Value;
+            // Quoted scalars are always strings (preserves authored intent like `"0"`).
+            if (scalar.Style == ScalarStyle.SingleQuoted ||
+                scalar.Style == ScalarStyle.DoubleQuoted ||
+                scalar.Style == ScalarStyle.Literal ||
+                scalar.Style == ScalarStyle.Folded)
+            {
+                return JsonValue.Create(s ?? string.Empty);
+            }
+            // Plain scalars: apply YAML 1.2 core schema inference.
+            if (s is null) return null;
+            if (s.Length == 0 || s == "~" || s == "null" || s == "Null" || s == "NULL")
+                return null;
+            if (s == "true" || s == "True" || s == "TRUE") return JsonValue.Create(true);
+            if (s == "false" || s == "False" || s == "FALSE") return JsonValue.Create(false);
+            if (LooksLikeInteger(s) && long.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
+                return JsonValue.Create(i);
+            if (LooksLikeFloat(s) && double.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out var d))
+                return JsonValue.Create(d);
+            return JsonValue.Create(s);
+        }
+
+        private static bool LooksLikeInteger(string s)
+        {
+            if (s.Length == 0) return false;
+            int start = (s[0] == '+' || s[0] == '-') ? 1 : 0;
+            if (start == s.Length) return false;
+            // Reject leading zeros for multi-digit integers (YAML core schema treats
+            // "010" as a string, not an int).
+            if (s.Length - start > 1 && s[start] == '0') return false;
+            for (int i = start; i < s.Length; i++)
+                if (s[i] < '0' || s[i] > '9') return false;
+            return true;
+        }
+
+        private static bool LooksLikeFloat(string s)
+        {
+            if (s.Length == 0) return false;
+            bool seenDigit = false, seenDotOrExp = false;
+            int i = (s[0] == '+' || s[0] == '-') ? 1 : 0;
+            for (; i < s.Length; i++)
+            {
+                var c = s[i];
+                if (c >= '0' && c <= '9') seenDigit = true;
+                else if (c == '.' || c == 'e' || c == 'E') seenDotOrExp = true;
+                else if (c == '+' || c == '-') { /* exponent sign — allow */ }
+                else return false;
+            }
+            return seenDigit && seenDotOrExp;
         }
 
         public static string ComputeContentHash(IReadOnlyDictionary<string, string> files)
