@@ -2,6 +2,8 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using Datra.Converters;
+using Datra.Serializers;
 
 namespace Datra.Repositories
 {
@@ -11,14 +13,25 @@ namespace Datra.Repositories
     /// </summary>
     public static class DeepCloner
     {
-        private static readonly JsonSerializerOptions _options = new JsonSerializerOptions
+        private static readonly JsonSerializerOptions _options = CreateOptions();
+
+        private static JsonSerializerOptions CreateOptions()
         {
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-            // Match Newtonsoft round-trip semantics: Datra data classes occasionally expose
-            // public fields (e.g. PooledPrefab.Path). STJ excludes fields by default — turning
-            // it on keeps DeepCloner.Clone behaviourally compatible.
-            IncludeFields = true,
-        };
+            var opts = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+                // Match Newtonsoft round-trip semantics: Datra data classes occasionally expose
+                // public fields (e.g. PooledPrefab.Path). STJ excludes fields by default — turning
+                // it on keeps DeepCloner.Clone behaviourally compatible.
+                IncludeFields = true,
+            };
+            // DataRef structs expose System.Type-typed getters (DataType/KeyType) that STJ refuses
+            // to serialize. The converter writes the raw key value, matching on-disk form.
+            opts.Converters.Add(new DataRefSystemTextJsonConverterFactory());
+            // Strip LocaleRef/NestedLocaleRef — computed at runtime, must not round-trip.
+            opts.WithDatraContract();
+            return opts;
+        }
 
         /// <summary>
         /// 객체를 깊은 복사
@@ -32,16 +45,12 @@ namespace Datra.Repositories
             if (source == null)
                 return null!;
 
-            try
-            {
-                var json = JsonSerializer.Serialize(source, _options);
-                return JsonSerializer.Deserialize<T>(json, _options)!;
-            }
-            catch (Exception)
-            {
-                // 직렬화 실패 시 원본 반환 (안전하지 않지만 예외 방지)
-                return source;
-            }
+            // Don't swallow serialization failures: returning `source` would alias the baseline
+            // with the working copy and silently corrupt change tracking. Models that can't
+            // round-trip through STJ (e.g., abstract types without [JsonPolymorphic]) must be
+            // fixed at the model layer, not papered over here.
+            var json = JsonSerializer.Serialize(source, _options);
+            return JsonSerializer.Deserialize<T>(json, _options)!;
         }
 
         /// <summary>
@@ -59,16 +68,9 @@ namespace Datra.Repositories
             if (a.GetType().IsValueType || a is string)
                 return a.Equals(b);
 
-            try
-            {
-                var jsonA = JsonSerializer.Serialize(a, a.GetType(), _options);
-                var jsonB = JsonSerializer.Serialize(b, b.GetType(), _options);
-                return jsonA == jsonB;
-            }
-            catch
-            {
-                return ReferenceEquals(a, b);
-            }
+            var jsonA = JsonSerializer.Serialize(a, a.GetType(), _options);
+            var jsonB = JsonSerializer.Serialize(b, b.GetType(), _options);
+            return jsonA == jsonB;
         }
     }
 }

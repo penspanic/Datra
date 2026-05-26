@@ -1,8 +1,16 @@
+using System.Text.Json.Serialization;
+
 namespace Datra.SampleData.Models
 {
     /// <summary>
     /// Base class for skill effects - demonstrates YAML polymorphism support
     /// </summary>
+    [JsonPolymorphic(TypeDiscriminatorPropertyName = "$type")]
+    [JsonDerivedType(typeof(DamageEffect), typeDiscriminator: "Datra.SampleData.Models.DamageEffect")]
+    [JsonDerivedType(typeof(HealEffect), typeDiscriminator: "Datra.SampleData.Models.HealEffect")]
+    [JsonDerivedType(typeof(BuffEffect), typeDiscriminator: "Datra.SampleData.Models.BuffEffect")]
+    [JsonDerivedType(typeof(SummonEffect), typeDiscriminator: "Datra.SampleData.Models.SummonEffect")]
+    [JsonDerivedType(typeof(CrowdControlEffect), typeDiscriminator: "Datra.SampleData.Models.CrowdControlEffect")]
     public abstract class SkillEffect
     {
         public string Id { get; set; } = string.Empty;
