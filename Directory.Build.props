@@ -29,9 +29,20 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
 
-    <!-- Versioning: overridable via -p:Version=x.y.z on the command line / CI tag -->
-    <Version Condition="'$(Version)' == ''">0.1.0-local</Version>
+    <!-- Versioning: MinVer derives Version from the closest git tag (vX.Y.Z) at pack time.
+         Local builds with no fresh tag get e.g. 0.2.1-alpha.0.<height>; CI on tag v0.2.1
+         gets a clean 0.2.1. No -p:Version flag needed. -->
   </PropertyGroup>
+
+  <!-- ===== MinVer config (https://github.com/adamralph/minver) ===== -->
+  <PropertyGroup>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' == 'true'">
+    <PackageReference Include="MinVer" Version="7.0.0" PrivateAssets="all" />
+  </ItemGroup>
 
   <!-- ===== SourceLink + embedded debug ===== -->
   <PropertyGroup>

@@ -145,6 +145,49 @@
     border-color: var(--datra-accent);
 }
 
+/* Color (string + [Color] attribute) — swatch + native picker + hex text input */
+.datra-color {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    position: relative;
+}
+.datra-color__swatch {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border: 1px solid var(--datra-border-strong);
+    border-radius: var(--datra-radius-sm);
+    cursor: pointer;
+    /* Checkerboard fallback for empty / invalid colors (background-color overrides this). */
+    background-image: linear-gradient(45deg, var(--datra-border-cell) 25%, transparent 25%),
+                      linear-gradient(-45deg, var(--datra-border-cell) 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, var(--datra-border-cell) 75%),
+                      linear-gradient(-45deg, transparent 75%, var(--datra-border-cell) 75%);
+    background-size: 8px 8px;
+    background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}
+.datra-color__picker {
+    /* Visually hide the OS-native color input but keep it click/keyboard reachable.
+       The swatch <label for=…> isn't used — instead we stack the picker over the swatch via
+       position: absolute so a click anywhere on the swatch opens the OS picker. */
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 18px;
+    height: 18px;
+    opacity: 0;
+    cursor: pointer;
+    border: 0;
+    padding: 0;
+}
+.datra-color__hex {
+    flex: 1 1 auto;
+    font-family: var(--datra-font-mono);
+    min-width: 70px;
+}
+
 /* Checkbox */
 .datra-checkbox {
     display: inline-flex;

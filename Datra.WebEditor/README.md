@@ -87,12 +87,29 @@ Tokens you'll typically retune: `--datra-bg*` (surfaces), `--datra-text*` (foreg
 indicators), and `--datra-font-ui` / `--datra-font-mono` (fonts). See the top of
 `datra-webeditor.css` for the full list.
 
+## Built-in `[Color]` attribute
+
+String properties that store an `#rrggbb` hex color get a swatch + native picker + hex
+text input — no setup beyond annotating the property:
+
+```csharp
+using Datra.Attributes;
+
+[TableData("TeamPresets.yaml")]
+public partial class TeamPresetData : ITableData<string>
+{
+    public string Id { get; set; } = "";
+    [Color] public string PrimaryColor { get; set; } = "#888888";
+    [Color] public string AccentColor  { get; set; } = "#888888";
+}
+```
+
 ## Plugging in a custom widget
 
 Register an additional handler — higher priority wins:
 
 ```csharp
-public sealed class ColorFieldHandler : IBlazorFieldHandler
+public sealed class MyColorPickerHandler : IBlazorFieldHandler
 {
     public int Priority => 50;
     public bool CanHandle(Type t, MemberInfo? _ = null) => t == typeof(MyColor);
@@ -104,7 +121,7 @@ public sealed class ColorFieldHandler : IBlazorFieldHandler
 
 // during startup
 services.AddDatraWebEditor(opt => opt.DataContextType = typeof(MyDataContext));
-services.PostConfigure<BlazorFieldTypeRegistry>(reg => reg.RegisterHandler(new ColorFieldHandler()));
+services.PostConfigure<BlazorFieldTypeRegistry>(reg => reg.RegisterHandler(new MyColorPickerHandler()));
 ```
 
 ## REST endpoints (Datra.WebEditor.Server)

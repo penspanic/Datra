@@ -31,6 +31,7 @@ public class BlazorFieldTypeRegistry : FieldTypeRegistry
         RegisterHandler(new ArrayFieldHandler(this));      //  22 — T[] 1-D arrays
         RegisterHandler(new ListFieldHandler(this));       //  20 — IList<T>
         RegisterHandler(new EnumFieldHandler());           //  10 — Enum
+        RegisterHandler(new ColorFieldHandler());          //   5 — string + [Color] attribute
         RegisterHandler(new StringFieldHandler());         //   1 — primitives
         RegisterHandler(new IntFieldHandler());
         RegisterHandler(new LongFieldHandler());
