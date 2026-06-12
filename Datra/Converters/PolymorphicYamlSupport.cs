@@ -10,7 +10,7 @@ using YamlDotNet.Serialization;
 namespace Datra.Converters
 {
     /// <summary>
-    /// Resolves type names to Type objects, similar to PortableTypeBinder for JSON.
+    /// Resolves type names to Type objects for legacy YAML polymorphism.
     /// Enables YAML portability across different assembly configurations.
     /// </summary>
     public class PortableTypeResolver

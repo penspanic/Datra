@@ -20,7 +20,7 @@ namespace Datra.Repositories
             var opts = new JsonSerializerOptions
             {
                 DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
-                // Match Newtonsoft round-trip semantics: Datra data classes occasionally expose
+                // Match Datra's legacy round-trip semantics: Datra data classes occasionally expose
                 // public fields (e.g. PooledPrefab.Path). STJ excludes fields by default — turning
                 // it on keeps DeepCloner.Clone behaviourally compatible.
                 IncludeFields = true,
