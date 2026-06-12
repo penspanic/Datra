@@ -9,7 +9,6 @@
     "allowUnsafeCode": false,
     "overrideReferences": true,
     "precompiledReferences": [
-        "Newtonsoft.Json.dll",
         "YamlDotNet.dll"
     ],
     "autoReferenced": true,

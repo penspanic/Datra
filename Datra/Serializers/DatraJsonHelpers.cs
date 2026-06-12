@@ -8,7 +8,7 @@ using Datra.Localization;
 namespace Datra.Serializers
 {
     /// <summary>
-    /// STJ option helpers that re-create Datra's Newtonsoft-era contract semantics.
+    /// STJ option helpers that re-create Datra's legacy JSON contract semantics.
     /// </summary>
     internal static class DatraJsonHelpers
     {
