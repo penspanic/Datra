@@ -71,7 +71,11 @@ public sealed class NestedTypeFieldHandler : IBlazorFieldHandler
                         context.OnValueChanged?.Invoke(obj);
                     },
                     context.LocaleService,
-                    context.IsReadOnly || !property.CanWrite);
+                    context.IsReadOnly || !property.CanWrite)
+                {
+                    FieldPath = BuildPropertyPath(context, property),
+                    RootDataObject = context.RootDataObject
+                };
                 builder.AddContent(seq++, handler.CreateField(propContext));
             }
             else
@@ -88,4 +92,10 @@ public sealed class NestedTypeFieldHandler : IBlazorFieldHandler
 
         builder.CloseElement(); // nested
     };
+
+    private static string BuildPropertyPath(FieldCreationContext context, PropertyInfo property)
+    {
+        var basePath = context.FieldPath ?? context.SourceMember?.Name;
+        return string.IsNullOrEmpty(basePath) ? property.Name : $"{basePath}.{property.Name}";
+    }
 }

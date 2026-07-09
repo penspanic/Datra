@@ -42,6 +42,23 @@ namespace Datra.Tests
         }
 
         [Fact]
+        public void PropertyConstructor_SetsSourceMemberAndFieldPath()
+        {
+            var prop = typeof(TestClass).GetProperty(nameof(TestClass.Name))!;
+            var target = new TestClass();
+
+            var context = new FieldCreationContext(
+                prop,
+                target,
+                "test value",
+                FieldLayoutMode.Form,
+                _ => { });
+
+            Assert.Same(prop, context.SourceMember);
+            Assert.Equal(nameof(TestClass.Name), context.FieldPath);
+        }
+
+        [Fact]
         public void PropertyConstructor_SetsTarget()
         {
             var prop = typeof(TestClass).GetProperty(nameof(TestClass.Name))!;
@@ -295,6 +312,24 @@ namespace Datra.Tests
             Assert.Null(context.Property);
         }
 
+        [Fact]
+        public void NestedMemberConstructor_SetsSourceMemberAndFieldPath()
+        {
+            var member = typeof(TestNestedStruct).GetField(nameof(TestNestedStruct.Value))!;
+            var parentValue = new TestNestedStruct { Value = 42 };
+
+            var context = new FieldCreationContext(
+                member,
+                typeof(int),
+                parentValue,
+                42,
+                FieldLayoutMode.Form,
+                _ => { });
+
+            Assert.Same(member, context.SourceMember);
+            Assert.Equal(nameof(TestNestedStruct.Value), context.FieldPath);
+        }
+
         #endregion
 
         #region Collection Element Constructor Tests
@@ -377,6 +412,42 @@ namespace Datra.Tests
             Assert.Null(context.Member);
         }
 
+        [Fact]
+        public void CollectionElementConstructor_CanCarrySourceMemberAndFieldPath()
+        {
+            var prop = typeof(TestClass).GetProperty(nameof(TestClass.Items))!;
+
+            var context = new FieldCreationContext(
+                typeof(string),
+                "item1",
+                3,
+                FieldLayoutMode.Table,
+                _ => { },
+                sourceMember: prop,
+                fieldPath: "Items[3]");
+
+            Assert.Same(prop, context.SourceMember);
+            Assert.Equal("Items[3]", context.FieldPath);
+            Assert.True(context.IsCollectionElement);
+        }
+
+        [Fact]
+        public void CollectionElementKey_DistinguishesDictionaryElementFromArrayElement()
+        {
+            var context = new FieldCreationContext(
+                typeof(string),
+                "item1",
+                3,
+                FieldLayoutMode.Table,
+                _ => { })
+            {
+                CollectionElementKey = "slot"
+            };
+
+            Assert.True(context.IsCollectionElement);
+            Assert.False(context.IsArrayElement);
+        }
+
         #endregion
 
         #region WithValue Tests
@@ -435,6 +506,31 @@ namespace Datra.Tests
 
             Assert.Equal("new value", newContext.Value);
             Assert.Equal("original", context.Value);
+        }
+
+        [Fact]
+        public void WithValue_PreservesSourceMetadata()
+        {
+            var prop = typeof(TestClass).GetProperty(nameof(TestClass.Items))!;
+            var context = new FieldCreationContext(
+                typeof(string),
+                "original",
+                0,
+                FieldLayoutMode.Table,
+                _ => { },
+                sourceMember: prop,
+                fieldPath: "Items[0]")
+            {
+                CollectionElementKey = "slot",
+                RootDataObject = new TestClass()
+            };
+
+            var newContext = context.WithValue("new value");
+
+            Assert.Same(prop, newContext.SourceMember);
+            Assert.Equal("Items[0]", newContext.FieldPath);
+            Assert.Equal("slot", newContext.CollectionElementKey);
+            Assert.Same(context.RootDataObject, newContext.RootDataObject);
         }
 
         #endregion

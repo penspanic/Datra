@@ -134,7 +134,7 @@ namespace Datra.Editor.Schema
             return GetElementType(type) != null;
         }
 
-        private static bool TryGetDictionaryArgs(Type type, out Type? keyType, out Type? valueType)
+        public static bool TryGetDictionaryArgs(Type type, out Type? keyType, out Type? valueType)
         {
             keyType = null;
             valueType = null;
