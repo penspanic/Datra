@@ -50,11 +50,27 @@ namespace Datra.Editor.Models
         /// <summary>루트 데이터 객체</summary>
         public object? RootDataObject { get; set; }
 
+        /// <summary>
+        /// 현재 필드가 파생된 원본 멤버.
+        /// 배열/리스트/dictionary 요소처럼 Property/Member가 없는 파생 필드에서도
+        /// attribute 기반 핸들러가 원래 선언부의 메타데이터를 볼 수 있게 한다.
+        /// </summary>
+        public MemberInfo? SourceMember { get; set; }
+
+        /// <summary>루트 편집 객체 기준의 사람이 읽을 수 있는 필드 경로.</summary>
+        public string? FieldPath { get; set; }
+
+        /// <summary>컬렉션 요소 키 (dictionary 요소인 경우)</summary>
+        public object? CollectionElementKey { get; set; }
+
         /// <summary>중첩 멤버인지 여부</summary>
         public bool IsNestedMember => Member != null && Property == null;
 
-        /// <summary>배열 요소인지 여부</summary>
-        public bool IsArrayElement => Property == null && Member == null && CollectionElementIndex.HasValue;
+        /// <summary>배열/리스트 요소인지 여부</summary>
+        public bool IsArrayElement => Property == null && Member == null && CollectionElementIndex.HasValue && CollectionElementKey == null;
+
+        /// <summary>배열/리스트/dictionary 요소인지 여부</summary>
+        public bool IsCollectionElement => CollectionElementIndex.HasValue || CollectionElementKey != null;
 
         /// <summary>
         /// 프로퍼티 기반 필드 생성용 생성자
@@ -76,6 +92,8 @@ namespace Datra.Editor.Models
             OnValueChanged = onValueChanged;
             LocaleService = localeService;
             IsReadOnly = isReadOnly || !property.CanWrite;
+            SourceMember = property;
+            FieldPath = property.Name;
         }
 
         /// <summary>
@@ -100,6 +118,8 @@ namespace Datra.Editor.Models
             OnValueChanged = onValueChanged;
             LocaleService = localeService;
             IsReadOnly = isReadOnly;
+            SourceMember = member;
+            FieldPath = member.Name;
         }
 
         /// <summary>
@@ -112,7 +132,9 @@ namespace Datra.Editor.Models
             FieldLayoutMode layoutMode,
             Action<object?>? onValueChanged,
             ILocaleEditorService? localeService = null,
-            bool isReadOnly = false)
+            bool isReadOnly = false,
+            MemberInfo? sourceMember = null,
+            string? fieldPath = null)
         {
             FieldType = elementType;
             Target = value;
@@ -122,6 +144,8 @@ namespace Datra.Editor.Models
             OnValueChanged = onValueChanged;
             LocaleService = localeService;
             IsReadOnly = isReadOnly;
+            SourceMember = sourceMember;
+            FieldPath = fieldPath;
         }
 
         /// <summary>
@@ -131,29 +155,29 @@ namespace Datra.Editor.Models
         {
             if (Property != null)
             {
-                return new FieldCreationContext(Property, Target, newValue, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(Property, Target, newValue, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElementIndex = CollectionElementIndex,
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
             else if (Member != null)
             {
-                return new FieldCreationContext(Member, FieldType, ParentValue, newValue, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(Member, FieldType, ParentValue, newValue, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElementIndex = CollectionElementIndex,
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
             else
             {
-                return new FieldCreationContext(FieldType, newValue, CollectionElementIndex ?? 0, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(FieldType, newValue, CollectionElementIndex ?? 0, LayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
         }
 
@@ -164,30 +188,38 @@ namespace Datra.Editor.Models
         {
             if (Property != null)
             {
-                return new FieldCreationContext(Property, Target, Value, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(Property, Target, Value, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElementIndex = CollectionElementIndex,
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
             else if (Member != null)
             {
-                return new FieldCreationContext(Member, FieldType, ParentValue, Value, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(Member, FieldType, ParentValue, Value, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElementIndex = CollectionElementIndex,
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
             else
             {
-                return new FieldCreationContext(FieldType, Value, CollectionElementIndex ?? 0, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
+                return CopyMetadataTo(new FieldCreationContext(FieldType, Value, CollectionElementIndex ?? 0, newLayoutMode, OnValueChanged, LocaleService, IsReadOnly)
                 {
                     CollectionElement = CollectionElement,
                     RootDataObject = RootDataObject
-                };
+                });
             }
+        }
+
+        private FieldCreationContext CopyMetadataTo(FieldCreationContext copy)
+        {
+            copy.SourceMember = SourceMember;
+            copy.FieldPath = FieldPath;
+            copy.CollectionElementKey = CollectionElementKey;
+            return copy;
         }
     }
 }

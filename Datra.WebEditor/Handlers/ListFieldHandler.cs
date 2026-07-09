@@ -107,7 +107,7 @@ public sealed class ListFieldHandler : IBlazorFieldHandler
             builder.AddContent(seq++, index.ToString());
             builder.CloseElement();
 
-            var handler = _registry.FindBlazorHandler(elementType);
+            var handler = _registry.FindBlazorHandler(elementType, context.SourceMember);
             builder.OpenElement(seq++, "div");
             builder.AddAttribute(seq++, "class", "datra-list__field");
             if (handler != null)
@@ -124,7 +124,13 @@ public sealed class ListFieldHandler : IBlazorFieldHandler
                         context.OnValueChanged?.Invoke(list);
                     },
                     context.LocaleService,
-                    context.IsReadOnly);
+                    context.IsReadOnly,
+                    context.SourceMember,
+                    BuildElementPath(context, index))
+                {
+                    CollectionElement = item,
+                    RootDataObject = context.RootDataObject
+                };
                 builder.AddContent(seq++, handler.CreateField(elementContext));
             }
             else
@@ -179,5 +185,11 @@ public sealed class ListFieldHandler : IBlazorFieldHandler
             }
         }
         return sb.ToString();
+    }
+
+    private static string BuildElementPath(FieldCreationContext context, int index)
+    {
+        var basePath = context.FieldPath ?? context.SourceMember?.Name;
+        return string.IsNullOrEmpty(basePath) ? $"[{index}]" : $"{basePath}[{index}]";
     }
 }

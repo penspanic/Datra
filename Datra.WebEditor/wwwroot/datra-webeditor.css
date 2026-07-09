@@ -373,6 +373,24 @@
     font-style: italic;
 }
 
+.datra-dictionary__row {
+    display: grid;
+    grid-template-columns: minmax(80px, 30%) auto minmax(120px, 1fr) auto;
+    align-items: center;
+}
+.datra-dictionary__key,
+.datra-dictionary__value {
+    min-width: 0;
+}
+.datra-dictionary__key .datra-input {
+    font-family: var(--datra-font-mono);
+}
+.datra-dictionary__arrow {
+    color: var(--datra-text-faint);
+    font-family: var(--datra-font-mono);
+    font-size: var(--datra-font-size-xs);
+}
+
 /* ============================================================ *
  *  Nested type handler
  * ============================================================ */

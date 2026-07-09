@@ -28,6 +28,7 @@ public class BlazorFieldTypeRegistry : FieldTypeRegistry
         RegisterHandler(new LocaleRefFieldHandler());      // 100 — FixedLocale-attributed LocaleRef
         RegisterHandler(new DataRefFieldHandler());        //  40 — StringDataRef<T> / IntDataRef<T>
         RegisterHandler(new NestedTypeFieldHandler(this)); //  30 — complex class/struct
+        RegisterHandler(new DictionaryFieldHandler(this)); //  24 — IDictionary<TKey,TValue>
         RegisterHandler(new ArrayFieldHandler(this));      //  22 — T[] 1-D arrays
         RegisterHandler(new ListFieldHandler(this));       //  20 — IList<T>
         RegisterHandler(new EnumFieldHandler());           //  10 — Enum
