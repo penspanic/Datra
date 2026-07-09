@@ -127,6 +127,10 @@ namespace Datra.Generators
             bool enableDebugLogging = false;
             bool emitPhysicalFiles = false;
             string physicalFilesPath = null;
+            bool emitYamlSerializers = GetBoolBuildProperty(
+                context,
+                "DatraEmitYamlSerializers",
+                defaultValue: true);
 
             // Read optional named arguments
             foreach (var arg in configAttr.NamedArguments)
@@ -177,7 +181,7 @@ namespace Datra.Generators
                 GeneratorLogger.AddDebugOutput(context);
                 return;
             }
-            GeneratorLogger.Log($"Found DatraConfigurationAttribute: ContextName={contextName}, Namespace={generatedNamespace}, EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, LocalizationDataPath={localizationDataPath}, DefaultLanguage={defaultLanguage}, EnableDebugLogging={enableDebugLogging}, EmitPhysicalFiles={emitPhysicalFiles}, PhysicalFilesPath={physicalFilesPath}");
+            GeneratorLogger.Log($"Found DatraConfigurationAttribute: ContextName={contextName}, Namespace={generatedNamespace}, EnableLocalization={enableLocalization}, LocalizationKeyDataPath={localizationKeysPath}, LocalizationDataPath={localizationDataPath}, DefaultLanguage={defaultLanguage}, EnableDebugLogging={enableDebugLogging}, EmitPhysicalFiles={emitPhysicalFiles}, PhysicalFilesPath={physicalFilesPath}, EmitYamlSerializers={emitYamlSerializers}");
 
             // Filter out localization models
             var filteredModels = dataModels
@@ -203,7 +207,7 @@ namespace Datra.Generators
             GeneratorLogger.Log($"Generated {contextName}.g.cs");
 
             // Generate DataModel files
-            var dataModelGenerator = new DataModelGenerator(context);
+            var dataModelGenerator = new DataModelGenerator(emitYamlSerializers);
             foreach (var model in dataModels)
             {
                 var dataModelCode = dataModelGenerator.GenerateDataModelFile(model);
@@ -247,6 +251,30 @@ namespace Datra.Generators
             {
                 GeneratorLogger.AddDebugOutput(context);
             }
+        }
+
+        /// <summary>
+        /// Read a bool MSBuild property exposed to analyzers as
+        /// build_property.PropertyName.
+        /// </summary>
+        private static bool GetBoolBuildProperty(
+            GeneratorExecutionContext context,
+            string propertyName,
+            bool defaultValue)
+        {
+            if (!context.AnalyzerConfigOptions.GlobalOptions.TryGetValue(
+                    $"build_property.{propertyName}",
+                    out var value))
+            {
+                return defaultValue;
+            }
+
+            if (bool.TryParse(value, out var parsed))
+            {
+                return parsed;
+            }
+
+            return defaultValue;
         }
 
         /// <summary>
