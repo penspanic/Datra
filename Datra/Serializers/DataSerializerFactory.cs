@@ -17,7 +17,8 @@ namespace Datra.Serializers
     public class DataSerializerFactory
     {
         private readonly IDataSerializer _jsonSerializer;
-        private readonly IDataSerializer _yamlSerializer;
+        private readonly Func<IDataSerializer> _createYamlSerializer;
+        private IDataSerializer? _yamlSerializer;
 
         /// <summary>
         /// Reflection-mode JSON. Trim/AOT-unsafe — explicit opt-in suitable for tooling/tests.
@@ -29,7 +30,7 @@ namespace Datra.Serializers
         public DataSerializerFactory()
         {
             _jsonSerializer = SystemTextJsonDataSerializer.CreateReflectionUnsafe();
-            _yamlSerializer = new YamlDataSerializer();
+            _createYamlSerializer = CreateDefaultYamlSerializer;
         }
 
         /// <summary>
@@ -39,7 +40,7 @@ namespace Datra.Serializers
         {
             if (jsonContext == null) throw new ArgumentNullException(nameof(jsonContext));
             _jsonSerializer = new SystemTextJsonDataSerializer(jsonContext);
-            _yamlSerializer = new YamlDataSerializer();
+            _createYamlSerializer = CreateDefaultYamlSerializer;
         }
 
 #if NET8_0_OR_GREATER
@@ -72,7 +73,7 @@ namespace Datra.Serializers
             IEnumerable<Type>? excludedTypes)
         {
             _jsonSerializer = SystemTextJsonDataSerializer.CreateReflectionUnsafe();
-            _yamlSerializer = new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters, excludedTypes);
+            _createYamlSerializer = () => new YamlDataSerializer(polymorphicBaseTypes, customYamlConverters, excludedTypes);
         }
 
         public IDataSerializer GetSerializer(string filePath, DataFormat format = DataFormat.Auto)
@@ -85,10 +86,16 @@ namespace Datra.Serializers
             return format switch
             {
                 DataFormat.Json => _jsonSerializer,
-                DataFormat.Yaml => _yamlSerializer,
+                DataFormat.Yaml => GetYamlSerializer(),
                 DataFormat.Csv => throw new NotSupportedException("CSV format should be handled by source-generated serializers, not by DataSerializer."),
                 _ => throw new NotSupportedException($"Data format {format} is not supported.")
             };
         }
+
+        private IDataSerializer GetYamlSerializer()
+            => _yamlSerializer ?? (_yamlSerializer = _createYamlSerializer());
+
+        private static IDataSerializer CreateDefaultYamlSerializer()
+            => new YamlDataSerializer();
     }
 }
