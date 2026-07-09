@@ -1,8 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
 using Datra.Generators.Builders;
 using Datra.Generators.Models;
 
@@ -10,11 +8,11 @@ namespace Datra.Generators.Generators
 {
     internal class DataModelGenerator
     {
-        private readonly GeneratorExecutionContext _context;
+        private readonly bool _emitYamlSerializers;
         
-        public DataModelGenerator(GeneratorExecutionContext context)
+        public DataModelGenerator(bool emitYamlSerializers = true)
         {
-            _context = context;
+            _emitYamlSerializers = emitYamlSerializers;
         }
         
         private static bool IsPrimitiveType(string typeName)
@@ -253,7 +251,7 @@ namespace Datra.Generators.Generators
 
             // Generate YAML-specific methods without serializer parameter
             var isYamlFormat = CodeBuilder.IsYamlFormat(model.Format, model.FilePath);
-            if (isYamlFormat)
+            if (isYamlFormat && _emitYamlSerializers)
             {
                 codeBuilder.AddBlankLine();
 
@@ -298,7 +296,7 @@ namespace Datra.Generators.Generators
                     var jsonBuilder = new JsonSerializerBuilder();
                     jsonBuilder.GenerateSingleDeserializer(codeBuilder, model, simpleTypeName);
                     break;
-                case "Yaml":
+                case "Yaml" when _emitYamlSerializers:
                     var yamlBuilder = new YamlSerializerBuilder();
                     yamlBuilder.GenerateSingleDeserializer(codeBuilder, model, simpleTypeName);
                     break;
@@ -319,7 +317,7 @@ namespace Datra.Generators.Generators
                     var jsonBuilder2 = new JsonSerializerBuilder();
                     jsonBuilder2.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
                     break;
-                case "Yaml":
+                case "Yaml" when _emitYamlSerializers:
                     var yamlBuilder2 = new YamlSerializerBuilder();
                     yamlBuilder2.GenerateSingleSerializer(codeBuilder, model, simpleTypeName);
                     break;
@@ -332,7 +330,7 @@ namespace Datra.Generators.Generators
 
             // Generate YAML-specific methods without serializer parameter
             var isYamlFormat = CodeBuilder.IsYamlFormat(model.Format, model.FilePath);
-            if (isYamlFormat)
+            if (isYamlFormat && _emitYamlSerializers)
             {
                 codeBuilder.AddBlankLine();
 
