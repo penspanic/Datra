@@ -88,6 +88,33 @@ Add project references:
                   ReferenceOutputAssembly="false" />
 ```
 
+### Trimming (Blazor WebAssembly, self-contained .NET)
+
+`Datra` is marked `IsTrimmable`, so an application that publishes trimmed and
+never calls Datra has it removed entirely. Nothing to configure.
+
+`YamlDotNet`, which Datra depends on, carries no such marking, so the linker
+copies it whole and it stays on the wire even with no references left pointing
+at it. An application that reads no YAML can say so:
+
+```xml
+<PropertyGroup>
+  <DatraTrimYaml>true</DatraTrimYaml>
+</PropertyGroup>
+```
+
+Off by default, and it has to be: Datra's YAML path is reflection-driven, so a
+trimmed build that *does* read YAML fails rather than running slow. JSON and CSV
+are unaffected either way.
+
+Measured on a Blazor WebAssembly game that reads only JSON: Datra (347 KB) and
+YamlDotNet (293 KB) leave the output, and with AOT the native blob drops a
+further 547 KB brotli.
+
+The source generator's `DatraEmitYamlSerializers` property is also reachable
+from a consuming project as of 0.3.5 — before that the package shipped no
+`build/` props declaring it compiler-visible, so setting it did nothing.
+
 ## Unity Editor
 
 <p align="center">

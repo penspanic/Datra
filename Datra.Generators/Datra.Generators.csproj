@@ -40,4 +40,12 @@
         <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
+    <!-- build/$(PackageId).props is imported by NuGet into the consuming project.
+         It declares DatraEmitYamlSerializers compiler-visible; without it the
+         generator's build-property read never sees a consumer's value. -->
+    <ItemGroup>
+        <None Include="build/$(PackageId).props" Pack="true" PackagePath="build/" />
+        <None Include="build/$(PackageId).props" Pack="true" PackagePath="buildTransitive/" />
+    </ItemGroup>
+
 </Project>

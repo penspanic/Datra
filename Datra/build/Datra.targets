@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Imported automatically by NuGet into any project referencing Datra.
+
+    A .targets rather than a .props on purpose: NuGet imports build/<id>.props
+    ABOVE the project body and build/<id>.targets below it, and the condition
+    here reads PublishTrimmed — which the consuming project has not set yet at
+    props time. As a .props this silently did nothing.
+
+    Datra itself is IsTrimmable (see Datra.csproj), so a consumer that never
+    calls it has it trimmed away. YamlDotNet is not: it carries no IsTrimmable
+    metadata, so ILLink gives it the `copy` action and it stays in the publish
+    output even with zero references left pointing at it.
+
+    Opt in when nothing in the application parses YAML. Datra's YAML path is
+    reflection-driven, so a trimmed YamlDotNet does not degrade — it throws.
+    JSON and CSV are unaffected either way.
+
+      <PropertyGroup>
+        <DatraTrimYaml>true</DatraTrimYaml>
+      </PropertyGroup>
+
+    Measured on a Blazor WebAssembly consumer: Datra 347 KB and YamlDotNet
+    293 KB leave the wire, and the AOT native blob drops 547 KB brotli with them.
+  -->
+  <ItemGroup Condition="'$(DatraTrimYaml)' == 'true' AND '$(PublishTrimmed)' == 'true'">
+    <TrimmableAssembly Include="YamlDotNet" />
+  </ItemGroup>
+
+</Project>

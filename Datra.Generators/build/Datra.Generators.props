@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Imported automatically by NuGet into any project referencing Datra.Generators.
+
+    DataContextSourceGenerator reads `build_property.DatraEmitYamlSerializers`
+    to decide whether to emit YAML serializer code. An MSBuild property only
+    reaches a source generator if the compilation declares it compiler-visible,
+    and until this file shipped nothing did — so the switch read its default on
+    every build and setting it, by any means, did nothing at all.
+  -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="DatraEmitYamlSerializers" />
+  </ItemGroup>
+
+</Project>

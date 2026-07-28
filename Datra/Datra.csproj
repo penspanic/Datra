@@ -15,8 +15,71 @@
         <PackageTags>game;data;serialization;csv;json;yaml;source-generator;unity</PackageTags>
     </PropertyGroup>
 
+    <!--
+        Let the trimmer trim this.
+
+        ILLink only trims assemblies that opt in here; everything else gets the
+        `copy` action, and a copied assembly stays in the publish output even
+        when nothing references it any more. Without this, a Blazor WebAssembly
+        consumer that never calls Datra still shipped Datra.dll (347 KB) and,
+        through it, YamlDotNet (293 KB — measured at 293,141 bytes on the wire
+        against 293,376 in the package: a 235-byte difference, so it had never
+        been trimmed at all).
+
+        That is also why the two previous attempts at this did nothing.
+        DatraEmitYamlSerializers and the lazily-created YAML serializer both
+        reduce REFERENCES, and references were never what kept these assemblies
+        in the output.
+
+        net8.0 only: netstandard2.1 exists for Unity/IL2CPP, which has its own
+        stripping story and does not read this.
+
+        The metadata and the analyzer are separate switches, and only the first
+        is being turned on here. IsTrimmable is a statement to the CONSUMER's
+        ILLink: you may trim me. EnableTrimAnalyzer would be a statement to this
+        build, and it currently produces 114 warnings (58 IL2026, 30 IL2067,
+        20 IL2070, 6 IL2046) across the reflection-based YAML, the reflection
+        JSON path and the provider interfaces. Every one of them is true, and
+        annotating them is real work that is not this change; 114 warnings on
+        every build would be read by nobody. The paths a consumer can actually
+        reach are already declared [RequiresUnreferencedCode], which is the
+        contract that matters to them, and their publish still collapses ours
+        into the usual one-warning-per-assembly notice.
+
+        The 6 IL2046 are worth a separate look when someone does that work:
+        IDataProvider's Load/SaveAsync are unannotated while the implementations
+        are annotated, so a caller holding the interface is told nothing.
+    -->
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+        <IsTrimmable>true</IsTrimmable>
+        <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    </PropertyGroup>
+
     <ItemGroup>
       <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    </ItemGroup>
+
+    <!--
+        YamlDotNet does not set IsTrimmable either, so it survives on its own
+        once Datra is gone. A consumer can say so, but only if it knows to —
+        this package knows, so it offers the switch.
+
+        Off by default and it has to be: trimming YamlDotNet is safe exactly
+        when nothing parses YAML, because its deserializer is reflection-driven
+        and a trimmed build that does read YAML fails rather than running slow.
+        A JSON/CSV-only consumer sets <DatraTrimYaml>true</DatraTrimYaml> and
+        gets both assemblies back off the wire.
+    -->
+    <ItemGroup>
+      <!-- buildTransitive as well as build: NuGet flows `build/` assets only to
+           the project that names the PackageReference, and Datra is usually a
+           transitive dependency — a game references the framework, the framework
+           references Datra, and the switch has to reach the application, which
+           is the project that publishes and therefore the only one that trims.
+           Shipping only `build/` is why this silently did nothing on the first
+           attempt. -->
+      <None Include="build/Datra.targets" Pack="true" PackagePath="build/" />
+      <None Include="build/Datra.targets" Pack="true" PackagePath="buildTransitive/" />
     </ItemGroup>
 
     <!-- netstandard2.1: STJ is a separate package. net8 has it in BCL. -->
