@@ -4,6 +4,9 @@
     "displayName": "Datra Unity Integration",
     "description": "Unity-specific integration for Datra data system",
     "unity": "2021.3",
+    "dependencies": {
+        "com.unity.ugui": "1.0.0"
+    },
     "documentationUrl": "",
     "licensesUrl": "",
     "keywords": [
