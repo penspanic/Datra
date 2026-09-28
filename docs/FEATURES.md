@@ -149,6 +149,43 @@ var settings = ServerSettingsSerializer.DeserializeYaml(yamlContent);
 var yaml = ServerSettingsSerializer.SerializeYaml(settings);
 ```
 
+**Comments survive saves:**
+
+When a repository saves a YAML file (the Unity Data Editor, the WebEditor, or
+`SaveAsync()` on a table or single repository), it keeps the file's comments and
+layout. Only the values that changed are rewritten; every untouched row stays
+byte for byte as it was, including blank lines, quoting and flow lists like
+`[1, 2]`.
+
+```yaml
+# Upgrades: what the player can buy between runs.   <- file header, stays on top
+
+# The first thing a new player buys.                <- belongs to the row below
+- Id: push-strength
+  Base: 0.5          # metres per second            <- belongs to this line
+  Levels: [0.9, 1.3, 1.6]
+
+# --- Line upgrades ---                             <- section comment, stays put
+
+- Id: bottle-count
+  Levels:
+    - 4   # fits the short stage                    <- goes with this entry
+```
+
+- Comment lines directly above a row or field (no blank line in between) belong to it,
+  and are removed when it is deleted or move with it when rows are reordered.
+- A comment at the end of a line stays on that line when its value changes.
+- A comment block separated from the next row by a blank line is a section
+  comment and stays where it is. Comments above the first row's own comments are
+  the file header.
+- New rows are appended in the file's style, with the same blank-line spacing.
+
+If a file uses something that cannot be patched in place (for example an anchor
+whose value changes), the save falls back to writing the plain serializer
+output, which is what every save did before; the data is always written
+correctly. The static `SerializeYaml` methods and `IDataSerializer` do not know
+the original file, so they still return plain serializer output.
+
 ### Auto-Detection
 
 Format is auto-detected from file extension:
