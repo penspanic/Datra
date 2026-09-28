@@ -160,6 +160,14 @@ hero_001,1001|1002|1003
 ```
 - ID만 저장, `Evaluate(context)`로 해결
 
+## YAML 저장 (주석 보존)
+
+- `KeyValueDataRepository` / `SingleDataRepository` 가 YAML 파일을 저장할 때 `YamlCommentPreserver.Reconcile()` 을 거친다.
+  디스크의 현재 파일, 그 파일을 다시 직렬화한 정규 텍스트, 저장할 데이터의 정규 텍스트를 비교해 바뀐 값만 원본 텍스트에 덮어쓴다.
+- 안 바뀐 행은 바이트 단위로 그대로, 주석·빈 줄·따옴표·flow 리스트(`[1, 2]`)도 유지된다.
+- 패치할 수 없거나, 결과를 다시 읽었을 때 데이터가 다르면 예전처럼 정규 텍스트를 쓴다 (데이터는 항상 정확, 주석만 best effort).
+- 테스트: `Datra.Tests/YamlCommentPreservationTests.cs` (에디터 저장 경로), `YamlCommentPreserverTests.cs` (재정렬·폴백 등)
+
 ## 테스트 방법
 
 ### 통합 테스트 (권장)

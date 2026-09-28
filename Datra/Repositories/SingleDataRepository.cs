@@ -3,8 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
+using Datra.Attributes;
 using Datra.Interfaces;
 using Datra.Serializers;
+using Datra.Utilities;
 
 namespace Datra.Repositories
 {
@@ -20,6 +22,12 @@ namespace Datra.Repositories
         private readonly DataSerializerFactory _serializerFactory;
         private readonly Func<string, IDataSerializer, TData> _deserializeFunc;
         private readonly Func<TData, IDataSerializer, string>? _serializeFunc;
+
+        /// <summary>
+        /// The text the data was last loaded from or saved as; see
+        /// <see cref="KeyValueDataRepository{TKey,TData}"/>.
+        /// </summary>
+        private string? _lastKnownText;
 
         public SingleDataRepository(
             string filePath,
@@ -62,6 +70,7 @@ namespace Datra.Repositories
             {
                 var rawData = await _rawDataProvider.LoadTextAsync(_filePath);
                 LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+                _lastKnownText = rawData;
                 var serializer = ResolveSerializer();
                 return _deserializeFunc(rawData, serializer);
             }
@@ -80,7 +89,45 @@ namespace Datra.Repositories
 
             var serializer = ResolveSerializer();
             var rawData = _serializeFunc(data, serializer);
+
+            // Keep a hand-written YAML file's comments and layout.
+            if (IsYaml())
+            {
+                var serializeFunc = _serializeFunc;
+                var original = await ReadCurrentTextAsync();
+                rawData = YamlCommentPreserver.Reconcile(
+                    original,
+                    rawData,
+                    text => _deserializeFunc(text, serializer),
+                    obj => serializeFunc(obj, serializer));
+            }
+
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
+            _lastKnownText = rawData;
+        }
+
+        private async Task<string?> ReadCurrentTextAsync()
+        {
+            try
+            {
+                if (!_rawDataProvider.Exists(_filePath))
+                    return _lastKnownText;
+                return await _rawDataProvider.LoadTextAsync(_filePath);
+            }
+            catch (Exception)
+            {
+                return _lastKnownText;
+            }
+        }
+
+        private bool IsYaml()
+        {
+            if (_rawDataProvider is IFormatAwareRawDataProvider fa &&
+                fa.GetFormat(_filePath) is { } overrideFmt)
+            {
+                return overrideFmt == DataFormat.Yaml;
+            }
+            return DataFormatHelper.TryDetectFormat(_filePath, out var format) && format == DataFormat.Yaml;
         }
 
         /// <summary>

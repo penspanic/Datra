@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Datra.Attributes;
 using Datra.Interfaces;
 using Datra.Serializers;
+using Datra.Utilities;
 
 namespace Datra.Repositories
 {
@@ -24,6 +26,12 @@ namespace Datra.Repositories
         private readonly Func<Dictionary<TKey, TData>, IDataSerializer, string>? _serializeFunc;
         private readonly Func<string, Dictionary<TKey, TData>>? _csvDeserializeFunc;
         private readonly Func<Dictionary<TKey, TData>, string>? _csvSerializeFunc;
+
+        /// <summary>
+        /// The text the table was last loaded from or saved as. Used to keep a YAML file's
+        /// comments when the provider cannot read the file back at save time.
+        /// </summary>
+        private string? _lastKnownText;
 
         /// <summary>
         /// 로드된 파일 경로
@@ -91,6 +99,7 @@ namespace Datra.Repositories
             }
 
             LoadedFilePath = _rawDataProvider.ResolveFilePath(_filePath);
+            _lastKnownText = rawData;
 
             Dictionary<TKey, TData> data;
 
@@ -143,6 +152,20 @@ namespace Datra.Repositories
             {
                 var serializer = ResolveSerializer();
                 rawData = _serializeFunc(allData, serializer);
+
+                // A YAML file is hand-written: carry its comments and layout over to the
+                // rewritten text instead of replacing it wholesale.
+                if (_deserializeFunc != null && IsYaml())
+                {
+                    var serializeFunc = _serializeFunc;
+                    var deserializeFunc = _deserializeFunc;
+                    var original = await ReadCurrentTextAsync();
+                    rawData = YamlCommentPreserver.Reconcile(
+                        original,
+                        rawData,
+                        text => deserializeFunc(text, serializer),
+                        table => serializeFunc(table, serializer));
+                }
             }
             else
             {
@@ -150,6 +173,35 @@ namespace Datra.Repositories
             }
 
             await _rawDataProvider.SaveTextAsync(_filePath, rawData);
+            _lastKnownText = rawData;
+        }
+
+        /// <summary>
+        /// The file as it is now, so comments added outside the editor since loading are
+        /// kept too; the text last loaded or saved if the provider cannot read it.
+        /// </summary>
+        private async Task<string?> ReadCurrentTextAsync()
+        {
+            try
+            {
+                if (!_rawDataProvider.Exists(_filePath))
+                    return _lastKnownText;
+                return await _rawDataProvider.LoadTextAsync(_filePath);
+            }
+            catch (Exception)
+            {
+                return _lastKnownText;
+            }
+        }
+
+        private bool IsYaml()
+        {
+            if (_rawDataProvider is IFormatAwareRawDataProvider fa &&
+                fa.GetFormat(_filePath) is { } overrideFmt)
+            {
+                return overrideFmt == DataFormat.Yaml;
+            }
+            return DataFormatHelper.TryDetectFormat(_filePath, out var format) && format == DataFormat.Yaml;
         }
 
         /// <summary>
