@@ -147,6 +147,7 @@ Datra/
 
 - **[Features Guide](docs/FEATURES.md)** - Detailed feature documentation
 - **[Unity Guide](docs/UNITY.md)** - Unity integration guide
+- **[Balance Lab](docs/LAB.md)** - Tune numbers by their outcome: knobs, bots, a simulator you write once
 - **[Developer Guide](CLAUDE.md)** - Internal development guide
 
 ## License
