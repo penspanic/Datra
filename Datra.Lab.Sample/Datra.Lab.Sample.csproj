@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Datra.Lab.Sample</RootNamespace>
+  </PropertyGroup>
+
+  <!-- Make project directory available to source generators -->
+  <ItemGroup>
+    <CompilerVisibleProperty Include="ProjectDir" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Datra.Generators\Datra.Generators.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Datra.Analyzers\Datra.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\Datra\Datra.csproj" />
+    <ProjectReference Include="..\Datra.Lab\Datra.Lab.csproj" />
+  </ItemGroup>
+
+  <!-- The data ships inside the assembly so the web sample and the tests can stage it anywhere. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\**\*" LogicalName="Descent/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

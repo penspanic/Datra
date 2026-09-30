@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- netstandard2.1 like Datra.Editor: no UI, no ASP.NET, usable from a console host. -->
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>Datra.Lab</RootNamespace>
+    <AssemblyName>Datra.Lab</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>Datra.Lab</PackageId>
+    <Description>Balance lab for Datra-managed game data: knob schema, forked data contexts, a simulator contract, a seeded bot runner and result aggregation. No UI.</Description>
+    <PackageTags>datra;game;data;balance;simulation</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Datra/Datra.csproj" />
+  </ItemGroup>
+
+</Project>

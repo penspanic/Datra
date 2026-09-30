@@ -1,0 +1,40 @@
+# Account upgrades stay for the whole game. Floor devices are bought again on every floor.
+- Id: push
+  Name: Push power
+  Scope: Account
+  BaseCost: 120
+  CostGrowth: 2.1
+  MaxLevel: 5
+  Amount: 0.35
+
+- Id: wrap
+  Name: Bubble wrap
+  Scope: Account
+  BaseCost: 260
+  CostGrowth: 2.6
+  MaxLevel: 3
+  Amount: 0.2
+
+- Id: queue
+  Name: Longer line
+  Scope: Account
+  BaseCost: 400
+  CostGrowth: 3.2
+  MaxLevel: 3
+  Amount: 0.33
+
+- Id: carpet
+  Name: Carpet
+  Scope: Floor
+  BaseCost: 90
+  CostGrowth: 1.9
+  MaxLevel: 4
+  Amount: 0.25
+
+- Id: box
+  Name: Catch box
+  Scope: Floor
+  BaseCost: 150
+  CostGrowth: 2.2
+  MaxLevel: 3
+  Amount: 0.5
