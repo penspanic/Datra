@@ -31,6 +31,9 @@ Datra/
 │   ├── Models/                 # DataModelInfo, PropertyInfo 등
 │   └── DataContextSourceGenerator.cs  # 메인 진입점 (ISourceGenerator)
 │
+├── Datra.Lab/                  # 밸런스 실험실 코어 (UI 없음): 손잡이 스키마, 갈래 컨텍스트, 시뮬레이터 계약, 봇 실행기
+├── Datra.Lab.Sample/           # 실험실용 장난감 게임 데이터 + 시뮬레이터 (웹 샘플·테스트 공용)
+├── Datra.Lab.Tests/            # 실험실 코어 테스트
 ├── Datra.Analyzers/            # Roslyn Analyzer
 ├── Datra.SampleData/           # 테스트용 샘플 데이터 모델
 ├── Datra.SampleData2/          # 멀티 컨텍스트 테스트용

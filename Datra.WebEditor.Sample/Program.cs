@@ -1,4 +1,6 @@
 using Datra.Interfaces;
+using Datra.Lab.Sample;
+using Datra.Lab.Sample.Generated;
 using Datra.SampleData.Generated;
 using Datra.Serializers;
 using Datra.WebEditor.Extensions;
@@ -26,12 +28,27 @@ builder.Services.AddSingleton(sp => new GameDataContext(
 
 builder.Services.AddDatraWebEditor(opt => opt.DataContextType = typeof(GameDataContext));
 
+// Balance lab (/lab): a toy incremental game tuned through knobs. Its three YAML files are
+// staged next to the editor's sample data, so the one IRawDataProvider above serves both.
+DescentData.WriteTo(scratchPath.Path);
+builder.Services.AddDatraLab<DescentContext, DescentSim>((services, lab) =>
+{
+    DescentLab.Configure(lab);
+    lab.SnapshotDirectory(Path.Combine(scratchPath.Path, "lab-snapshots"));
+
+    // Stand-in for a game's overnight physics batch: roll the outcome pools once, from the saved data.
+    var saved = new DescentContext(services.GetRequiredService<IRawDataProvider>());
+    saved.LoadAllAsync().GetAwaiter().GetResult();
+    lab.Outcomes = DescentPhysics.Bake(saved);
+});
+
 var app = builder.Build();
 
 app.UseStaticFiles();
 app.UseAntiforgery();
 
 app.MapDatraEditor();
+app.MapDatraLab();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

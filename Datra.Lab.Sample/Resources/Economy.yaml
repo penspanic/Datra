@@ -1,0 +1,5 @@
+# Pricing rules of the toy game.
+StepValue: 5
+IntactBonus: 40
+BottlesPerRun: 3
+GlassToughness: 1

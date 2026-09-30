@@ -1,0 +1,41 @@
+# Floors of the toy game the lab sample tunes. Fill the fare box to go down one floor.
+- Id: B1
+  Name: Ticket hall
+  Fare: 280
+  ValueMultiplier: 1
+  TargetMinutes: 4
+  Steps: 8
+  LandingStep: 0
+
+- Id: B2
+  Name: Concourse
+  Fare: 600
+  ValueMultiplier: 2.2
+  TargetMinutes: 5
+  Steps: 10
+  LandingStep: 0
+
+# The landing halfway down is where bottles like to stop.
+- Id: B3
+  Name: Transfer
+  Fare: 2000
+  ValueMultiplier: 4.5
+  TargetMinutes: 6
+  Steps: 12
+  LandingStep: 6
+
+- Id: B4
+  Name: Mezzanine
+  Fare: 9500
+  ValueMultiplier: 9
+  TargetMinutes: 7
+  Steps: 12
+  LandingStep: 0
+
+- Id: B5
+  Name: Platform
+  Fare: 32000
+  ValueMultiplier: 18
+  TargetMinutes: 8
+  Steps: 14
+  LandingStep: 0

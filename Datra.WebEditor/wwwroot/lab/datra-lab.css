@@ -1,0 +1,175 @@
+/*
+ * Datra.Lab — balance lab screen.
+ *
+ * Everything is scoped under .datra-lab and uses its own --lab-* tokens, so the screen looks the
+ * same inside a dark editor shell, a plain page, or (later) an exported standalone file.
+ * Colour roles are fixed: accent = the scenario being looked at, grey = what it is compared
+ * with, gold = physics, orange + "!" = a warning.
+ */
+.datra-lab {
+    --lab-bg: #eef0f2;
+    --lab-panel: #ffffff;
+    --lab-panel-2: #f7f8f9;
+    --lab-line: #e1e4e8;
+    --lab-line-2: #cfd4da;
+    --lab-ink: #1d2127;
+    --lab-ink-2: #4f565f;
+    --lab-ink-3: #858c95;
+    --lab-accent: #2f6bd8;
+    --lab-accent-soft: #e7eefb;
+    --lab-accent-wash: rgba(47, 107, 216, 0.12);
+    --lab-base: #7a828c;
+    --lab-gold-deep: #c7940c;
+    --lab-gold-soft: #fbf2d6;
+    --lab-warn: #b85a10;
+    --lab-warn-soft: #fbeee2;
+    --lab-good: #2d8a57;
+    --lab-good-soft: #e3f3ea;
+    --lab-radius: 12px;
+    --lab-shadow: 0 1px 2px rgba(20, 24, 30, 0.04), 0 2px 8px rgba(20, 24, 30, 0.04);
+    --lab-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+    --lab-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    background: var(--lab-bg);
+    color: var(--lab-ink);
+    font-family: var(--lab-font);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    word-break: keep-all;
+    min-height: 100%;
+}
+.datra-lab *, .datra-lab *::before, .datra-lab *::after { box-sizing: border-box; }
+.datra-lab button, .datra-lab select, .datra-lab input { font: inherit; color: inherit; }
+.datra-lab .num { font-variant-numeric: tabular-nums; }
+.datra-lab [hidden] { display: none !important; }
+
+/* top bar */
+.datra-lab .lab-top { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 20px; flex-wrap: wrap; background: rgba(238, 240, 242, 0.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--lab-line); }
+.datra-lab .lab-brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
+.datra-lab .lab-mark { width: 22px; height: 22px; border-radius: 6px; background: var(--lab-ink); display: grid; place-items: center; }
+.datra-lab .lab-mark i { width: 8px; height: 8px; border-radius: 50%; background: #e8b21e; display: block; }
+.datra-lab .lab-spacer { flex: 1; }
+.datra-lab .lab-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--lab-panel); border: 1px solid var(--lab-line); color: var(--lab-ink-2); font-size: 12.5px; white-space: nowrap; }
+.datra-lab .lab-chip b { color: var(--lab-ink); font-weight: 600; }
+.datra-lab .lab-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: #3aa76d; }
+.datra-lab .lab-chip.busy .dot { background: var(--lab-gold-deep); animation: lab-pulse 1s infinite; }
+.datra-lab .lab-chip.bad .dot { background: var(--lab-warn); }
+@keyframes lab-pulse { 50% { opacity: 0.3; } }
+.datra-lab .lab-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; border: 1px solid var(--lab-line-2); background: var(--lab-panel); cursor: pointer; font-weight: 500; white-space: nowrap; font-size: 13px; }
+.datra-lab .lab-btn:hover:not(:disabled) { border-color: var(--lab-ink-3); }
+.datra-lab .lab-btn:disabled { opacity: 0.45; cursor: default; }
+.datra-lab .lab-btn.primary { background: var(--lab-ink); color: #fff; border-color: var(--lab-ink); }
+.datra-lab .lab-btn.ghost { border-color: transparent; background: transparent; color: var(--lab-ink-2); }
+.datra-lab .lab-btn.small { padding: 3px 9px; font-size: 12.5px; border-radius: 7px; }
+.datra-lab .lab-field { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--lab-ink-2); white-space: nowrap; }
+.datra-lab .lab-field select, .datra-lab .lab-field input { border: 1px solid var(--lab-line-2); background: var(--lab-panel); border-radius: 7px; padding: 3px 8px; font-size: 12.5px; color: var(--lab-ink); }
+.datra-lab .lab-field input[type=number] { width: 72px; }
+.datra-lab .lab-field input[type=text] { width: 150px; }
+
+/* layout */
+.datra-lab .lab-page { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; padding: 16px 20px 40px; max-width: 1560px; margin: 0 auto; }
+.datra-lab .lab-rail { display: grid; gap: 12px; align-content: start; }
+.datra-lab .lab-main { display: grid; gap: 16px; min-width: 0; align-content: start; }
+.datra-lab .lab-grid-2 { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; }
+.datra-lab .lab-panel { background: var(--lab-panel); border: 1px solid var(--lab-line); border-radius: var(--lab-radius); box-shadow: var(--lab-shadow); padding: 16px 18px; min-width: 0; }
+.datra-lab .lab-panel h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
+.datra-lab .lab-sub { color: var(--lab-ink-3); font-size: 12.5px; margin-top: 2px; }
+.datra-lab .lab-ph { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.datra-lab .lab-lead { font-size: 13.5px; color: var(--lab-ink); margin: 0 0 10px; font-weight: 550; }
+
+/* bot settings */
+.datra-lab .lab-box { background: var(--lab-panel); border: 1px solid var(--lab-line); border-radius: var(--lab-radius); box-shadow: var(--lab-shadow); padding: 12px 16px; }
+.datra-lab .lab-box h3 { margin: 0 0 8px; font-size: 13px; color: var(--lab-ink-2); font-weight: 600; }
+.datra-lab .lab-box .rows { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 10px; align-items: center; font-size: 12.5px; color: var(--lab-ink-2); }
+.datra-lab .lab-box .rows select, .datra-lab .lab-box .rows input { border: 1px solid var(--lab-line-2); background: var(--lab-panel); border-radius: 7px; padding: 3px 8px; font-size: 12.5px; color: var(--lab-ink); width: 100%; min-width: 0; }
+.datra-lab .lab-box .hint { font-size: 12px; color: var(--lab-ink-3); margin-top: 8px; }
+
+/* knobs */
+.datra-lab .lab-knobs { background: var(--lab-panel); border: 1px solid var(--lab-line); border-radius: var(--lab-radius); box-shadow: var(--lab-shadow); padding: 6px 0 10px; }
+.datra-lab .lab-knobs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 6px; gap: 8px; }
+.datra-lab .lab-knobs-head h3 { margin: 0; font-size: 13px; color: var(--lab-ink-2); font-weight: 600; }
+.datra-lab .lab-kgroup { padding: 8px 16px 4px; border-top: 1px solid var(--lab-line); }
+.datra-lab .lab-kgroup h4 { margin: 6px 0 4px; font-size: 11.5px; letter-spacing: 0.04em; color: var(--lab-ink-3); font-weight: 600; text-transform: uppercase; }
+.datra-lab .lab-knob { padding: 7px 0 6px; }
+.datra-lab .lab-knob .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.datra-lab .lab-knob label { font-weight: 550; font-size: 13.5px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+.datra-lab .lab-knob .val { font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13.5px; white-space: nowrap; }
+.datra-lab .lab-knob .val small { color: var(--lab-ink-3); font-weight: 500; margin-left: 3px; }
+.datra-lab .lab-knob .src { display: none; font-family: var(--lab-mono); font-size: 10.5px; color: var(--lab-ink-3); margin-top: 2px; overflow-wrap: anywhere; }
+.datra-lab .lab-knobs.show-src .lab-knob .src { display: block; }
+.datra-lab .lab-knob .changed { width: 6px; height: 6px; border-radius: 50%; background: var(--lab-accent); display: none; flex: none; }
+.datra-lab .lab-knob.is-changed .changed { display: inline-block; }
+.datra-lab .lab-knob .was { display: none; font-size: 11.5px; color: var(--lab-ink-3); font-variant-numeric: tabular-nums; }
+.datra-lab .lab-knob.is-changed .was { display: block; }
+.datra-lab .lab-knob .reset { border: 0; background: none; color: var(--lab-ink-3); cursor: pointer; padding: 0 2px; font-size: 12px; visibility: hidden; }
+.datra-lab .lab-knob.is-changed .reset { visibility: visible; }
+.datra-lab .lab-badge { font-size: 10.5px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--lab-gold-soft); color: #8a6508; letter-spacing: 0.02em; white-space: nowrap; }
+.datra-lab .lab-slider { position: relative; }
+.datra-lab .lab-slider .tick { position: absolute; top: 4px; width: 2px; height: 14px; margin-left: -1px; background: var(--lab-ink-3); border-radius: 1px; pointer-events: none; opacity: 0.7; }
+.datra-lab input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; margin: 2px 0 0; cursor: pointer; display: block; position: relative; z-index: 1; }
+.datra-lab input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--lab-ink) 0 var(--fill, 50%), var(--lab-line-2) var(--fill, 50%) 100%); }
+.datra-lab input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: #fff; border: 2px solid var(--lab-ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15); position: relative; }
+.datra-lab input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--lab-line-2); }
+.datra-lab input[type=range]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--lab-ink); }
+.datra-lab input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 2px solid var(--lab-ink); }
+.datra-lab input[type=range]:disabled { cursor: default; opacity: 0.55; }
+.datra-lab .lab-knob.physics input[type=range]::-webkit-slider-runnable-track { background: linear-gradient(to right, var(--lab-gold-deep) 0 var(--fill, 50%), var(--lab-line-2) var(--fill, 50%) 100%); }
+.datra-lab .lab-knob.physics input[type=range]::-webkit-slider-thumb { border-color: var(--lab-gold-deep); }
+
+/* hero and tiles */
+.datra-lab .lab-hero { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+.datra-lab .lab-big { font-size: 56px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.datra-lab .lab-big small { font-size: 22px; font-weight: 600; color: var(--lab-ink-2); margin-left: 4px; letter-spacing: 0; }
+.datra-lab .lab-cap { color: var(--lab-ink-2); margin-top: 8px; font-size: 13px; }
+.datra-lab .lab-cap b { color: var(--lab-ink); }
+.datra-lab .lab-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.datra-lab .lab-tile { background: var(--lab-panel-2); border: 1px solid var(--lab-line); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.datra-lab .lab-tile .l { color: var(--lab-ink-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.datra-lab .lab-tile .v { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin-top: 2px; white-space: nowrap; }
+.datra-lab .lab-tile .v small { font-size: 12.5px; color: var(--lab-ink-3); font-weight: 500; margin-left: 3px; }
+.datra-lab .lab-tile .d { font-size: 12px; color: var(--lab-ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.datra-lab .lab-tile.warn { background: var(--lab-warn-soft); border-color: #f0d6bf; }
+.datra-lab .lab-tile.warn .d { color: var(--lab-warn); }
+.datra-lab .lab-delta { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--lab-ink-2); }
+
+/* charts */
+.datra-lab .lab-chart { position: relative; width: 100%; }
+.datra-lab .lab-chart svg { display: block; width: 100%; overflow: visible; }
+.datra-lab .lab-chart text { font-family: var(--lab-font); fill: var(--lab-ink-3); font-size: 11.5px; }
+.datra-lab .lab-chart .lbl { fill: var(--lab-ink-2); font-weight: 600; }
+.datra-lab .lab-chart .lbl-strong { fill: var(--lab-ink); font-weight: 650; }
+.datra-lab .lab-chart .lbl-warn { fill: var(--lab-warn); font-weight: 600; }
+.datra-lab .lab-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--lab-ink-2); }
+.datra-lab .lab-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.datra-lab .lab-legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+.datra-lab .lab-legend i.sq { width: 10px; height: 10px; border-radius: 3px; }
+.datra-lab .lab-legend i.dash { background: repeating-linear-gradient(90deg, var(--lab-ink) 0 4px, transparent 4px 7px); height: 2px; }
+.datra-lab .lab-notes { display: grid; gap: 8px; }
+.datra-lab .lab-note { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: var(--lab-panel-2); border: 1px solid var(--lab-line); font-size: 13px; color: var(--lab-ink-2); }
+.datra-lab .lab-note .ic { flex: none; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--lab-warn-soft); color: var(--lab-warn); margin-top: 1px; }
+.datra-lab .lab-note.info .ic { background: var(--lab-accent-soft); color: var(--lab-accent); }
+.datra-lab .lab-note.ok .ic { background: var(--lab-good-soft); color: var(--lab-good); }
+.datra-lab .lab-note b { color: var(--lab-ink); }
+.datra-lab .lab-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.datra-lab .lab-table th, .datra-lab .lab-table td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--lab-line); }
+.datra-lab .lab-table th { color: var(--lab-ink-3); font-weight: 600; }
+.datra-lab .lab-table th:first-child, .datra-lab .lab-table td:first-child { text-align: left; }
+.datra-lab .lab-foot { color: var(--lab-ink-3); font-size: 12px; text-align: center; padding: 6px 0 0; overflow-wrap: anywhere; }
+.datra-lab .lab-error { margin: 24px; padding: 14px 16px; border-radius: 10px; background: var(--lab-warn-soft); border: 1px solid #f0d6bf; color: var(--lab-warn); font-size: 13.5px; }
+.datra-lab .lab-loading { padding: 40px; color: var(--lab-ink-3); text-align: center; }
+.datra-lab.is-stale .lab-chart svg { opacity: 0.6; }
+
+/* the tooltip lives on <body> so it is never clipped by the host */
+.datra-lab-tip { position: fixed; z-index: 1000; pointer-events: none; background: #1d2127; color: #fff; border-radius: 8px; padding: 7px 10px; font: 12.5px/1.45 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); opacity: 0; transition: opacity 0.08s; max-width: 280px; }
+.datra-lab-tip b { font-weight: 650; }
+.datra-lab-tip .m { color: #b9c0c8; }
+
+@media (max-width: 1180px) {
+    .datra-lab .lab-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+    .datra-lab .lab-page { grid-template-columns: minmax(0, 1fr); padding: 12px 16px 32px; }
+    .datra-lab .lab-grid-2 { grid-template-columns: minmax(0, 1fr); }
+    .datra-lab .lab-hero { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+}

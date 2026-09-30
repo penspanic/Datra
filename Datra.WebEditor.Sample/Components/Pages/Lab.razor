@@ -1,0 +1,17 @@
+@page "/lab"
+
+<PageTitle>Datra.Lab — Sample</PageTitle>
+
+@* MainLayout pins the page to the viewport for the table editor; the lab is a long page, so it scrolls here. *@
+<div class="lab-shell">
+    <DatraLab Locale="@Lang" />
+</div>
+
+@code {
+    /// <summary>Language of the lab's own text: /lab?lang=ko.</summary>
+    [SupplyParameterFromQuery(Name = "lang")] public string? Lang { get; set; }
+}
+
+<style>
+    .lab-shell { height: 100%; overflow: auto; background: #eef0f2; }
+</style>

@@ -11,21 +11,17 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Datra\Datra.csproj" />
-        <ProjectReference Include="..\Datra.Editor\Datra.Editor.csproj" />
-        <ProjectReference Include="..\Datra.SampleData\Datra.SampleData.csproj" />
-        <ProjectReference Include="..\Datra.SampleData2\Datra.SampleData2.csproj" />
-        <ProjectReference Include="..\Datra.WebEditor\Datra.WebEditor.csproj" />
-        <ProjectReference Include="..\Datra.WebEditor.Server\Datra.WebEditor.Server.csproj" />
         <ProjectReference Include="..\Datra.Lab\Datra.Lab.csproj" />
         <ProjectReference Include="..\Datra.Lab.Sample\Datra.Lab.Sample.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Components" Version="9.0.0" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-        <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="9.0.0" />
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="coverlet.collector" Version="8.0.1">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
