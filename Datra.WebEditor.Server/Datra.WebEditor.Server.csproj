@@ -24,6 +24,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Datra\Datra.csproj" />
         <ProjectReference Include="..\Datra.Editor\Datra.Editor.csproj" />
+        <ProjectReference Include="..\Datra.Lab\Datra.Lab.csproj" />
         <ProjectReference Include="..\Datra.WebEditor\Datra.WebEditor.csproj" />
     </ItemGroup>
 

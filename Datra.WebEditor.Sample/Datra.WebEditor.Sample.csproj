@@ -13,6 +13,8 @@
         <ProjectReference Include="..\Datra\Datra.csproj" />
         <ProjectReference Include="..\Datra.Editor\Datra.Editor.csproj" />
         <ProjectReference Include="..\Datra.SampleData\Datra.SampleData.csproj" />
+        <ProjectReference Include="..\Datra.Lab\Datra.Lab.csproj" />
+        <ProjectReference Include="..\Datra.Lab.Sample\Datra.Lab.Sample.csproj" />
         <ProjectReference Include="..\Datra.WebEditor\Datra.WebEditor.csproj" />
         <ProjectReference Include="..\Datra.WebEditor.Server\Datra.WebEditor.Server.csproj" />
     </ItemGroup>

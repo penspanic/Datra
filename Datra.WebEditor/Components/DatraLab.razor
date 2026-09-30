@@ -1,0 +1,45 @@
+@*
+    Balance lab screen. Mount with `<DatraLab />` after registering `AddDatraLab<TContext, TSimulator>()`
+    and mapping `MapDatraLab()` (both in Datra.WebEditor.Server).
+
+    The component is only a host: the knob panel and every view are drawn by the framework-free
+    JavaScript modules under wwwroot/lab, which talk to the lab endpoints. Keeping the drawing out
+    of Blazor is what lets the same modules render a result baked into a standalone page later.
+*@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="datra-lab" @ref="_host"></div>
+
+@code {
+    /// <summary>Where <c>MapDatraLab</c> was mounted.</summary>
+    [Parameter] public string BasePath { get; set; } = "/api/datra/lab";
+
+    /// <summary>Language of the screen's own text: "en" (default) or "ko". Knob labels come from the game.</summary>
+    [Parameter] public string? Locale { get; set; }
+
+    private ElementReference _host;
+    private IJSObjectReference? _module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _module = await JS.InvokeAsync<IJSObjectReference>("import", "./_content/Datra.WebEditor/lab/datra-lab.js");
+        await _module.InvokeVoidAsync("mount", _host, new { basePath = BasePath, locale = Locale });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is null) return;
+        try
+        {
+            await _module.InvokeVoidAsync("unmount", _host);
+            await _module.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit is gone and the page with it: nothing left to clean up.
+        }
+    }
+}

@@ -24,6 +24,14 @@ directory; Revert drops pending edits.
 Single, asset, and localisation repositories are recognised by the data context but hidden until
 the editor grows dedicated views for them.
 
+## Balance lab
+
+<http://localhost:5170/lab> (or `/lab?lang=ko`) shows [Datra.Lab](../docs/LAB.md) on a toy
+incremental game from `Datra.Lab.Sample`: floors with a fare, a fare box that is also the
+wallet, upgrades. Move a knob and 40 bots replay the game; the saved data is drawn in grey
+behind the new result. Its three YAML files are staged into the same scratch directory, and
+snapshots go to `lab-snapshots/` inside it.
+
 ## What happens on disk
 
 Your repo stays clean. On every launch, `SampleResourceStager` copies

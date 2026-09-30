@@ -137,6 +137,19 @@ POST /api/datra/reload/{typeName}     — discard pending edits and re-read from
 through the same `DatraEditorHostService` the Blazor UI uses, so external triggers compose
 cleanly with the in-process editor.
 
+## Balance lab (`<DatraLab />`)
+
+A second screen next to the table editor: knobs generated from `[Knob]` attributes, bots that
+play the game through a simulator class you write, and views of the outcome. It needs
+`AddDatraLab<TContext, TSimulator>()` and `MapDatraLab()` from Datra.WebEditor.Server.
+
+```razor
+<DatraLab />
+```
+
+The component is a host for framework-free JavaScript modules in `wwwroot/lab/` (the only
+JavaScript in this package); they load their own stylesheet. See [docs/LAB.md](../docs/LAB.md).
+
 ## Architecture overview
 
 ```
